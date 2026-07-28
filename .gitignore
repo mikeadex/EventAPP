@@ -37,3 +37,5 @@ ios/build
 android/.gradle
 android/build
 android/app/build
+.vercel
+.env*.local

@@ -5,7 +5,7 @@
   "description": "Ekklesia \u2014 church-focused event marketplace",
   "packageManager": "pnpm@11.3.0",
   "engines": {
-    "node": ">=20.11.0",
+    "node": ">=22.12.0",
     "pnpm": ">=11.0.0"
   },
   "scripts": {

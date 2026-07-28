@@ -13,6 +13,12 @@
  * The bootstrapped Express app is cached on the module scope. Vercel reuses a
  * warm instance across invocations, so the ~1-2s Nest DI container build is
  * paid on cold start only.
+ *
+ * RUNTIME REQUIREMENT: Node >= 22.12. `better-auth` is published as pure ESM
+ * (type: module, no `require` export condition), so this CommonJS build can
+ * only load it through require(esm), which older runtimes reject with
+ * ERR_REQUIRE_ESM. `engines.node` declares this; the Vercel project's Node.js
+ * Version setting must also be 22.x or newer.
  */
 require('reflect-metadata');
 
