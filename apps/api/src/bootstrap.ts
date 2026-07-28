@@ -2,6 +2,8 @@ import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import helmet from 'helmet';
 import { ZodExceptionFilter } from './common/zod-exception.filter.js';
 
+export { assertRequiredEnv } from './env.js';
+
 /**
  * Middleware, pipes and filters shared by both entrypoints:
  *

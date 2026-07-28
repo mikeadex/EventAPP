@@ -19,11 +19,15 @@ require('reflect-metadata');
 const { NestFactory } = require('@nestjs/core');
 
 const { AppModule } = require('../dist/app.module.js');
-const { configureApp } = require('../dist/bootstrap.js');
+const { configureApp, assertRequiredEnv } = require('../dist/bootstrap.js');
 
 let cached = null;
 
 async function bootstrap() {
+  // Throws a named-variable error rather than letting a missing DATABASE_URL
+  // surface as an unexplained Prisma failure inside the DI container.
+  assertRequiredEnv();
+
   // No explicit ExpressAdapter: Nest defaults to Express and builds its own
   // instance, which we then hand to Vercel. Requiring `express` directly here
   // would fail under pnpm's isolated node_modules (it's a transitive dep of
@@ -39,9 +43,24 @@ async function bootstrap() {
 }
 
 module.exports = async function handler(req, res) {
-  // Cache the promise, not the resolved app, so concurrent cold-start requests
-  // share a single bootstrap instead of each building their own container.
-  if (!cached) cached = bootstrap();
-  const app = await cached;
-  return app(req, res);
+  try {
+    // Cache the promise, not the resolved app, so concurrent cold-start
+    // requests share a single bootstrap instead of each building their own.
+    if (!cached) cached = bootstrap();
+    const app = await cached;
+    return app(req, res);
+  } catch (err) {
+    // Clear the cache so a failed bootstrap doesn't poison this warm instance
+    // for every subsequent request — a transient DB blip on cold start would
+    // otherwise persist until the next deploy.
+    cached = null;
+    // Log the real cause (visible in `vercel logs`) but don't leak internals
+    // to the caller.
+    console.error('[bootstrap] API failed to start:', err);
+    res.statusCode = 500;
+    res.setHeader('content-type', 'application/json');
+    return res.end(
+      JSON.stringify({ statusCode: 500, message: 'API failed to start. See server logs.' }),
+    );
+  }
 };

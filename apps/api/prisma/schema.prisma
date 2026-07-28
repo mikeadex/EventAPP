@@ -7,6 +7,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" covers local dev (darwin-arm64). Vercel's Node runtime is Amazon
+  // Linux 2023, which needs the rhel-openssl-3.0.x query engine — without it
+  // the function crashes at $connect() with "Query engine library could not be
+  // found for the current platform".
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {

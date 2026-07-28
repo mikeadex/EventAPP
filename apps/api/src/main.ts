@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
-import { configureApp } from './bootstrap.js';
+import { assertRequiredEnv, configureApp } from './bootstrap.js';
 
 /**
  * Long-running server entrypoint — local dev, containers, VMs.
@@ -9,6 +9,8 @@ import { configureApp } from './bootstrap.js';
  * `configureApp` so their middleware can't drift.
  */
 async function bootstrap() {
+  assertRequiredEnv();
+
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
 
   configureApp(app);
