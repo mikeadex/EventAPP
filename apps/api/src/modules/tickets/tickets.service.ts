@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { RsvpSchema, type RsvpInput } from '@ekklesia/shared';
 import type { Prisma } from '@prisma/client';
-import { nanoid } from 'nanoid';
+import { randomId } from '../../common/random-id.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditLogService } from '../../common/audit-log.service.js';
 import { EmailService } from '../email/email.service.js';
@@ -295,7 +295,7 @@ export class TicketsService {
 
 function makeTicketCode(): string {
   // 14 chars, URL-safe, easy to scan as a QR payload. ~10^21 keyspace.
-  return `EK-${nanoid(11).toUpperCase()}`;
+  return `EK-${randomId(11).toUpperCase()}`;
 }
 
 export const TICKET_DETAIL_SELECT = {

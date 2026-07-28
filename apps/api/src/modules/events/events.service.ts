@@ -15,7 +15,7 @@ import {
   type UpdateEventInput,
 } from '@ekklesia/shared';
 import type { Prisma } from '@prisma/client';
-import { nanoid } from 'nanoid';
+import { randomId } from '../../common/random-id.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditLogService } from '../../common/audit-log.service.js';
 
@@ -327,14 +327,14 @@ export class EventsService {
   ): Promise<string> {
     const base = slugify(title);
     for (let attempt = 0; attempt < 5; attempt++) {
-      const candidate = attempt === 0 ? base : `${base}-${nanoid(5).toLowerCase()}`;
+      const candidate = attempt === 0 ? base : `${base}-${randomId(5).toLowerCase()}`;
       const clash = await tx.event.findUnique({
         where: { organizationId_slug: { organizationId, slug: candidate } },
         select: { id: true },
       });
       if (!clash) return candidate;
     }
-    return `${base}-${nanoid(8).toLowerCase()}`;
+    return `${base}-${randomId(8).toLowerCase()}`;
   }
 }
 

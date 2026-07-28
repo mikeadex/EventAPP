@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { nanoid } from 'nanoid';
+import { randomId } from '../../common/random-id.js';
 
 const ALLOWED_TYPES = new Set([
   'image/png',
@@ -90,7 +90,7 @@ export class UploadsService {
     }
 
     const ext = extensionForContentType(input.contentType);
-    const key = `${input.purpose}/${userId.slice(0, 8)}/${nanoid(16)}${ext}`;
+    const key = `${input.purpose}/${userId.slice(0, 8)}/${randomId(16)}${ext}`;
 
     const command = new PutObjectCommand({
       Bucket: this.bucket,
