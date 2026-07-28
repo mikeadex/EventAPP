@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
-import { auth } from './auth.js';
+import { getAuth } from './auth.js';
 
 export interface AuthedUser {
   id: string;
@@ -15,6 +15,7 @@ export class CurrentUserService {
     for (const [k, v] of Object.entries(req.headers)) {
       if (typeof v === 'string') headers.set(k, v);
     }
+    const auth = await getAuth();
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return null;
     return {

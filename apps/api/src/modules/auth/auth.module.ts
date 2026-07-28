@@ -1,6 +1,6 @@
 import { All, Controller, Global, Module, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { auth } from './auth.js';
+import { getAuth } from './auth.js';
 import { CurrentUserService } from './current-user.service.js';
 
 /**
@@ -21,6 +21,7 @@ class AuthHandlerController {
           ? undefined
           : JSON.stringify(req.body),
     });
+    const auth = await getAuth();
     const response = await auth.handler(request);
     res.status(response.status);
     response.headers.forEach((value, key) => res.setHeader(key, value));
