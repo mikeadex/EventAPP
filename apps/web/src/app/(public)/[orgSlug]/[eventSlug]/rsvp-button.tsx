@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth-client';
 import { apiClient, ApiError } from '@/lib/api-client';
@@ -65,9 +66,9 @@ export function RsvpButton({ eventId, disabled }: { eventId: string; disabled?: 
       {done && (
         <p className="mt-2 text-sm text-ink-500">
           Check{' '}
-          <a href="/me/tickets" className="text-brand-700 hover:underline">
+          <Link href="/me/tickets" className="text-brand-700 hover:underline">
             My tickets
-          </a>
+          </Link>
           .
         </p>
       )}
