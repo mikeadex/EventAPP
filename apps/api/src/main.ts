@@ -1,29 +1,17 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import helmet from 'helmet';
 import { AppModule } from './app.module.js';
-import { ZodExceptionFilter } from './common/zod-exception.filter.js';
+import { configureApp } from './bootstrap.js';
 
+/**
+ * Long-running server entrypoint — local dev, containers, VMs.
+ * The Vercel serverless deployment uses `api/index.js` instead; both share
+ * `configureApp` so their middleware can't drift.
+ */
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
 
-  app.use(helmet());
-  app.enableCors({
-    origin: (process.env.TRUSTED_ORIGINS ?? '').split(',').filter(Boolean),
-    credentials: true,
-  });
-  // Routes excluded from the /v1 prefix:
-  //  - /health  (operational probe)
-  //  - /webhooks/*  (third-party callbacks expect stable paths)
-  //  - /auth/*  (Better Auth mounts its own router at /auth/*)
-  app.setGlobalPrefix('v1', {
-    exclude: ['health', 'webhooks/(.*)', 'auth/(.*)'],
-  });
-  app.useGlobalPipes(
-    new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }),
-  );
-  app.useGlobalFilters(new ZodExceptionFilter());
+  configureApp(app);
 
   // NOTE: Swagger UI is intentionally not mounted in dev right now — tsx
   // (esbuild) doesn't emit TS `design:paramtypes` metadata, which
