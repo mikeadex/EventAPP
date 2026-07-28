@@ -16,16 +16,38 @@
  */
 require('reflect-metadata');
 
-const { NestFactory } = require('@nestjs/core');
-
-const { AppModule } = require('../dist/app.module.js');
-const { configureApp, assertRequiredEnv } = require('../dist/bootstrap.js');
-
 let cached = null;
 
 async function bootstrap() {
-  // Throws a named-variable error rather than letting a missing DATABASE_URL
-  // surface as an unexplained Prisma failure inside the DI container.
+  // Everything below is required lazily, from inside the handler's try block.
+  //
+  // Requiring the compiled app graph is NOT side-effect free: modules/auth.ts
+  // constructs PrismaClient, EmailService and betterAuth() at module scope, so
+  // the import itself throws when BETTER_AUTH_SECRET or DATABASE_URL is absent.
+  // A top-level require would therefore crash the function before the handler
+  // existed, and Vercel would report an opaque FUNCTION_INVOCATION_FAILED with
+  // our error handling never given a chance to run.
+  //
+  // bootstrap.js is safe to load first — pipes and filters only, no side effects.
+  const { configureApp, assertRequiredEnv } = require('../dist/bootstrap.js');
+
+  let NestFactory;
+  let AppModule;
+  try {
+    ({ NestFactory } = require('@nestjs/core'));
+    ({ AppModule } = require('../dist/app.module.js'));
+  } catch (err) {
+    // Missing configuration is overwhelmingly the reason this import fails, so
+    // name the offending variables rather than surfacing whichever constructor
+    // happened to throw first.
+    assertRequiredEnv();
+    throw err;
+  }
+
+  // Validate only *after* the import: loading the graph is also what populates
+  // process.env from a local .env file (via ConfigModule / Prisma). Checking
+  // beforehand would wrongly report every variable as missing in local dev,
+  // where config comes from the file rather than the environment.
   assertRequiredEnv();
 
   // No explicit ExpressAdapter: Nest defaults to Express and builds its own
