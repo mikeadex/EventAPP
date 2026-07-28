@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Ekklesia",
+    "slug": "ekklesia",
+    "scheme": "ekklesia",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FBF6EE"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.ekklesia.mobile",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FBF6EE"
+      },
+      "package": "app.ekklesia.mobile",
+      "versionCode": 1
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router",
+      "./plugins/withFmtConstevalFix",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Ekklesia uses your calendar to add events you choose to save."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "$EXPO_PUBLIC_API_URL"
+    },
+    "icon": "./assets/icon.png"
+  }
+}

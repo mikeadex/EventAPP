@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --filter @ekklesia/api dev)",
+      "Bash(/bin/cat /tmp/ekk-ios.log)",
+      "Bash(/usr/bin/head -60)"
+    ]
+  }
+}

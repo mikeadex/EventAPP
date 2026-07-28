@@ -1,0 +1,17 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm 11 requires explicit opt-in for postinstall scripts. All entries below
+# are first-party tools we trust; their postinstalls generate clients or
+# download native binaries that the project won't run without.
+allowBuilds:
+  '@nestjs/core': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@swc/core': true
+  dtrace-provider: false  # optional native tracing dep via pino; unused
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true

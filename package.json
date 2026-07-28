@@ -1,0 +1,35 @@
+{
+  "name": "ekklesia",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Ekklesia \u2014 church-focused event marketplace",
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:generate": "pnpm --filter @ekklesia/api db:generate",
+    "db:migrate": "pnpm --filter @ekklesia/api db:migrate",
+    "db:seed": "pnpm --filter @ekklesia/api db:seed",
+    "db:studio": "pnpm --filter @ekklesia/api db:studio"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "eas-cli": "^21.2.0",
+    "prettier": "^3.3.3",
+    "turbo": "^2.1.3",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "pnpm": "^11.3.0"
+  }
+}

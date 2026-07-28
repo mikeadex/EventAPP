@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ekklesia
+          POSTGRES_PASSWORD: ekklesia
+          POSTGRES_DB: ekklesia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ekklesia"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://ekklesia:ekklesia@localhost:5432/ekklesia?schema=public
+      BETTER_AUTH_SECRET: ci-secret-must-be-at-least-32-characters-long
+      BETTER_AUTH_URL: http://localhost:4000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.11.0'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prisma validate
+        run: pnpm --filter @ekklesia/api exec prisma validate
+
+      - name: Prisma generate
+        run: pnpm db:generate
+
+      - name: Migrate
+        run: pnpm --filter @ekklesia/api exec prisma migrate deploy || pnpm --filter @ekklesia/api exec prisma db push
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
