@@ -17,21 +17,27 @@
       "distribution": "internal",
       "channel": "preview",
       "autoIncrement": true,
-      "ios": { "simulator": false },
-      "android": { "buildType": "apk" },
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.ekklesia.app",
-        "EXPO_PUBLIC_WEB_URL": "https://ekklesia.app"
+        "EXPO_PUBLIC_API_URL": "https://ekklesiabackend-bay.vercel.app",
+        "EXPO_PUBLIC_WEB_URL": ""
       }
     },
     "production": {
       "distribution": "store",
       "channel": "production",
       "autoIncrement": true,
-      "android": { "buildType": "app-bundle" },
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.ekklesia.app",
-        "EXPO_PUBLIC_WEB_URL": "https://ekklesia.app"
+        "EXPO_PUBLIC_API_URL": "https://ekklesiabackend-bay.vercel.app",
+        "EXPO_PUBLIC_WEB_URL": ""
       }
     }
   },
