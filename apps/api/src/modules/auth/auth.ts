@@ -9,16 +9,15 @@ import { passwordResetEmail } from '../email/templates/password-reset.js';
  * — which Vercel's runtime rejects with ERR_REQUIRE_ESM. (It happens to work on
  * Node >= 22.12 locally, which is why this only ever failed in production.)
  *
- * Loading it through a genuine dynamic `import()` works on every runtime. The
- * catch is that `tsc` with `module: commonjs` rewrites `await import(...)` back
- * into `require(...)`, silently undoing the fix — so the import is hidden
- * behind the Function constructor, which the compiler cannot rewrite.
- *
- * Type-position `import(...)` below is erased at compile time and emits nothing.
+ * The real dynamic imports live in `lib/load-esm.js`, outside `src/` so `tsc`
+ * cannot rewrite them and with literal specifiers so Vercel's file tracer still
+ * bundles the package. See that file for the full reasoning.
  */
-const esmImport = new Function('specifier', 'return import(specifier)') as <T>(
-  specifier: string,
-) => Promise<T>;
+import {
+  loadBetterAuth,
+  loadBetterAuthPlugins,
+  loadBetterAuthPrismaAdapter,
+} from '../../../lib/load-esm.js';
 
 /**
  * Inferred from `createAuth` rather than written as
@@ -62,9 +61,9 @@ export function getAuth(): Promise<AuthInstance> {
 
 async function createAuth() {
   const [{ betterAuth }, { prismaAdapter }, { bearer }] = await Promise.all([
-    esmImport<typeof import('better-auth')>('better-auth'),
-    esmImport<typeof import('better-auth/adapters/prisma')>('better-auth/adapters/prisma'),
-    esmImport<typeof import('better-auth/plugins')>('better-auth/plugins'),
+    loadBetterAuth(),
+    loadBetterAuthPrismaAdapter(),
+    loadBetterAuthPlugins(),
   ]);
 
   return betterAuth({

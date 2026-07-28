@@ -6,7 +6,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 30,
-      "includeFiles": "dist/**"
+      "includeFiles": "{dist,lib}/**"
     }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index.js" }]

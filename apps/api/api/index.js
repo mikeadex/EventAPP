@@ -67,6 +67,11 @@ async function bootstrap() {
   });
   configureApp(app);
   await app.init();
+  // `bufferLogs: true` holds every Nest log — including request errors — until
+  // it is flushed. The long-running server flushes via app.listen(); here
+  // nothing did, so production 500s arrived in Vercel with "(no message)" and
+  // no stack trace. Flush so failures are actually diagnosable.
+  app.flushLogs();
   return app.getHttpAdapter().getInstance();
 }
 
