@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.ekklesia.mobile",
+      "bundleIdentifier": "com.ekklesia",
       "buildNumber": "1"
     },
     "android": {
@@ -24,7 +24,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FBF6EE"
       },
-      "package": "app.ekklesia.mobile",
+      "package": "com.ekklesia",
       "versionCode": 1
     },
     "web": {
