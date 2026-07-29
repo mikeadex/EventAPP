@@ -111,18 +111,24 @@ export default function SettingsScreen() {
 
       <Text style={styles.sectionLabel}>About</Text>
       <View style={styles.menu}>
-        <SettingsRow
-          icon="shield-checkmark-outline"
-          label="Privacy policy"
-          onPress={() => Linking.openURL(`${WEB_URL}/privacy`)}
-        />
-        <View style={styles.divider} />
-        <SettingsRow
-          icon="document-text-outline"
-          label="Terms of service"
-          onPress={() => Linking.openURL(`${WEB_URL}/terms`)}
-        />
-        <View style={styles.divider} />
+        {/* Only offered when a public web address is configured — without one
+            these would build a relative "/privacy" and fail to open. */}
+        {WEB_URL ? (
+          <>
+            <SettingsRow
+              icon="shield-checkmark-outline"
+              label="Privacy policy"
+              onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
+            />
+            <View style={styles.divider} />
+            <SettingsRow
+              icon="document-text-outline"
+              label="Terms of service"
+              onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
+            />
+            <View style={styles.divider} />
+          </>
+        ) : null}
         <SettingsRow icon="information-circle-outline" label="Version" detail={version} />
       </View>
 

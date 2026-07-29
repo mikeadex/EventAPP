@@ -25,7 +25,11 @@
         "backgroundColor": "#FBF6EE"
       },
       "package": "com.ekklesia",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -46,8 +50,15 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "$EXPO_PUBLIC_API_URL"
+      "apiUrl": "$EXPO_PUBLIC_API_URL",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "41b1b932-1389-408e-81b6-4dc88a3b7165"
+      }
     },
-    "icon": "./assets/icon.png"
+    "icon": "./assets/icon.png",
+    "owner": "madeleyecodes"
   }
 }
