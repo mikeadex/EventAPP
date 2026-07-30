@@ -180,6 +180,21 @@ export default function EventDetailScreen() {
         // ignore — non-fatal
       }
     })();
+    // Already holding an active ticket? Reflect it immediately: the CTA reads
+    // "You're going ✓" instead of re-offering registration, and the ticket id
+    // is kept so "Show me as going" still works from this page's sheet state.
+    (async () => {
+      try {
+        const tickets = await api<{ id: string; event: { id: string } }[]>('/v1/me/tickets');
+        const mine = tickets.find((t) => t.event.id === event.id);
+        if (!cancelled && mine) {
+          setRsvpState('done');
+          setRsvpTicketId(mine.id);
+        }
+      } catch {
+        // ignore — non-fatal
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -230,6 +245,13 @@ export default function EventDetailScreen() {
       setShowMe(false);
       setCelebrate(true);
     } catch (e) {
+      // The server refusing a duplicate is confirmation, not an error —
+      // settle into the "going" state instead of showing a red message.
+      if (e instanceof ApiError && e.status === 409) {
+        setRsvpState('done');
+        showToast('You already have a ticket for this event');
+        return;
+      }
       setRsvpState('idle');
       setRsvpErr(e instanceof ApiError ? e.message : 'RSVP failed');
     }
