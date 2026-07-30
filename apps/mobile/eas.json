@@ -10,7 +10,8 @@
       "channel": "development",
       "env": {
         "EXPO_PUBLIC_API_URL": "http://localhost:4000",
-        "EXPO_PUBLIC_WEB_URL": "http://localhost:3000"
+        "EXPO_PUBLIC_WEB_URL": "http://localhost:3000",
+        "COREPACK_INTEGRITY_KEYS": "0"
       },
       "corepack": true
     },
@@ -26,7 +27,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://ekklesiabackend-bay.vercel.app",
-        "EXPO_PUBLIC_WEB_URL": "https://ekklesia-web-indol.vercel.app"
+        "EXPO_PUBLIC_WEB_URL": "https://ekklesia-web-indol.vercel.app",
+        "COREPACK_INTEGRITY_KEYS": "0"
       },
       "corepack": true
     },
@@ -39,7 +41,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://ekklesiabackend-bay.vercel.app",
-        "EXPO_PUBLIC_WEB_URL": "https://ekklesia-web-indol.vercel.app"
+        "EXPO_PUBLIC_WEB_URL": "https://ekklesia-web-indol.vercel.app",
+        "COREPACK_INTEGRITY_KEYS": "0"
       },
       "corepack": true
     }
