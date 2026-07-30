@@ -31,6 +31,8 @@
       "versionCode": 1,
       "permissions": [
         "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
       ]
     },
@@ -72,6 +74,12 @@
       }
     },
     "icon": "./assets/icon.png",
-    "owner": "madeleyecodes"
+    "owner": "madeleyecodes",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/41b1b932-1389-408e-81b6-4dc88a3b7165"
+    }
   }
 }
