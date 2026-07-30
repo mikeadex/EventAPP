@@ -13,12 +13,13 @@
 const fs = require('fs');
 const path = require('path');
 
-// Resolve @expo/config-plugins via expo's install (robust under pnpm).
-const { withDangerousMod } = require(
-  require.resolve('@expo/config-plugins', {
-    paths: [path.dirname(require.resolve('expo/package.json'))],
-  }),
-);
+// Plain require: with `nodeLinker: hoisted` the dependency sits in the flat
+// root node_modules and resolves normally. The previous version looked it up
+// via `require.resolve(..., { paths: [dirname(require.resolve('expo/package.json'))] })`
+// to cope with pnpm's isolated layout — that indirection is now unnecessary,
+// and it runs at module load, so any failure took down the whole app-config
+// read rather than just this plugin.
+const { withDangerousMod } = require('@expo/config-plugins');
 
 const MARKER = '# [ekklesia] fmt-consteval-fix';
 
