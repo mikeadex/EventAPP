@@ -299,7 +299,9 @@ export default function EventDetailScreen() {
     try {
       await Share.share({ title: event.title, message: lines.join('\n'), url });
     } catch {
-      // user dismissed / share unavailable — ignore
+      // User-cancel resolves (doesn't throw) on both platforms, so reaching
+      // here means the share sheet genuinely failed — don't fail silently.
+      showToast("Couldn't open the share sheet");
     }
   }
 
@@ -316,17 +318,33 @@ export default function EventDetailScreen() {
       ? `${event.venue.name}, ${event.venue.city}`
       : undefined;
     try {
-      // Opens the system "new event" editor pre-filled — no calendar
-      // permission needed (EventKitUI on iOS, ACTION_INSERT intent on Android).
-      await ExpoCalendar.createEventInCalendarAsync({
+      // Android launches an ACTION_INSERT intent, which needs no permission.
+      // iOS is different: expo-calendar's native createEventInCalendarAsync
+      // runs checkCalendarPermissions() BEFORE presenting the editor, so
+      // without a granted permission it throws and nothing appears. Request
+      // it explicitly on iOS (the usage strings ship in the binary).
+      if (Platform.OS === 'ios') {
+        const { status } = await ExpoCalendar.requestCalendarPermissionsAsync();
+        if (status !== 'granted') {
+          showToast('Allow calendar access in Settings to add events');
+          return;
+        }
+      }
+      const result = await ExpoCalendar.createEventInCalendarAsync({
         title: event.title,
         startDate,
         endDate,
         location,
         notes: event.summary ?? undefined,
       });
+      if ((result as { action?: string } | null)?.action === 'saved') {
+        showToast('Added to your calendar', 'calendar-outline');
+      }
     } catch {
-      // user dismissed / no calendar app — ignore
+      // A real failure (not user cancel — that resolves with action:
+      // "canceled"). Say so instead of silently doing nothing: today's
+      // "nothing happened" bug report existed because this was swallowed.
+      showToast("Couldn't open your calendar");
     }
   }
 
