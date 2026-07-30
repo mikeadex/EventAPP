@@ -20,7 +20,8 @@
       "channel": "preview",
       "autoIncrement": true,
       "ios": {
-        "simulator": false
+        "simulator": false,
+        "image": "latest"
       },
       "android": {
         "buildType": "apk"
@@ -30,7 +31,8 @@
         "EXPO_PUBLIC_WEB_URL": "https://ekklesia-web-indol.vercel.app",
         "COREPACK_INTEGRITY_KEYS": "0"
       },
-      "corepack": true
+      "corepack": true,
+      "node": "22.14.0"
     },
     "production": {
       "distribution": "store",
@@ -44,7 +46,11 @@
         "EXPO_PUBLIC_WEB_URL": "https://ekklesia-web-indol.vercel.app",
         "COREPACK_INTEGRITY_KEYS": "0"
       },
-      "corepack": true
+      "corepack": true,
+      "node": "22.14.0",
+      "ios": {
+        "image": "latest"
+      }
     }
   },
   "submit": {
