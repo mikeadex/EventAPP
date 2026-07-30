@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
@@ -14,11 +15,13 @@ import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { api } from '@/lib/api';
+import { showToast } from '@/components/toast';
 
 interface Ticket {
   id: string;
   code: string;
   status: string;
+  showAsAttending: boolean;
   issuedAt: string | null;
   checkedInAt: string | null;
   event: {
@@ -56,6 +59,7 @@ export default function TicketDetailScreen() {
   const insets = useSafeAreaInsets();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [visPending, setVisPending] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -63,6 +67,24 @@ export default function TicketDetailScreen() {
       .then(setTicket)
       .catch((e) => setError(e.message));
   }, [id]);
+
+  async function toggleVisibility(next: boolean) {
+    if (!ticket || visPending) return;
+    setVisPending(true);
+    setTicket({ ...ticket, showAsAttending: next });
+    try {
+      await api(`/v1/tickets/${ticket.id}/visibility`, {
+        method: 'PATCH',
+        body: { showAsAttending: next },
+      });
+      showToast(next ? "You'll appear as going" : 'Hidden from the event page');
+    } catch {
+      setTicket((t) => (t ? { ...t, showAsAttending: !next } : t));
+      showToast("Couldn't update visibility — try again");
+    } finally {
+      setVisPending(false);
+    }
+  }
 
   if (error) {
     return (
@@ -155,6 +177,21 @@ export default function TicketDetailScreen() {
               <Text style={styles.venueText} numberOfLines={1}>
                 {venueLine}
               </Text>
+            </View>
+
+            {/* Withdrawable consent for the event page's "who's going" list. */}
+            <View style={styles.visRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.visLabel}>Show me as going</Text>
+                <Text style={styles.visCaption}>Visible on the event page</Text>
+              </View>
+              <Switch
+                value={ticket.showAsAttending}
+                onValueChange={toggleVisibility}
+                disabled={visPending}
+                trackColor={{ false: color.ink[200], true: color.ink[900] }}
+                thumbColor={color.ink[0]}
+              />
             </View>
           </View>
         </View>
@@ -276,6 +313,18 @@ const styles = StyleSheet.create({
     color: color.ink[300],
   },
   showAt: { marginTop: spacing[2], fontSize: fontSize.xs, color: color.ink[500], letterSpacing: 1 },
+  visRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    alignSelf: 'stretch',
+    marginTop: spacing[4],
+    paddingTop: spacing[4],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: color.ink[200],
+  },
+  visLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  visCaption: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[5] },
   statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.ink[400] },
   statusDotIn: { backgroundColor: color.ink[0] },

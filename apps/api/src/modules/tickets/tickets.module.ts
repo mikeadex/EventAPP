@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   Module,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -48,6 +50,21 @@ class TicketsController {
   @UseGuards(AuthGuard)
   cancelTicket(@Param('ticketId') ticketId: string, @Req() req: AuthedRequest) {
     return this.tickets.cancelRsvp(req.user.id, ticketId);
+  }
+
+  /** Opt in/out of the event's public "who's going" list. */
+  @Patch('tickets/:ticketId/visibility')
+  @UseGuards(AuthGuard)
+  setVisibility(
+    @Param('ticketId') ticketId: string,
+    @Req() req: AuthedRequest,
+    @Body() body: unknown,
+  ) {
+    const show = (body as { showAsAttending?: unknown } | null)?.showAsAttending;
+    if (typeof show !== 'boolean') {
+      throw new BadRequestException('showAsAttending must be a boolean');
+    }
+    return this.tickets.setVisibility(req.user.id, ticketId, show);
   }
 }
 

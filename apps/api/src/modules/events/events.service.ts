@@ -75,6 +75,48 @@ export class EventsService {
     };
   }
 
+  /**
+   * Public "who's going" list for an event: only ticket holders who opted in
+   * via `showAsAttending` (consent is off by default — see schema comment),
+   * capped so the endpoint stays cheap and the UI stays a preview. `total`
+   * is the full attendee count, opted-in or not.
+   */
+  async listPublicAttendees(eventId: string) {
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, status: 'PUBLISHED', visibility: 'PUBLIC', deletedAt: null },
+      select: { attendeeCount: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+
+    const tickets = await this.prisma.ticket.findMany({
+      where: {
+        eventId,
+        showAsAttending: true,
+        status: { in: ['ISSUED', 'CHECKED_IN'] },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 12,
+      select: {
+        attendeeName: true,
+        user: { select: { id: true, name: true, image: true } },
+      },
+    });
+
+    // One entry per person even if they hold multiple tickets.
+    const seen = new Set<string>();
+    const items: { name: string; image: string | null }[] = [];
+    for (const t of tickets) {
+      const key = t.user?.id ?? `guest:${t.attendeeName ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({
+        name: t.attendeeName ?? t.user?.name ?? 'Guest',
+        image: t.user?.image ?? null,
+      });
+    }
+    return { items, total: event.attendeeCount };
+  }
+
   /** Distinct venue cities with published upcoming events (for the location picker). */
   async listCities() {
     const rows = await this.prisma.event.findMany({

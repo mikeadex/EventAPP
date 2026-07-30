@@ -246,6 +246,25 @@ export class TicketsService {
     return ticket;
   }
 
+  /**
+   * Toggle whether this ticket's holder appears in the event's public
+   * "who's going" list. Owner-only, and freely reversible — visibility is
+   * consent, and consent must be withdrawable as easily as it was given.
+   */
+  async setVisibility(userId: string, ticketId: string, showAsAttending: boolean) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { userId: true },
+    });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    if (ticket.userId !== userId) throw new ForbiddenException('Not your ticket');
+    return this.prisma.ticket.update({
+      where: { id: ticketId },
+      data: { showAsAttending },
+      select: { id: true, showAsAttending: true },
+    });
+  }
+
   async cancelRsvp(userId: string, ticketId: string) {
     return this.prisma.$transaction(async (tx) => {
       const ticket = await tx.ticket.findUnique({
@@ -302,6 +321,7 @@ export const TICKET_DETAIL_SELECT = {
   id: true,
   code: true,
   status: true,
+  showAsAttending: true,
   issuedAt: true,
   checkedInAt: true,
   attendeeName: true,

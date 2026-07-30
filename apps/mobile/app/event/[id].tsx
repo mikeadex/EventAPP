@@ -5,11 +5,13 @@ import {
   Dimensions,
   Image,
   Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
@@ -124,6 +126,22 @@ export default function EventDetailScreen() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const heartScale = useRef(new Animated.Value(1)).current;
+  // Who's going (opted-in attendees) + the post-RSVP celebration sheet.
+  const [attendees, setAttendees] = useState<{ name: string; image: string | null }[]>([]);
+  const [celebrate, setCelebrate] = useState(false);
+  const [rsvpTicketId, setRsvpTicketId] = useState<string | null>(null);
+  const [showMe, setShowMe] = useState(false);
+  const [showMePending, setShowMePending] = useState(false);
+
+  const refreshAttendees = (eventId: string) => {
+    api<{ items: { name: string; image: string | null }[] }>(`/v1/events/${eventId}/attendees`)
+      .then((d) => setAttendees(d.items))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (event?.id) refreshAttendees(event.id);
+  }, [event?.id]);
 
   useEffect(() => {
     async function load() {
@@ -200,11 +218,38 @@ export default function EventDetailScreen() {
     setRsvpState('pending');
     setRsvpErr(null);
     try {
-      await api(`/v1/events/${event.id}/rsvp`, { method: 'POST', body: {} });
+      const res = await api<{ tickets: { id: string }[] }>(`/v1/events/${event.id}/rsvp`, {
+        method: 'POST',
+        body: {},
+      });
       setRsvpState('done');
+      // The moment after committing to go is the app's emotional peak —
+      // open the celebration sheet with the two follow-ups that matter:
+      // add to calendar, and (opt-in) appear in "who's going".
+      setRsvpTicketId(res.tickets[0]?.id ?? null);
+      setShowMe(false);
+      setCelebrate(true);
     } catch (e) {
       setRsvpState('idle');
       setRsvpErr(e instanceof ApiError ? e.message : 'RSVP failed');
+    }
+  }
+
+  async function toggleShowMe(next: boolean) {
+    if (!rsvpTicketId || showMePending) return;
+    setShowMe(next);
+    setShowMePending(true);
+    try {
+      await api(`/v1/tickets/${rsvpTicketId}/visibility`, {
+        method: 'PATCH',
+        body: { showAsAttending: next },
+      });
+      if (event?.id) refreshAttendees(event.id);
+    } catch {
+      setShowMe(!next);
+      showToast("Couldn't update visibility — try again");
+    } finally {
+      setShowMePending(false);
     }
   }
 
@@ -360,14 +405,36 @@ export default function EventDetailScreen() {
               </Text>
               <View style={styles.proofRow}>
                 <View style={styles.avatars}>
-                  {[0, 1, 2].map((i) => (
-                    <View key={i} style={[styles.proofAvatar, { marginLeft: i === 0 ? 0 : -10 }]}>
-                      <Ionicons name="person" size={11} color={color.ink[300]} />
-                    </View>
-                  ))}
+                  {attendees.length > 0
+                    ? attendees.slice(0, 4).map((a, i) => (
+                        <View
+                          key={`${a.name}-${i}`}
+                          style={[styles.proofAvatar, { marginLeft: i === 0 ? 0 : -10 }]}
+                        >
+                          {a.image ? (
+                            <Image source={{ uri: a.image }} style={styles.proofAvatarImg} />
+                          ) : (
+                            <Text style={styles.proofAvatarInitial}>
+                              {a.name.charAt(0).toUpperCase()}
+                            </Text>
+                          )}
+                        </View>
+                      ))
+                    : [0, 1, 2].map((i) => (
+                        <View
+                          key={i}
+                          style={[styles.proofAvatar, { marginLeft: i === 0 ? 0 : -10 }]}
+                        >
+                          <Ionicons name="person" size={11} color={color.ink[300]} />
+                        </View>
+                      ))}
                 </View>
-                <Text style={styles.proofText}>
-                  {event.attendeeCount > 0
+                <Text style={styles.proofText} numberOfLines={1}>
+                  {attendees.length > 0
+                    ? `${attendees[0].name.split(' ')[0]}${
+                        event.attendeeCount > 1 ? ` and ${event.attendeeCount - 1} others` : ''
+                      } going`
+                    : event.attendeeCount > 0
                     ? `+${event.attendeeCount} going`
                     : 'Be the first to go'}
                 </Text>
@@ -449,6 +516,52 @@ export default function EventDetailScreen() {
         </Pressable>
       </View>
       </FadeIn>
+
+      {/* Post-RSVP celebration: calendar + who's-going opt-in. */}
+      <Modal
+        visible={celebrate}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCelebrate(false)}
+      >
+        <Pressable style={styles.sheetOverlay} onPress={() => setCelebrate(false)} />
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[5] }]}>
+          <View style={styles.sheetHandle} />
+          <Ionicons name="checkmark-circle" size={44} color={color.ink[900]} />
+          <Text style={styles.sheetTitle}>You&apos;re going</Text>
+          <Text style={styles.sheetSub} numberOfLines={1}>
+            {event.title} · {dateStr}
+          </Text>
+
+          <Pressable style={styles.sheetAction} onPress={addToCalendar}>
+            <Ionicons name="calendar-outline" size={20} color={color.ink[900]} />
+            <Text style={styles.sheetActionText}>Add to calendar</Text>
+            <Ionicons name="chevron-forward" size={18} color={color.ink[300]} />
+          </Pressable>
+
+          <View style={styles.sheetAction}>
+            <Ionicons name="people-outline" size={20} color={color.ink[900]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sheetActionText}>Show me as going</Text>
+              <Text style={styles.sheetCaption}>
+                Your name appears on this event&apos;s page. Off by default; change it anytime
+                from your ticket.
+              </Text>
+            </View>
+            <Switch
+              value={showMe}
+              onValueChange={toggleShowMe}
+              disabled={showMePending || !rsvpTicketId}
+              trackColor={{ false: color.ink[200], true: color.ink[900] }}
+              thumbColor={color.ink[0]}
+            />
+          </View>
+
+          <Pressable style={styles.sheetDone} onPress={() => setCelebrate(false)}>
+            <Text style={styles.sheetDoneText}>Done</Text>
+          </Pressable>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -521,7 +634,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  proofText: { color: color.ink[300], fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  proofText: {
+    color: color.ink[300],
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    flexShrink: 1,
+  },
+  proofAvatarImg: { width: '100%', height: '100%', borderRadius: 999 },
+  proofAvatarInitial: { color: color.ink[0], fontSize: 11, fontWeight: fontWeight.bold },
+
+  // Post-RSVP celebration sheet
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(10,9,7,0.55)' },
+  sheet: {
+    backgroundColor: color.ink[0],
+    borderTopLeftRadius: radius['2xl'],
+    borderTopRightRadius: radius['2xl'],
+    paddingHorizontal: spacing[5],
+    paddingTop: spacing[3],
+    alignItems: 'center',
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: color.ink[200],
+    marginBottom: spacing[4],
+  },
+  sheetTitle: {
+    fontSize: fontSize['2xl'],
+    fontWeight: fontWeight.bold,
+    color: color.ink[900],
+    marginTop: spacing[2],
+  },
+  sheetSub: { fontSize: fontSize.sm, color: color.ink[500], marginTop: spacing[1] },
+  sheetAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    alignSelf: 'stretch',
+    paddingVertical: spacing[4],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: color.ink[100],
+    marginTop: spacing[2],
+  },
+  sheetActionText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semibold,
+    color: color.ink[900],
+  },
+  sheetCaption: { fontSize: fontSize.xs, color: color.ink[400], marginTop: 2, maxWidth: 240 },
+  sheetDone: {
+    alignSelf: 'stretch',
+    backgroundColor: color.ink[900],
+    borderRadius: radius.full,
+    paddingVertical: spacing[4],
+    alignItems: 'center',
+    marginTop: spacing[5],
+  },
+  sheetDoneText: { color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.semibold },
   heart: {
     width: 48,
     height: 48,

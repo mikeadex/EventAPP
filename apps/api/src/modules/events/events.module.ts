@@ -36,6 +36,11 @@ class EventsController {
     return this.events.listCities();
   }
 
+  @Get('events/:eventId/attendees')
+  attendees(@Param('eventId') eventId: string) {
+    return this.events.listPublicAttendees(eventId);
+  }
+
   @Get('organizations/:orgSlug/events/:eventSlug')
   getPublic(
     @Param('orgSlug') orgSlug: string,

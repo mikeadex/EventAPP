@@ -362,6 +362,11 @@ model Ticket {
   user          User?    @relation(fields: [userId], references: [id])
   attendeeName  String?
   attendeeEmail String?
+  // Whether the holder appears in the event's public "who's going" list.
+  // Deliberately opt-in (default false): attendance at a faith event can
+  // reveal religious belief — special-category data under UK/EU GDPR — so
+  // visibility requires an explicit, withdrawable choice by the attendee.
+  showAsAttending Boolean @default(false)
   status        TicketStatus @default(RESERVED)
   issuedAt      DateTime?
   checkedInAt   DateTime?
