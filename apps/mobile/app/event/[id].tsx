@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
   Image,
   Linking,
@@ -20,7 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { useSession } from '@/lib/auth-client';
 import { api, ApiError } from '@/lib/api';
-import { Skeleton } from '@/components/states';
+import { FadeIn, Skeleton } from '@/components/states';
+import { showToast } from '@/components/toast';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const HERO_H = Math.round(SCREEN_H * 0.56);
@@ -121,6 +123,7 @@ export default function EventDetailScreen() {
   const [rsvpErr, setRsvpErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const heartScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     async function load() {
@@ -173,10 +176,16 @@ export default function EventDetailScreen() {
     setSaving(true);
     const next = !saved;
     setSaved(next);
+    Animated.sequence([
+      Animated.spring(heartScale, { toValue: 1.3, speed: 40, bounciness: 12, useNativeDriver: true }),
+      Animated.spring(heartScale, { toValue: 1, speed: 30, bounciness: 8, useNativeDriver: true }),
+    ]).start();
+    showToast(next ? 'Saved for later' : 'Removed from Saved', next ? 'heart' : undefined);
     try {
       await api(`/v1/me/saved-events/${event.id}`, { method: next ? 'POST' : 'DELETE' });
     } catch {
       setSaved(!next);
+      showToast("Couldn't update Saved — check your connection");
     } finally {
       setSaving(false);
     }
@@ -322,6 +331,7 @@ export default function EventDetailScreen() {
   return (
     <View style={styles.c}>
       <StatusBar style="light" />
+      <FadeIn>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={[styles.hero, { height: HERO_H }]}>
@@ -368,11 +378,13 @@ export default function EventDetailScreen() {
               style={[styles.heart, saved && styles.heartActive]}
               accessibilityLabel={saved ? 'Unsave' : 'Save'}
             >
-              <Ionicons
-                name={saved ? 'heart' : 'heart-outline'}
-                size={22}
-                color={saved ? color.ink[900] : color.ink[0]}
-              />
+              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                <Ionicons
+                  name={saved ? 'heart' : 'heart-outline'}
+                  size={22}
+                  color={saved ? color.ink[900] : color.ink[0]}
+                />
+              </Animated.View>
             </Pressable>
           </View>
         </View>
@@ -436,6 +448,7 @@ export default function EventDetailScreen() {
           )}
         </Pressable>
       </View>
+      </FadeIn>
     </View>
   );
 }

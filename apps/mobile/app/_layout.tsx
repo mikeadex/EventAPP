@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { ToastHost } from '@/components/toast';
 
 /**
  * Root error boundary — expo-router renders this (instead of a redbox/blank
@@ -32,13 +33,15 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 
 export default function RootLayout() {
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }}>
         {/* Full-screen search slides up as a modal. */}
         <Stack.Screen name="search" options={{ presentation: 'modal' }} />
       </Stack>
-    </>
+      {/* Single host for showToast() — overlays every screen. */}
+      <ToastHost />
+    </View>
   );
 }
 

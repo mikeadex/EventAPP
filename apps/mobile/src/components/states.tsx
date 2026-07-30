@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -27,8 +27,8 @@ function retainPulse(): void {
     pulse.setValue(0.55);
     pulseLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 650, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.55, duration: 650, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 850, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.55, duration: 850, useNativeDriver: true }),
       ]),
     );
     pulseLoop.start();
@@ -71,6 +71,25 @@ export function Skeleton({
       ]}
     />
   );
+}
+
+/**
+ * Fades children in on mount. Wrap the loaded content that replaces a
+ * skeleton so the switch reads as an arrival rather than a snap — the
+ * skeleton pulse eases out and the real screen breathes in over ~220ms.
+ */
+export function FadeIn({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+  }, [opacity]);
+  return <Animated.View style={[{ flex: 1, opacity }, style]}>{children}</Animated.View>;
 }
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];

@@ -1,4 +1,5 @@
 import {
+  Animated,
   Image,
   Modal,
   Pressable,
@@ -8,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { router, Link, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -16,7 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
-import { EmptyState, ErrorState, Skeleton } from '@/components/states';
+import { EmptyState, ErrorState, FadeIn, Skeleton } from '@/components/states';
+import { showToast } from '@/components/toast';
 
 interface EventItem {
   id: string;
@@ -44,7 +46,7 @@ const GAP = spacing[4];
 const SPOT_W = 290;
 const FEAT_W = 160;
 
-/** Circular save toggle overlaid on a card. */
+/** Circular save toggle overlaid on a card, with a spring pop on press. */
 function HeartButton({
   saved,
   onPress,
@@ -54,18 +56,31 @@ function HeartButton({
   onPress: () => void;
   style?: object;
 }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function handlePress() {
+    // Pop first so feedback lands even while the network call is in flight.
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.3, speed: 40, bounciness: 12, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, speed: 30, bounciness: 8, useNativeDriver: true }),
+    ]).start();
+    onPress();
+  }
+
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       hitSlop={8}
       style={[styles.heart, saved && styles.heartSaved, style]}
       accessibilityLabel={saved ? 'Unsave event' : 'Save event'}
     >
-      <Ionicons
-        name={saved ? 'heart' : 'heart-outline'}
-        size={18}
-        color={saved ? color.ink[900] : color.ink[0]}
-      />
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Ionicons
+          name={saved ? 'heart' : 'heart-outline'}
+          size={18}
+          color={saved ? color.ink[900] : color.ink[0]}
+        />
+      </Animated.View>
     </Pressable>
   );
 }
@@ -240,6 +255,7 @@ export default function DiscoverScreen() {
         else next.add(id);
         return next;
       });
+      showToast(wasSaved ? 'Removed from Saved' : 'Saved for later', wasSaved ? undefined : 'heart');
       api(`/v1/me/saved-events/${id}`, { method: wasSaved ? 'DELETE' : 'POST' }).catch(() => {
         // revert on failure
         setSavedIds((prev) => {
@@ -248,6 +264,7 @@ export default function DiscoverScreen() {
           else next.delete(id);
           return next;
         });
+        showToast("Couldn't update Saved — check your connection");
       });
     },
     [session?.user, savedIds],
@@ -434,6 +451,7 @@ export default function DiscoverScreen() {
           <ErrorState message={error} onRetry={() => load('initial')} />
         </View>
       ) : (
+        <FadeIn>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: BAR_CLEARANCE }}
@@ -532,6 +550,7 @@ export default function DiscoverScreen() {
             ) : null}
           </View>
         </ScrollView>
+        </FadeIn>
       )}
     </View>
   );
