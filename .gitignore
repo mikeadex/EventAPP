@@ -39,3 +39,9 @@ android/build
 android/app/build
 .vercel
 .env*.local
+
+# This is a pnpm workspace. A stray package-lock.json makes
+# @expo/package-manager resolve npm before pnpm (RESOLUTION_ORDER puts npm
+# first), so EAS runs `npm install`, which ignores pnpm-workspace.yaml and
+# never installs the app dependencies.
+package-lock.json
