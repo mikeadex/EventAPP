@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
-import { EmptyState, ErrorState } from '@/components/states';
+import { EmptyState, ErrorState, Skeleton } from '@/components/states';
 
 interface EventItem {
   id: string;
@@ -419,13 +419,13 @@ export default function DiscoverScreen() {
       {cityPicker}
       {loading ? (
         <View>
-          <View style={styles.skelHero} />
+          <Skeleton style={styles.skelHero} />
           <View style={styles.content}>
-            <View style={styles.skelSearch} />
-            <View style={styles.skelSectionRow} />
+            <Skeleton style={styles.skelSearch} />
+            <Skeleton style={styles.skelSectionRow} />
             <View style={styles.skelRow}>
-              <View style={styles.skelCardL} />
-              <View style={styles.skelCardL} />
+              <Skeleton style={styles.skelCardL} />
+              <Skeleton style={styles.skelCardL} />
             </View>
           </View>
         </View>
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
   cardHeartSm: { position: 'absolute', top: spacing[2], right: spacing[2], width: 30, height: 30, borderRadius: 15 },
   heroHeart: { position: 'absolute', right: PAD, bottom: PAD, width: 44, height: 44, borderRadius: 22 },
   // Loading skeleton (matches the hero + carousel layout)
-  skelHero: { width: '100%', height: HERO_H, backgroundColor: color.ink[100] },
+  skelHero: { width: '100%', height: HERO_H, backgroundColor: color.ink[100], borderRadius: 0 },
   skelSearch: { height: 52, borderRadius: radius.full, backgroundColor: color.ink[100] },
   skelSectionRow: {
     height: 22,

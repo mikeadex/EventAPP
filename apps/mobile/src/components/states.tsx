@@ -1,6 +1,77 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+
+// ─── Skeleton pulse ──────────────────────────────────────────────────────────
+//
+// One module-level Animated.Value drives every skeleton block on screen, so
+// they all breathe in unison instead of flickering out of phase. The loop is
+// reference-counted: it starts when the first Skeleton mounts and stops when
+// the last one unmounts, so nothing animates on settled screens.
+const pulse = new Animated.Value(0.55);
+let pulseUsers = 0;
+let pulseLoop: Animated.CompositeAnimation | null = null;
+
+function retainPulse(): void {
+  if (pulseUsers++ === 0) {
+    pulse.setValue(0.55);
+    pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 650, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.55, duration: 650, useNativeDriver: true }),
+      ]),
+    );
+    pulseLoop.start();
+  }
+}
+
+function releasePulse(): void {
+  if (--pulseUsers === 0) {
+    pulseLoop?.stop();
+    pulseLoop = null;
+  }
+}
+
+/**
+ * Animated placeholder block. `tone="light"` for the app's white screens,
+ * `tone="dark"` for the immersive event/ticket pages. Size and shape come
+ * from `style`; a style-supplied backgroundColor or borderRadius wins over
+ * the defaults.
+ */
+export function Skeleton({
+  style,
+  tone = 'light',
+}: {
+  style?: StyleProp<ViewStyle>;
+  tone?: 'light' | 'dark';
+}) {
+  useEffect(() => {
+    retainPulse();
+    return releasePulse;
+  }, []);
+  return (
+    <Animated.View
+      style={[
+        {
+          backgroundColor: tone === 'light' ? color.ink[100] : 'rgba(255,255,255,0.08)',
+          borderRadius: radius.md,
+        },
+        style,
+        { opacity: pulse },
+      ]}
+    />
+  );
+}
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -70,7 +141,7 @@ export function ListSkeleton({ rows = 4, height = 120 }: { rows?: number; height
   return (
     <View style={{ paddingVertical: spacing[4] }}>
       {Array.from({ length: rows }).map((_, i) => (
-        <View key={i} style={[styles.skeleton, { height }]} />
+        <Skeleton key={i} style={[styles.skeleton, { height }]} />
       ))}
     </View>
   );

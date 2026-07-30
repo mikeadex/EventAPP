@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { useSession } from '@/lib/auth-client';
 import { api, ApiError } from '@/lib/api';
+import { Skeleton } from '@/components/states';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const HERO_H = Math.round(SCREEN_H * 0.56);
@@ -276,10 +277,24 @@ export default function EventDetailScreen() {
     );
   }
   if (!event) {
+    // Skeleton mirroring the real layout: hero, title + social proof,
+    // the three-column info strip, byline and about copy.
     return (
-      <View style={[styles.c, styles.center]}>
+      <View style={styles.c}>
         <StatusBar style="light" />
-        <ActivityIndicator color={color.ink[0]} />
+        <Skeleton tone="dark" style={{ width: '100%', height: HERO_H, borderRadius: 0 }} />
+        <View style={{ padding: spacing[5], gap: spacing[3] }}>
+          <Skeleton tone="dark" style={{ height: 30, width: '72%' }} />
+          <Skeleton tone="dark" style={{ height: 16, width: '45%' }} />
+          <View style={{ flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] }}>
+            <Skeleton tone="dark" style={{ flex: 1, height: 56 }} />
+            <Skeleton tone="dark" style={{ flex: 1, height: 56 }} />
+            <Skeleton tone="dark" style={{ flex: 1, height: 56 }} />
+          </View>
+          <Skeleton tone="dark" style={{ height: 14, width: '38%', marginTop: spacing[4] }} />
+          <Skeleton tone="dark" style={{ height: 14, width: '92%' }} />
+          <Skeleton tone="dark" style={{ height: 14, width: '80%' }} />
+        </View>
       </View>
     );
   }
