@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
+import { useForegroundRefresh } from '@/lib/use-foreground-refresh';
 import { EmptyState, ErrorState, FadeIn, Skeleton } from '@/components/states';
 import { showToast } from '@/components/toast';
 
@@ -294,6 +295,10 @@ export default function DiscoverScreen() {
   useEffect(() => {
     void load('initial');
   }, [load]);
+
+  // Coming back to the app after a while re-fetches, so a list that failed or
+  // went stale while the phone was asleep recovers on its own.
+  useForegroundRefresh(() => void load('refresh'));
 
   // Cities with upcoming events, for the location picker.
   useEffect(() => {

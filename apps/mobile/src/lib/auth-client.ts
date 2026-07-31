@@ -1,5 +1,6 @@
 import { createAuthClient } from 'better-auth/react';
 import * as SecureStore from 'expo-secure-store';
+import { fetchWithRetry } from './fetch-retry';
 
 /**
  * Mobile auth client — bearer-token persistence without the @better-auth/expo
@@ -46,6 +47,11 @@ export const authClient = createAuthClient({
   baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000',
   basePath: '/auth',
   fetchOptions: {
+    // Same timeout/retry treatment as the API client: signing in right after
+    // the phone wakes used to fail outright when the first request hit a stale
+    // connection, with no retry anywhere in the path.
+    customFetchImpl: (input, init) =>
+      fetchWithRetry(typeof input === 'string' ? input : input.toString(), init ?? {}),
     // Native client is Bearer-only — never attach cookies. React Native's
     // cookie jar would otherwise replay a stale Better Auth session cookie on
     // auth calls, and since native fetch sends no Origin header, the server's

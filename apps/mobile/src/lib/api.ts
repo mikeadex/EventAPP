@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { clearStoredToken, getStoredToken } from './auth-client';
+import { fetchWithRetry } from './fetch-retry';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -43,7 +44,7 @@ export async function api<T = unknown>(
 ): Promise<T> {
   const { body, headers, ...rest } = init;
   const token = getStoredToken();
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithRetry(`${BASE}${path}`, {
     ...rest,
     headers: {
       'content-type': 'application/json',

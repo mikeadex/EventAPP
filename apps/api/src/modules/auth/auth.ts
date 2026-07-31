@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { useDeadConnectionRetry } from '../../prisma/db-retry.js';
 import { EmailService } from '../email/email.service.js';
 import { passwordResetEmail } from '../email/templates/password-reset.js';
 
@@ -30,6 +31,9 @@ type AuthInstance = Awaited<ReturnType<typeof createAuth>>;
 // Singleton client for Better Auth (separate from Nest's PrismaService is fine —
 // Better Auth manages its own connection lifecycle for the handler).
 const prisma = new PrismaClient();
+// This client is on the sign-in path, so a stale pooled connection surfaces as a
+// failed login rather than a failed list — same fix as PrismaService.
+useDeadConnectionRetry(prisma);
 
 // EmailService only reads env (no Nest-injected deps), so it's safe to construct
 // directly here — Better Auth's config is a plain module singleton, not a Nest
