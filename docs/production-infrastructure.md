@@ -21,6 +21,14 @@ column is what `vercel env ls production` reports for `ekklesia_backend`.
 | Mobile builds | EAS Build | iOS cloud / Android local | TestFlight + Play internal testing |
 | Mobile updates | EAS Update (expo-updates) | channel `production` | Live — ship JS without a store review |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) | on push + PR | Typecheck, lint, test, Prisma validate/migrate against a Postgres service |
+
+> **Correction (same day).** When first written, this row described CI as if it
+> worked. It did not: every run since the workflow was added had failed in ~30
+> seconds at `actions/setup-node`, because pnpm 11 requires Node ≥ 22.13 and the
+> workflow pinned 22.12.0 — nothing was installed and no check ever ran. Fixed in
+> `027e2e9`, along with the two steps that turned out to be hollow once it could
+> run: `Test` passed vacuously (no jest config, no specs) and `Lint` had no
+> ESLint config in `apps/api`. Both are now real, and CI is green.
 | Source | GitHub `mikeadex/EventAPP` | public repo | Keep secrets out |
 
 **The good news:** hosting, database, auth, CI, and both mobile delivery
@@ -53,6 +61,26 @@ The code reads thirteen more. Each missing group disables a real feature:
 > alone does nothing to the running deployment.
 
 ---
+
+### The host workflow specifically
+
+Verified end to end against a local stack on 2026-07-31: sign up → create
+organisation → create event → publish → appears in the public feed → another
+user RSVPs. All of it works, and a presigned cover-image upload succeeds
+locally against MinIO. It is **web only** (`/organizer/…`); the mobile app is
+attendee-facing.
+
+What is missing for a host to actually run events unaided:
+
+- **No S3 in production**, so cover-image upload is the one step that fails
+  outside local dev (`503`). Priority 2 below.
+- **No edit page.** Events can be created and published but not changed
+  afterwards from the UI, though `PATCH /v1/events/:id` exists.
+- **No ticket-type UI.** Creation posts no ticket types, and RSVP invents a free
+  one on the fly. That means free RSVP events work, and **paid tickets cannot be
+  defined through the UI at all** — a prerequisite for Stripe being useful.
+- **No attendee or check-in screen**, so a host cannot see who is coming or scan
+  a ticket at the door.
 
 ## 3. Services to add, in priority order
 
