@@ -141,6 +141,56 @@ export class EventsService {
    * Organizer-scoped events list — includes drafts, scheduled, cancelled, etc.
    * Caller must already have org membership (enforced by the guard).
    */
+  /**
+   * A single event for its organiser, by id. The public lookup is by slug and
+   * only returns published events, so an edit screen had no way to load a
+   * draft — or anything it had just changed the slug of.
+   */
+  async getForOrganizer(eventId: string) {
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, deletedAt: null },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        summary: true,
+        description: true,
+        category: true,
+        status: true,
+        visibility: true,
+        startsAt: true,
+        endsAt: true,
+        timezone: true,
+        isOnline: true,
+        onlineUrl: true,
+        capacity: true,
+        attendeeCount: true,
+        coverImageUrl: true,
+        publishedAt: true,
+        cancelledAt: true,
+        organizationId: true,
+        venue: true,
+        ticketTypes: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            priceMinor: true,
+            currency: true,
+            quantity: true,
+            sold: true,
+            perOrderMax: true,
+            salesStart: true,
+            salesEnd: true,
+          },
+        },
+      },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    return event;
+  }
+
   async listForOrganization(organizationId: string) {
     return this.prisma.event.findMany({
       where: { organizationId, deletedAt: null },

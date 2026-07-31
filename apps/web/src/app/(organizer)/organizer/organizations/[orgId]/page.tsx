@@ -170,6 +170,18 @@ function EventSection({
                 </p>
               </div>
               <div className="flex gap-2">
+                <Link
+                  href={`/organizer/organizations/${org.id}/events/${e.id}/edit` as Route}
+                  className="rounded-md border border-ink-200 px-3 py-1.5 text-xs hover:bg-ink-100"
+                >
+                  Edit
+                </Link>
+                <Link
+                  href={`/organizer/organizations/${org.id}/events/${e.id}/attendees` as Route}
+                  className="rounded-md border border-ink-200 px-3 py-1.5 text-xs hover:bg-ink-100"
+                >
+                  Attendees
+                </Link>
                 {live && (
                   <Link
                     href={`/${org.slug}/${e.slug}` as Route}

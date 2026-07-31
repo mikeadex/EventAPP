@@ -70,6 +70,14 @@ class EventsController {
     return this.events.create(orgId, req.user.id, body);
   }
 
+  @Get('events/:eventId')
+  @UseGuards(OrgMembershipGuard)
+  @OrgScope('eventParam:eventId')
+  @RequirePermissions(Permission.EVENT_READ)
+  getForOrganizer(@Param('eventId') eventId: string) {
+    return this.events.getForOrganizer(eventId);
+  }
+
   @Patch('events/:eventId')
   @UseGuards(OrgMembershipGuard)
   @OrgScope('eventParam:eventId')

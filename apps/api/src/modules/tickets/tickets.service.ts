@@ -380,11 +380,15 @@ export class TicketsService {
     const name = ticket.attendeeName ?? ticket.user?.name ?? 'Guest';
 
     if (ticket.status === 'CHECKED_IN') {
-      throw new ConflictException(
-        `${name} was already checked in${
-          ticket.checkedInAt ? ` at ${ticket.checkedInAt.toISOString()}` : ''
-        }`,
-      );
+      // Structured, not just prose: the door UI renders the time in the local
+      // format the person reading it expects, rather than showing an ISO string.
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'AlreadyCheckedIn',
+        message: `${name} was already checked in`,
+        name,
+        checkedInAt: ticket.checkedInAt?.toISOString() ?? null,
+      });
     }
     if (ticket.status !== 'ISSUED') {
       throw new BadRequestException(`Ticket is ${ticket.status.toLowerCase()}`);
