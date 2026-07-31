@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Pressable, Text, View, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { signOut, useSession } from '@/lib/auth-client';
+import { api } from '@/lib/api';
 
 function MenuRow({
   icon,
@@ -29,6 +31,30 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const topPad = { paddingTop: insets.top + spacing[2] };
   const { data: session, isPending } = useSession();
+  const [isHost, setIsHost] = useState(false);
+  const signedInUserId = session?.user?.id;
+
+  // Above the early returns: this screen returns early while the session
+  // loads, and a hook called after that point would run on some renders and
+  // not others. The organiser entry only appears for people who host
+  // something, so it stays invisible to ordinary attendees.
+  useEffect(() => {
+    if (!signedInUserId) {
+      setIsHost(false);
+      return;
+    }
+    let cancelled = false;
+    api<{ memberships?: unknown[] }>('/v1/me')
+      .then((me) => {
+        if (!cancelled) setIsHost((me.memberships?.length ?? 0) > 0);
+      })
+      .catch(() => {
+        /* not fatal — the row simply stays hidden */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [signedInUserId]);
 
   if (isPending) {
     return (
@@ -74,6 +100,16 @@ export default function ProfileScreen() {
         <Text style={styles.name}>{name}</Text>
         <Text style={styles.email}>{session.user.email}</Text>
       </View>
+
+      {isHost && (
+        <View style={[styles.menu, { marginBottom: spacing[4] }]}>
+          <MenuRow
+            icon="calendar-outline"
+            label="Manage your events"
+            onPress={() => router.push('/organizer')}
+          />
+        </View>
+      )}
 
       <View style={styles.menu}>
         <MenuRow icon="ticket-outline" label="Your tickets" onPress={() => router.push('/tickets')} />
