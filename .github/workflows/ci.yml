@@ -38,7 +38,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.12.0'
+          # pnpm 11 refuses to run on anything below 22.13, which failed the
+          # workflow at setup — before a single check ever ran.
+          node-version: '22.14.0'
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
