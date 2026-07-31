@@ -101,15 +101,14 @@ export default function ProfileScreen() {
         <Text style={styles.email}>{session.user.email}</Text>
       </View>
 
-      {isHost && (
-        <View style={[styles.menu, { marginBottom: spacing[4] }]}>
-          <MenuRow
-            icon="calendar-outline"
-            label="Manage your events"
-            onPress={() => router.push('/organizer')}
-          />
-        </View>
-      )}
+      {/* Hosts get their console; everyone else gets the way in to becoming one. */}
+      <View style={[styles.menu, { marginBottom: spacing[4] }]}>
+        <MenuRow
+          icon="calendar-outline"
+          label={isHost ? 'Manage your events' : 'Host events'}
+          onPress={() => router.push(isHost ? '/organizer' : '/organizer/new-church')}
+        />
+      </View>
 
       <View style={styles.menu}>
         <MenuRow icon="ticket-outline" label="Your tickets" onPress={() => router.push('/tickets')} />

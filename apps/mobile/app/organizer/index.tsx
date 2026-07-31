@@ -58,7 +58,9 @@ export default function OrganizerHomeScreen() {
         <EmptyState
           icon="business-outline"
           title="No churches yet"
-          message="You're not part of a church that hosts events. Create one on the web to get started."
+          message="Set up your church to publish events, sell tickets and check people in."
+          actionLabel="Get started"
+          onAction={() => router.replace('/organizer/new-church')}
         />
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing[5], gap: spacing[3] }}>
