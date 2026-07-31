@@ -310,6 +310,106 @@ export class TicketsService {
       return { ok: true };
     });
   }
+
+  /**
+   * Every attendee for an event, for the organiser's own door list.
+   *
+   * Distinct from the public `listPublicAttendees`, which shows only people who
+   * opted in and caps at 12. That opt-in governs who is shown *publicly*; the
+   * host necessarily knows who holds a ticket to their own event, the same as a
+   * paper guest list.
+   */
+  async listForEvent(eventId: string) {
+    const tickets = await this.prisma.ticket.findMany({
+      where: { eventId, status: { in: ['ISSUED', 'CHECKED_IN'] } },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        issuedAt: true,
+        checkedInAt: true,
+        attendeeName: true,
+        attendeeEmail: true,
+        user: { select: { id: true, name: true, email: true, image: true } },
+        ticketType: { select: { id: true, name: true, priceMinor: true, currency: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return {
+      items: tickets.map((t) => ({
+        id: t.id,
+        code: t.code,
+        status: t.status,
+        issuedAt: t.issuedAt,
+        checkedInAt: t.checkedInAt,
+        name: t.attendeeName ?? t.user?.name ?? 'Guest',
+        email: t.attendeeEmail ?? t.user?.email ?? null,
+        image: t.user?.image ?? null,
+        ticketType: t.ticketType,
+      })),
+      total: tickets.length,
+      checkedIn: tickets.filter((t) => t.status === 'CHECKED_IN').length,
+    };
+  }
+
+  /**
+   * Admit a ticket by its code. Idempotency matters more than elegance on a
+   * door: a second scan reports who was already admitted and when, rather than
+   * silently succeeding or throwing something the scanner cannot explain.
+   */
+  async checkIn(eventId: string, actorUserId: string, code: string) {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) throw new BadRequestException('Ticket code is required');
+
+    const ticket = await this.prisma.ticket.findFirst({
+      where: { eventId, code: trimmed },
+      select: {
+        id: true,
+        status: true,
+        checkedInAt: true,
+        attendeeName: true,
+        user: { select: { name: true } },
+        event: { select: { organizationId: true } },
+      },
+    });
+    // Scoped by eventId, so a valid code from another event reads as not found
+    // here — which is exactly what the person on the door needs to be told.
+    if (!ticket) throw new NotFoundException('No ticket for this event with that code');
+
+    const name = ticket.attendeeName ?? ticket.user?.name ?? 'Guest';
+
+    if (ticket.status === 'CHECKED_IN') {
+      throw new ConflictException(
+        `${name} was already checked in${
+          ticket.checkedInAt ? ` at ${ticket.checkedInAt.toISOString()}` : ''
+        }`,
+      );
+    }
+    if (ticket.status !== 'ISSUED') {
+      throw new BadRequestException(`Ticket is ${ticket.status.toLowerCase()}`);
+    }
+
+    const updated = await this.prisma.ticket.update({
+      where: { id: ticket.id },
+      data: {
+        status: 'CHECKED_IN',
+        checkedInAt: new Date(),
+        checkedInById: actorUserId,
+      },
+      select: { id: true, code: true, status: true, checkedInAt: true },
+    });
+
+    await this.audit.write({
+      actorUserId,
+      organizationId: ticket.event.organizationId,
+      action: 'ticket.check_in',
+      targetType: 'ticket',
+      targetId: ticket.id,
+    });
+
+    return { ...updated, name };
+  }
 }
 
 function makeTicketCode(): string {

@@ -12,8 +12,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { Permission } from '@ekklesia/shared';
 import { AuthGuard } from '../auth/auth.guard.js';
 import type { AuthedRequest } from '../auth/auth.guard.js';
+import { OrgScope, RequirePermissions } from '../../common/decorators.js';
+import {
+  OrgMembershipGuard,
+  type AuthedOrgRequest,
+} from '../../common/org-membership.guard.js';
 import { TicketsService } from './tickets.service.js';
 
 @Controller()
@@ -65,6 +71,34 @@ class TicketsController {
       throw new BadRequestException('showAsAttending must be a boolean');
     }
     return this.tickets.setVisibility(req.user.id, ticketId, show);
+  }
+
+  // ─── Organiser ───────────────────────────────────────────────────────────
+
+  /** The host's own attendee list — everyone holding a ticket, not just opt-ins. */
+  @Get('events/:eventId/tickets')
+  @UseGuards(OrgMembershipGuard)
+  @OrgScope('eventParam:eventId')
+  @RequirePermissions(Permission.TICKET_VIEW_ATTENDEES)
+  listAttendees(@Param('eventId') eventId: string) {
+    return this.tickets.listForEvent(eventId);
+  }
+
+  /** Admit a ticket at the door by its code. */
+  @Post('events/:eventId/check-in')
+  @UseGuards(OrgMembershipGuard)
+  @OrgScope('eventParam:eventId')
+  @RequirePermissions(Permission.TICKET_CHECK_IN)
+  checkIn(
+    @Param('eventId') eventId: string,
+    @Req() req: AuthedOrgRequest,
+    @Body() body: unknown,
+  ) {
+    const code = (body as { code?: unknown } | null)?.code;
+    if (typeof code !== 'string' || !code.trim()) {
+      throw new BadRequestException('code must be a non-empty string');
+    }
+    return this.tickets.checkIn(eventId, req.user.id, code);
   }
 }
 

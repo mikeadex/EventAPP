@@ -12,6 +12,7 @@ import { UsersModule } from './modules/users/users.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { EventsModule } from './modules/events/events.module.js';
 import { TicketsModule } from './modules/tickets/tickets.module.js';
+import { TicketTypesModule } from './modules/ticket-types/ticket-types.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
 import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module.js';
 import { ModerationModule } from './modules/moderation/moderation.module.js';
@@ -30,6 +31,7 @@ import { AdminModule } from './modules/admin/admin.module.js';
     OrganizationsModule,
     EventsModule,
     TicketsModule,
+    TicketTypesModule,
     PaymentsModule,
     FeatureFlagsModule,
     ModerationModule,
