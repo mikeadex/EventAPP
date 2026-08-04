@@ -21,13 +21,42 @@
 
 const API = process.env.API_URL ?? 'http://localhost:4000';
 const EMAIL = process.env.REVIEW_EMAIL;
-const PASSWORD = process.env.REVIEW_PASSWORD;
 const NAME = process.env.REVIEW_NAME ?? 'App Review';
 const ORG_NAME = process.env.REVIEW_ORG_NAME ?? 'St Cuthbert’s Demo Church';
 const ORG_SLUG = process.env.REVIEW_ORG_SLUG ?? 'demo-church';
 
-if (!EMAIL || !PASSWORD) {
-  console.error('Set REVIEW_EMAIL and REVIEW_PASSWORD (and optionally API_URL).');
+if (!EMAIL) {
+  console.error('Set REVIEW_EMAIL (and optionally API_URL).');
+  process.exit(1);
+}
+
+/**
+ * Prompt rather than read the environment when no password is supplied, so it
+ * never has to be typed on a command line and left in shell history. Echo is
+ * disabled while typing where the terminal allows it.
+ */
+async function promptForPassword() {
+  const { createInterface } = await import('node:readline');
+  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  process.stdout.write('Password for the review account: ');
+  if (process.stdin.isTTY) process.stdin.setRawMode?.(false);
+  const muted = process.stdin.isTTY;
+  if (muted) {
+    // Suppress echo by intercepting what readline writes back out.
+    rl.output.write = ((write) => (chunk, ...rest) =>
+      /\n/.test(String(chunk)) ? write.call(rl.output, chunk, ...rest) : true)(
+      rl.output.write,
+    );
+  }
+  const answer = await new Promise((resolve) => rl.question('', resolve));
+  rl.close();
+  process.stdout.write('\n');
+  return answer;
+}
+
+const PASSWORD = process.env.REVIEW_PASSWORD ?? (await promptForPassword());
+if (!PASSWORD) {
+  console.error('A password is required.');
   process.exit(1);
 }
 
