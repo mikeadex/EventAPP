@@ -90,10 +90,41 @@ export function validateEventForm(v: EventFormValues): string | null {
   return null;
 }
 
-/** Shapes the form into the JSON body the API expects for create and update. */
-export function toEventBody(v: EventFormValues) {
+/**
+ * The device timezone, falling back to UTC. The API requires a non-empty IANA
+ * name, and Intl support in Hermes has historically been partial — a missing
+ * value here would fail validation rather than degrade.
+ */
+function deviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+/**
+ * Shapes the form into the JSON body the API expects.
+ *
+ * The two endpoints differ in a way that is easy to miss: on update the unused
+ * fields are nullable, so `null` clears them, but on create they are merely
+ * optional and `null` is rejected outright. So create omits what does not
+ * apply, while update sends null to mean "remove this".
+ */
+export function toEventBody(v: EventFormValues, mode: 'create' | 'update') {
   const start = toInstant(v.date, v.startTime)!;
   const end = toInstant(v.date, v.endTime)!;
+  const absent = mode === 'create' ? undefined : null;
+
+  const venue = {
+    name: v.venueName.trim(),
+    addressLine1: v.addressLine1.trim(),
+    city: v.city.trim(),
+    postalCode: v.postalCode.trim(),
+    country: 'GB',
+  };
+  const capacity = v.capacity.trim() ? Number(v.capacity.trim()) : absent;
+
   return {
     title: v.title.trim(),
     summary: v.summary.trim() || undefined,
@@ -101,19 +132,11 @@ export function toEventBody(v: EventFormValues) {
     category: v.category,
     startsAt: start.toISOString(),
     endsAt: end.toISOString(),
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: deviceTimezone(),
     isOnline: v.isOnline,
-    onlineUrl: v.isOnline ? v.onlineUrl.trim() : null,
-    capacity: v.capacity.trim() ? Number(v.capacity.trim()) : null,
-    venue: v.isOnline
-      ? null
-      : {
-          name: v.venueName.trim(),
-          addressLine1: v.addressLine1.trim(),
-          city: v.city.trim(),
-          postalCode: v.postalCode.trim(),
-          country: 'GB',
-        },
+    onlineUrl: v.isOnline ? v.onlineUrl.trim() : absent,
+    capacity,
+    venue: v.isOnline ? absent : venue,
   };
 }
 

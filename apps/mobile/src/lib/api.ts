@@ -10,6 +10,37 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * A message worth showing a user.
+ *
+ * The API answers invalid input with a list of field issues under a generic
+ * "Request failed validation", which on its own tells nobody which field is
+ * wrong. Surface the first specific issue instead, labelled with its field.
+ */
+export function describeApiError(err: unknown, fallback = 'Something went wrong'): string {
+  if (err instanceof ApiError) {
+    const payload = err.payload as
+      | { issues?: { path?: string; message?: string }[]; message?: string }
+      | null;
+    const issue = payload?.issues?.find((i) => i.message);
+    if (issue?.message) {
+      const field = issue.path?.split('.').pop();
+      return field ? `${humanise(field)}: ${issue.message}` : issue.message;
+    }
+    return err.message;
+  }
+  return err instanceof Error ? err.message : fallback;
+}
+
+/** "addressLine1" → "Address line 1", so the label reads like the form. */
+function humanise(field: string): string {
+  const spaced = field
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([a-zA-Z])(\d)/g, '$1 $2')
+    .toLowerCase();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 // Guard so a burst of concurrent 401s (e.g. several screens loading at once)
 // only triggers a single sign-out redirect rather than stacking navigations.
 let handlingExpiry = false;

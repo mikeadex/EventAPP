@@ -12,7 +12,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
-import { api } from '@/lib/api';
+import { api, describeApiError } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import {
   EventForm,
@@ -38,7 +38,7 @@ export default function NewEventScreen() {
     try {
       const created = await api<{ id: string }>(`/v1/organizations/${orgId}/events`, {
         method: 'POST',
-        body: toEventBody(form),
+        body: toEventBody(form, 'create'),
       });
       if (publish) {
         await api(`/v1/events/${created.id}/publish`, { method: 'POST', body: {} });
@@ -48,7 +48,7 @@ export default function NewEventScreen() {
       // half-filled form for an event that now exists.
       router.replace(`/organizer/event/${created.id}?orgId=${orgId}`);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Couldn't create the event");
+      showToast(describeApiError(e, "Couldn't create the event"));
     } finally {
       setPending(false);
     }

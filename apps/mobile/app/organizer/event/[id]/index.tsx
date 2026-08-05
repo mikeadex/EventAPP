@@ -15,7 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
-import { api } from '@/lib/api';
+import { api, describeApiError } from '@/lib/api';
 import { ErrorState } from '@/components/states';
 import { showToast } from '@/components/toast';
 import {
@@ -118,11 +118,11 @@ export default function OrganizerEventScreen() {
     }
     setPending(true);
     try {
-      await api(`/v1/events/${id}`, { method: 'PATCH', body: toEventBody(form) });
+      await api(`/v1/events/${id}`, { method: 'PATCH', body: toEventBody(form, 'update') });
       showToast('Changes saved', 'checkmark-circle');
       await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Couldn't save changes");
+      showToast(describeApiError(e, "Couldn't save changes"));
     } finally {
       setPending(false);
     }
@@ -177,7 +177,7 @@ export default function OrganizerEventScreen() {
       showToast('Ticket type added');
       await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Couldn't add that ticket type");
+      showToast(describeApiError(e, "Couldn't add that ticket type"));
     } finally {
       setPending(false);
     }
@@ -190,7 +190,7 @@ export default function OrganizerEventScreen() {
       showToast('Ticket type removed');
       await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Couldn't remove that ticket type");
+      showToast(describeApiError(e, "Couldn't remove that ticket type"));
     } finally {
       setPending(false);
     }
