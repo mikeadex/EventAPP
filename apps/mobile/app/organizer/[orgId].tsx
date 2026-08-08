@@ -41,6 +41,7 @@ export default function OrgDashboardScreen() {
   const [events, setEvents] = useState<OrgEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [verification, setVerification] = useState<string | null>(null);
 
   const load = useCallback(
     async (mode: 'initial' | 'refresh' = 'initial') => {
@@ -52,6 +53,17 @@ export default function OrgDashboardScreen() {
         setError(e instanceof Error ? e.message : 'Could not load events');
       } finally {
         setRefreshing(false);
+      }
+      // Verification state rides along on /v1/me; a failure here just leaves the
+      // banner hidden rather than blocking the events list.
+      try {
+        const me = await api<{ memberships?: { organizationId: string; verificationStatus?: string }[] }>(
+          '/v1/me',
+        );
+        const mine = me.memberships?.find((m) => m.organizationId === orgId);
+        setVerification(mine?.verificationStatus ?? null);
+      } catch {
+        /* leave as-is */
       }
     },
     [orgId],
@@ -107,6 +119,17 @@ export default function OrgDashboardScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={() => void load('refresh')} tintColor={color.ink[400]} />
           }
         >
+          {verification === 'PENDING' || verification === 'UNVERIFIED' ? (
+            <View style={styles.verifyBanner}>
+              <Ionicons name="shield-outline" size={18} color={color.ink[600]} />
+              <Text style={styles.verifyText}>
+                {verification === 'PENDING'
+                  ? 'We’re reviewing your host details. You can publish events in the meantime.'
+                  : 'Add your contact and address details to get verified.'}
+              </Text>
+            </View>
+          ) : null}
+
           <Section title="Live" events={live} orgId={orgId!} />
           <Section title="Drafts" events={drafts} orgId={orgId!} />
           <Section title="Past" events={done} orgId={orgId!} muted />
@@ -173,6 +196,16 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   h: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  verifyBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[3],
+    padding: spacing[4],
+    borderRadius: radius.lg,
+    backgroundColor: color.ink[50],
+    marginBottom: spacing[5],
+  },
+  verifyText: { flex: 1, fontSize: fontSize.sm, color: color.ink[600], lineHeight: 19 },
   sectionTitle: {
     fontSize: fontSize.xs,
     textTransform: 'uppercase',

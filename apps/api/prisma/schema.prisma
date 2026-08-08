@@ -138,6 +138,17 @@ model Organization {
 
   verificationStatus VerificationStatus @default(UNVERIFIED)
   verifiedAt         DateTime?
+  verificationSubmittedAt DateTime?
+
+  // Details a host supplies so a human can check they are a real organisation
+  // before their events are trusted. Not shown publicly — the contact fields in
+  // particular exist for review and support, not for display.
+  contactName   String?
+  contactEmail  String?
+  contactPhone  String?
+  addressLine1  String?
+  city          String?
+  postalCode    String?
 
   // Stripe Connect
   stripeAccountId    String?  @unique

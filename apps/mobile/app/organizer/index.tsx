@@ -57,10 +57,10 @@ export default function OrganizerHomeScreen() {
       ) : items.length === 0 ? (
         <EmptyState
           icon="business-outline"
-          title="No churches yet"
-          message="Set up your church to publish events, sell tickets and check people in."
+          title="Not hosting yet"
+          message="Set up your host profile to publish events, sell tickets and check people in."
           actionLabel="Get started"
-          onAction={() => router.replace('/organizer/new-church')}
+          onAction={() => router.replace('/organizer/become-a-host')}
         />
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing[5], gap: spacing[3] }}>

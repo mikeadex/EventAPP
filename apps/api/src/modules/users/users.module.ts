@@ -34,7 +34,11 @@ class MeController {
       include: {
         profile: true,
         memberships: {
-          include: { organization: { select: { id: true, slug: true, name: true } } },
+          include: {
+            organization: {
+              select: { id: true, slug: true, name: true, verificationStatus: true },
+            },
+          },
         },
       },
     });
@@ -57,6 +61,7 @@ class MeController {
         slug: m.organization.slug,
         name: m.organization.name,
         role: m.role,
+        verificationStatus: m.organization.verificationStatus,
       })),
       permissionsByOrg,
       capabilities: await this.flags.resolveForUser(user.id),

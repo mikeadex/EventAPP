@@ -17,7 +17,37 @@ export const CreateOrganizationSchema = z.object({
   websiteUrl: z.string().url().optional(),
   shortDescription: z.string().max(280).optional(),
   logoUrl: z.string().url().optional(),
+
+  // Supplied so a human can check the host is a real organisation before its
+  // events are trusted. Optional here to keep older clients working: supplying
+  // enough of them is what moves the host into the review queue.
+  contactName: z.string().max(120).optional(),
+  contactEmail: z.string().email().optional(),
+  contactPhone: z.string().max(40).optional(),
+  addressLine1: z.string().max(200).optional(),
+  city: z.string().max(120).optional(),
+  postalCode: z.string().max(20).optional(),
 });
+
+/**
+ * The answers a host must give before a reviewer has enough to go on. Anything
+ * less and the organisation stays UNVERIFIED rather than entering the queue.
+ */
+export const VERIFICATION_REQUIRED_FIELDS = [
+  'contactName',
+  'contactEmail',
+  'addressLine1',
+  'city',
+] as const;
+
+export function isReadyForReview(input: {
+  contactName?: string;
+  contactEmail?: string;
+  addressLine1?: string;
+  city?: string;
+}): boolean {
+  return VERIFICATION_REQUIRED_FIELDS.every((f) => Boolean(input[f]?.trim()));
+}
 export type CreateOrganizationInput = z.infer<typeof CreateOrganizationSchema>;
 
 export const UpdateOrganizationSchema = CreateOrganizationSchema.partial().omit({

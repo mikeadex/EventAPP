@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { DateField, TimeField } from './date-time-fields';
 
 const CATEGORIES = [
   'service', 'worship', 'prayer', 'youth', 'kids', 'small_group',
@@ -75,9 +76,9 @@ export function toInstant(date: string, time: string): Date | null {
 export function validateEventForm(v: EventFormValues): string | null {
   if (v.title.trim().length < 3) return 'Give the event a title of at least 3 characters.';
   const start = toInstant(v.date, v.startTime);
-  if (!start) return 'Enter the date as YYYY-MM-DD and the start time as HH:MM.';
+  if (!start) return 'Choose the date and start time.';
   const end = toInstant(v.date, v.endTime);
-  if (!end) return 'Enter the end time as HH:MM.';
+  if (!end) return 'Choose the end time.';
   if (end <= start) return 'The end time must be after the start time.';
   if (v.isOnline) {
     if (!/^https?:\/\//i.test(v.onlineUrl.trim())) return 'Enter the stream link, starting with https://';
@@ -209,47 +210,29 @@ export function EventForm({
         </View>
       </Field>
 
-      <Field label="Date" hint="YYYY-MM-DD">
-        <TextInput
-          value={value.date}
-          onChangeText={(t) => set('date', t)}
-          placeholder="2026-08-02"
-          placeholderTextColor={color.ink[300]}
-          style={styles.input}
-          editable={!disabled}
-          keyboardType="numbers-and-punctuation"
-          maxLength={10}
-        />
-      </Field>
+      <DateField
+        label="Date"
+        value={value.date}
+        onChange={(d) => set('date', d)}
+        disabled={disabled}
+      />
 
       <View style={{ flexDirection: 'row', gap: spacing[3] }}>
         <View style={{ flex: 1 }}>
-          <Field label="Starts" hint="HH:MM">
-            <TextInput
-              value={value.startTime}
-              onChangeText={(t) => set('startTime', t)}
-              placeholder="10:30"
-              placeholderTextColor={color.ink[300]}
-              style={styles.input}
-              editable={!disabled}
-              keyboardType="numbers-and-punctuation"
-              maxLength={5}
-            />
-          </Field>
+          <TimeField
+            label="Starts"
+            value={value.startTime}
+            onChange={(t) => set('startTime', t)}
+            disabled={disabled}
+          />
         </View>
         <View style={{ flex: 1 }}>
-          <Field label="Ends" hint="HH:MM">
-            <TextInput
-              value={value.endTime}
-              onChangeText={(t) => set('endTime', t)}
-              placeholder="12:00"
-              placeholderTextColor={color.ink[300]}
-              style={styles.input}
-              editable={!disabled}
-              keyboardType="numbers-and-punctuation"
-              maxLength={5}
-            />
-          </Field>
+          <TimeField
+            label="Ends"
+            value={value.endTime}
+            onChange={(t) => set('endTime', t)}
+            disabled={disabled}
+          />
         </View>
       </View>
 

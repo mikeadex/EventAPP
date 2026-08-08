@@ -106,7 +106,11 @@ export default function ProfileScreen() {
         <MenuRow
           icon="calendar-outline"
           label={isHost ? 'Manage your events' : 'Host events'}
-          onPress={() => router.push(isHost ? '/organizer' : '/organizer/new-church')}
+          // Always the organiser screen, never the setup screen directly: that
+          // decision used to come from a flag defaulting to "not a host", so a
+          // tap before /v1/me answered (or a request that quietly failed) sent
+          // an existing host off to create a second one.
+          onPress={() => router.push('/organizer')}
         />
       </View>
 

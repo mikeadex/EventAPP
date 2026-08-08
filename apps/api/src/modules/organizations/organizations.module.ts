@@ -14,7 +14,11 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuthGuard, AuthedRequest } from '../auth/auth.guard.js';
 import { AuthModule } from '../auth/auth.module.js';
-import { CreateOrganizationSchema, type CreateOrganizationInput } from '@ekklesia/shared';
+import {
+  CreateOrganizationSchema,
+  isReadyForReview,
+  type CreateOrganizationInput,
+} from '@ekklesia/shared';
 
 @Controller('organizations')
 class OrganizationsController {
@@ -61,6 +65,11 @@ class OrganizationsController {
 
   private async createInTransaction(req: AuthedRequest, input: CreateOrganizationInput) {
     return this.prisma.$transaction(async (tx) => {
+      // A host that has answered the verification questions enters the review
+      // queue; one that has not stays UNVERIFIED. Nobody self-certifies as
+      // VERIFIED — that transition belongs to a reviewer.
+      const readyForReview = isReadyForReview(input);
+
       const org = await tx.organization.create({
         data: {
           slug: input.slug,
@@ -71,6 +80,16 @@ class OrganizationsController {
           websiteUrl: input.websiteUrl,
           shortDescription: input.shortDescription,
           logoUrl: input.logoUrl,
+          contactName: input.contactName,
+          contactEmail: input.contactEmail,
+          contactPhone: input.contactPhone,
+          addressLine1: input.addressLine1,
+          city: input.city,
+          postalCode: input.postalCode,
+          ...(readyForReview && {
+            verificationStatus: 'PENDING' as const,
+            verificationSubmittedAt: new Date(),
+          }),
         },
       });
       await tx.organizationMembership.create({
