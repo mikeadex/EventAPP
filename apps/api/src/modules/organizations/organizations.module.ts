@@ -79,6 +79,7 @@ class OrganizationsController {
           currency: input.currency,
           websiteUrl: input.websiteUrl,
           shortDescription: input.shortDescription,
+          description: input.description,
           logoUrl: input.logoUrl,
           contactName: input.contactName,
           contactEmail: input.contactEmail,

@@ -67,6 +67,7 @@ export default function BecomeAHostScreen() {
   const [contactPhone, setContactPhone] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [shortDescription, setShortDescription] = useState('');
+  const [description, setDescription] = useState('');
 
   // The address follows the name until edited by hand, after which it is left
   // alone — renaming shouldn't silently change a link already shared.
@@ -98,6 +99,7 @@ export default function BecomeAHostScreen() {
           country,
           currency: CURRENCY_FOR[country],
           shortDescription: shortDescription.trim() || undefined,
+          description: description.trim() || undefined,
           websiteUrl: websiteUrl.trim() || undefined,
           contactName: contactName.trim(),
           contactEmail: contactEmail.trim(),
@@ -352,7 +354,7 @@ export default function BecomeAHostScreen() {
               />
             </Field>
 
-            <Field label="One line about you" hint="Optional. Shown on your page.">
+            <Field label="One line about you" hint="Optional. Sits under your name and on event cards.">
               <TextInput
                 value={shortDescription}
                 onChangeText={setShortDescription}
@@ -362,6 +364,29 @@ export default function BecomeAHostScreen() {
                 editable={!pending}
                 maxLength={280}
               />
+            </Field>
+
+            <Field
+              label="About your host"
+              hint="Optional. The fuller story on your page — who you are, what a visit is like, who's welcome."
+            >
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                placeholder={
+                  'We’re a family church that’s met in Leeds since 1998.\n\n' +
+                  'Sundays are relaxed — come as you are. There’s tea afterwards, ' +
+                  'kids’ groups during the service, and someone on the door who’ll ' +
+                  'happily show you around.'
+                }
+                placeholderTextColor={color.ink[300]}
+                style={[styles.input, styles.multiline]}
+                editable={!pending}
+                multiline
+                textAlignVertical="top"
+                maxLength={5000}
+              />
+              <Text style={styles.counter}>{description.length}/5000</Text>
             </Field>
 
             <Text style={styles.footnote}>
@@ -432,6 +457,13 @@ const styles = StyleSheet.create({
   label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: color.ink[900] },
   hint: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 2 },
   error: { fontSize: fontSize.xs, color: color.ink[900], marginTop: spacing[2] },
+  multiline: { minHeight: 140 },
+  counter: {
+    marginTop: spacing[1],
+    fontSize: fontSize.xs,
+    color: color.ink[400],
+    textAlign: 'right',
+  },
   input: {
     marginTop: spacing[2],
     borderWidth: 1,

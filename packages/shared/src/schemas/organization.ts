@@ -15,7 +15,10 @@ export const CreateOrganizationSchema = z.object({
   country: z.enum(SUPPORTED_COUNTRIES),
   currency: z.enum(SUPPORTED_CURRENCIES),
   websiteUrl: z.string().url().optional(),
+  // Two distinct jobs: `shortDescription` is the one-line tagline under the
+  // host's name and on cards; `description` is the fuller story on their page.
   shortDescription: z.string().max(280).optional(),
+  description: z.string().max(5_000).optional(),
   logoUrl: z.string().url().optional(),
 
   // Supplied so a human can check the host is a real organisation before its
