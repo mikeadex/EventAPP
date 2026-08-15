@@ -97,18 +97,25 @@ export default async function EventDetailPage({
           </p>
           <p className="text-sm text-ink-500">{event.timezone}</p>
         </InfoCard>
-        <InfoCard label={event.isOnline ? 'Online' : 'Where'}>
-          {event.isOnline ? (
-            <p className="text-ink-900">Online — link shared after RSVP.</p>
-          ) : event.venue ? (
+        {/* A hybrid event has both a venue and a stream, so this shows whichever
+            of the two apply rather than treating them as alternatives. */}
+        <InfoCard
+          label={event.isOnline ? (event.venue ? 'Where & online' : 'Online') : 'Where'}
+        >
+          {event.venue ? (
             <>
               <p className="text-ink-900">{event.venue.name}</p>
               <p className="text-sm text-ink-500">
                 {event.venue.addressLine1}, {event.venue.city} {event.venue.postalCode}
               </p>
             </>
-          ) : (
+          ) : event.isOnline ? null : (
             <p className="text-ink-500">Location TBA</p>
+          )}
+          {event.isOnline && (
+            <p className={event.venue ? 'mt-2 text-sm text-ink-500' : 'text-ink-900'}>
+              {event.venue ? 'Also streamed online.' : 'Online — link shared after RSVP.'}
+            </p>
           )}
         </InfoCard>
       </div>

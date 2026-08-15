@@ -25,6 +25,7 @@ import { useSession } from '@/lib/auth-client';
 import { api, ApiError } from '@/lib/api';
 import { FadeIn, Skeleton } from '@/components/states';
 import { showToast } from '@/components/toast';
+import { locationLabel, locationLine, locationMode } from '@/lib/event-location';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const HERO_H = Math.round(SCREEN_H * 0.56);
@@ -49,6 +50,7 @@ interface EventDetail {
   startsAt: string;
   endsAt: string;
   isOnline: boolean;
+  onlineUrl: string | null;
   capacity: number | null;
   attendeeCount: number;
   coverImageUrl: string | null;
@@ -284,11 +286,7 @@ export default function EventDetailScreen() {
       hour: 'numeric',
       minute: '2-digit',
     });
-    const where = event.isOnline
-      ? 'Online'
-      : event.venue
-      ? `${event.venue.name}, ${event.venue.city}`
-      : '';
+    const where = locationLine(event);
     const url = WEB_URL ? `${WEB_URL}/${event.organization.slug}/${event.slug}` : undefined;
     const lines = [
       event.title,
@@ -312,11 +310,9 @@ export default function EventDetailScreen() {
     const endDate = event.endsAt
       ? new Date(event.endsAt)
       : new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
-    const location = event.isOnline
-      ? 'Online'
-      : event.venue
-      ? `${event.venue.name}, ${event.venue.city}`
-      : undefined;
+    // Hybrid puts the venue in the calendar entry and mentions the stream, so
+    // the entry is useful whichever way the person ends up attending.
+    const location = locationLine(event) || undefined;
     try {
       // Android launches an ACTION_INSERT intent, which needs no permission.
       // iOS is different: expo-calendar's native createEventInCalendarAsync
@@ -399,11 +395,8 @@ export default function EventDetailScreen() {
   const start = new Date(event.startsAt);
   const dateStr = start.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
   const timeStr = start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  const locStr = event.isOnline
-    ? 'Online'
-    : event.venue
-    ? event.venue.city || event.venue.name
-    : 'TBA';
+  const locStr = locationLabel(event);
+  const mode = locationMode(event);
   const rsvpDisabled = rsvpState !== 'idle' || soldOut || !isFree;
   const priceLabel = isFree ? 'Free' : 'Paid';
   const ctaText =
@@ -501,13 +494,36 @@ export default function EventDetailScreen() {
           <InfoCol
             label="Location"
             value={locStr}
-            onPress={!event.isOnline && event.venue ? openMaps : undefined}
+            onPress={event.venue ? openMaps : undefined}
           />
           <View style={styles.vDivider} />
           <InfoCol label="Date" value={dateStr} onPress={addToCalendar} actionIcon="add-circle" />
           <View style={styles.vDivider} />
           <InfoCol label="Time" value={timeStr} onPress={addToCalendar} actionIcon="add-circle" />
         </View>
+
+        {/* The stream. Previously the link was never shown here at all — even an
+            online-only event only revealed it on the ticket after registering. */}
+        {mode !== 'in_person' && (
+          <Pressable
+            style={styles.onlineRow}
+            disabled={!event.onlineUrl}
+            onPress={() => event.onlineUrl && Linking.openURL(event.onlineUrl)}
+          >
+            <Ionicons name="videocam-outline" size={18} color={color.ink[0]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.onlineTitle}>
+                {mode === 'hybrid' ? 'Also streaming online' : 'Watch online'}
+              </Text>
+              <Text style={styles.onlineSub} numberOfLines={1}>
+                {event.onlineUrl ?? 'Link to follow'}
+              </Text>
+            </View>
+            {event.onlineUrl ? (
+              <Ionicons name="open-outline" size={16} color={color.ink[400]} />
+            ) : null}
+          </Pressable>
+        )}
 
         {/* About */}
         <View style={styles.section}>
@@ -761,6 +777,19 @@ const styles = StyleSheet.create({
   infoSub: { color: color.ink[400], fontSize: fontSize.sm, marginTop: 1 },
   vDivider: { width: 1, height: 36, backgroundColor: color.ink[700], marginHorizontal: spacing[3] },
 
+  onlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    marginHorizontal: spacing[5],
+    marginTop: spacing[4],
+    padding: spacing[4],
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.ink[700],
+  },
+  onlineTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: color.ink[0] },
+  onlineSub: { fontSize: fontSize.xs, color: color.ink[400], marginTop: 2 },
   section: { paddingHorizontal: spacing[5], paddingTop: spacing[2] },
   byLine: { color: color.ink[400], fontSize: fontSize.sm, marginBottom: spacing[4] },
   byName: { color: color.ink[0], fontWeight: fontWeight.semibold },

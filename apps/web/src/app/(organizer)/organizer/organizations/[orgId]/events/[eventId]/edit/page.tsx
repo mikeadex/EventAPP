@@ -7,6 +7,7 @@ import type { Route } from 'next';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { ImageUpload } from '@/components/image-upload';
 import { TicketTypesEditor } from '@/components/ticket-types-editor';
+import { LocationModePicker, modeOf, type LocationMode } from '@/components/location-mode-picker';
 
 const CATEGORIES = [
   'service', 'worship', 'prayer', 'youth', 'kids', 'small_group',
@@ -59,7 +60,7 @@ export default function EditEventPage() {
   const [category, setCategory] = useState<string>('service');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
-  const [isOnline, setIsOnline] = useState(false);
+  const [locationMode, setLocationMode] = useState<LocationMode>('in_person');
   const [onlineUrl, setOnlineUrl] = useState('');
   const [venueName, setVenueName] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
@@ -81,7 +82,7 @@ export default function EditEventPage() {
     setCategory(e.category.toLowerCase());
     setStartsAt(toLocalInput(e.startsAt));
     setEndsAt(toLocalInput(e.endsAt));
-    setIsOnline(e.isOnline);
+    setLocationMode(modeOf(e));
     setOnlineUrl(e.onlineUrl ?? '');
     setVenueName(e.venue?.name ?? '');
     setAddressLine1(e.venue?.addressLine1 ?? '');
@@ -115,11 +116,11 @@ export default function EditEventPage() {
           category,
           startsAt: new Date(startsAt).toISOString(),
           endsAt: new Date(endsAt).toISOString(),
-          isOnline,
-          onlineUrl: isOnline ? onlineUrl : null,
+          isOnline: locationMode !== 'in_person',
+          onlineUrl: locationMode === 'in_person' ? null : onlineUrl,
           capacity: capacity ? Number(capacity) : null,
           coverImageUrl: coverImageUrl ?? null,
-          venue: isOnline
+          venue: locationMode === 'online'
             ? null
             : { name: venueName, addressLine1, city, postalCode, country },
         },
@@ -261,17 +262,16 @@ export default function EditEventPage() {
             </Field>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-ink-700">
-            <input type="checkbox" checked={isOnline} onChange={(e) => setIsOnline(e.target.checked)} />
-            This is an online event
-          </label>
+          <LocationModePicker value={locationMode} onChange={setLocationMode} disabled={cancelled} />
 
-          {isOnline ? (
-            <Field label="Stream URL">
+          {locationMode !== 'in_person' && (
+            <Field label="Stream URL" hint="Where people watch — YouTube, Zoom, whatever you use.">
               <input type="url" required value={onlineUrl}
                 onChange={(e) => setOnlineUrl(e.target.value)} className={fieldStyle} />
             </Field>
-          ) : (
+          )}
+
+          {locationMode !== 'online' && (
             <div className="space-y-3 rounded-md border border-ink-100 bg-ink-50 p-4">
               <p className="text-xs uppercase tracking-wider text-ink-400">Venue</p>
               <Field label="Venue name">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +17,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/toast';
+import { locationMode } from '@/lib/event-location';
 
 interface Ticket {
   id: string;
@@ -108,11 +110,15 @@ export default function TicketDetailScreen() {
   }
 
   const checkedIn = ticket.status === 'CHECKED_IN';
-  const venueLine = ticket.event.isOnline
-    ? ticket.event.onlineUrl ?? 'Link to follow'
-    : ticket.event.venue
-    ? `${ticket.event.venue.name}, ${ticket.event.venue.city}`
-    : 'Venue TBA';
+  const mode = locationMode(ticket.event);
+  // A hybrid ticket shows the venue, since that is what you need at the door;
+  // the stream link gets its own line below rather than replacing it.
+  const venueLine =
+    mode === 'online'
+      ? ticket.event.onlineUrl ?? 'Link to follow'
+      : ticket.event.venue
+      ? `${ticket.event.venue.name}, ${ticket.event.venue.city}`
+      : 'Venue TBA';
 
   return (
     <View style={styles.c}>
@@ -170,7 +176,7 @@ export default function TicketDetailScreen() {
             </View>
             <View style={styles.venueRow}>
               <Ionicons
-                name={ticket.event.isOnline ? 'videocam-outline' : 'location-outline'}
+                name={mode === 'online' ? 'videocam-outline' : 'location-outline'}
                 size={14}
                 color={color.ink[500]}
               />
@@ -178,6 +184,19 @@ export default function TicketDetailScreen() {
                 {venueLine}
               </Text>
             </View>
+
+            {mode === 'hybrid' && (
+              <Pressable
+                style={styles.venueRow}
+                disabled={!ticket.event.onlineUrl}
+                onPress={() => ticket.event.onlineUrl && Linking.openURL(ticket.event.onlineUrl)}
+              >
+                <Ionicons name="videocam-outline" size={14} color={color.ink[500]} />
+                <Text style={styles.venueText} numberOfLines={1}>
+                  {ticket.event.onlineUrl ?? 'Stream link to follow'}
+                </Text>
+              </Pressable>
+            )}
 
             {/* Withdrawable consent for the event page's "who's going" list. */}
             <View style={styles.visRow}>

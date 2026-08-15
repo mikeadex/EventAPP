@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import type { Route } from 'next';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { ImageUpload } from '@/components/image-upload';
+import { LocationModePicker, type LocationMode } from '@/components/location-mode-picker';
 
 const CATEGORIES = [
   'service', 'worship', 'prayer', 'youth', 'kids', 'small_group',
@@ -26,7 +27,7 @@ export default function NewEventPage() {
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('service');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
-  const [isOnline, setIsOnline] = useState(false);
+  const [locationMode, setLocationMode] = useState<LocationMode>('in_person');
   const [onlineUrl, setOnlineUrl] = useState('');
   const [venueName, setVenueName] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
@@ -55,11 +56,11 @@ export default function NewEventPage() {
             startsAt: new Date(startsAt).toISOString(),
             endsAt: new Date(endsAt).toISOString(),
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            isOnline,
-            onlineUrl: isOnline ? onlineUrl : undefined,
+            isOnline: locationMode !== 'in_person',
+            onlineUrl: locationMode === 'in_person' ? undefined : onlineUrl,
             capacity: capacity ? Number(capacity) : undefined,
             coverImageUrl: coverImageUrl ?? undefined,
-            venue: isOnline
+            venue: locationMode === 'online'
               ? undefined
               : {
                   name: venueName,
@@ -175,17 +176,10 @@ export default function NewEventPage() {
           </Field>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-ink-700">
-          <input
-            type="checkbox"
-            checked={isOnline}
-            onChange={(e) => setIsOnline(e.target.checked)}
-          />
-          This is an online event
-        </label>
+        <LocationModePicker value={locationMode} onChange={setLocationMode} />
 
-        {isOnline ? (
-          <Field label="Stream URL">
+        {locationMode !== 'in_person' && (
+          <Field label="Stream URL" hint="Where people watch — YouTube, Zoom, whatever you use.">
             <input
               type="url"
               required
@@ -194,7 +188,9 @@ export default function NewEventPage() {
               className={fieldStyle}
             />
           </Field>
-        ) : (
+        )}
+
+        {locationMode !== 'online' && (
           <div className="rounded-md border border-ink-100 bg-ink-50 p-4 space-y-3">
             <p className="text-xs uppercase tracking-wider text-ink-400">Venue</p>
             <Field label="Venue name">

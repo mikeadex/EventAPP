@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { api, describeApiError } from '@/lib/api';
+import { locationMode } from '@/lib/event-location';
 import { ErrorState } from '@/components/states';
 import { showToast } from '@/components/toast';
 import {
@@ -88,7 +89,7 @@ export default function OrganizerEventScreen() {
       date: start.date,
       startTime: start.time,
       endTime: end.time,
-      isOnline: e.isOnline,
+      locationMode: locationMode(e),
       onlineUrl: e.onlineUrl ?? '',
       venueName: e.venue?.name ?? '',
       addressLine1: e.venue?.addressLine1 ?? '',

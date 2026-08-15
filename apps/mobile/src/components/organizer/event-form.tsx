@@ -1,7 +1,30 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { DateField, TimeField } from './date-time-fields';
+import type { LocationMode } from '@/lib/event-location';
+
+const LOCATION_MODES = [
+  {
+    value: 'in_person' as const,
+    label: 'In person',
+    icon: 'location-outline' as const,
+    hint: 'People come to a venue.',
+  },
+  {
+    value: 'online' as const,
+    label: 'Online',
+    icon: 'videocam-outline' as const,
+    hint: 'Streamed only — no venue.',
+  },
+  {
+    value: 'hybrid' as const,
+    label: 'Both',
+    icon: 'globe-outline' as const,
+    hint: 'People can come along or watch the stream.',
+  },
+];
 
 const CATEGORIES = [
   'service', 'worship', 'prayer', 'youth', 'kids', 'small_group',
@@ -16,7 +39,7 @@ export interface EventFormValues {
   date: string; // YYYY-MM-DD
   startTime: string; // HH:MM
   endTime: string; // HH:MM
-  isOnline: boolean;
+  locationMode: LocationMode;
   onlineUrl: string;
   venueName: string;
   addressLine1: string;
@@ -34,7 +57,7 @@ export function emptyEventForm(): EventFormValues {
     date: '',
     startTime: '',
     endTime: '',
-    isOnline: false,
+    locationMode: 'in_person',
     onlineUrl: '',
     venueName: '',
     addressLine1: '',
@@ -80,9 +103,11 @@ export function validateEventForm(v: EventFormValues): string | null {
   const end = toInstant(v.date, v.endTime);
   if (!end) return 'Choose the end time.';
   if (end <= start) return 'The end time must be after the start time.';
-  if (v.isOnline) {
+  // A hybrid event needs both halves; the other two need one each.
+  if (v.locationMode !== 'in_person') {
     if (!/^https?:\/\//i.test(v.onlineUrl.trim())) return 'Enter the stream link, starting with https://';
-  } else {
+  }
+  if (v.locationMode !== 'online') {
     if (!v.venueName.trim()) return 'Enter the venue name.';
     if (!v.addressLine1.trim()) return 'Enter the venue address.';
     if (!v.city.trim()) return 'Enter the town or city.';
@@ -134,10 +159,12 @@ export function toEventBody(v: EventFormValues, mode: 'create' | 'update') {
     startsAt: start.toISOString(),
     endsAt: end.toISOString(),
     timezone: deviceTimezone(),
-    isOnline: v.isOnline,
-    onlineUrl: v.isOnline ? v.onlineUrl.trim() : absent,
+    // `isOnline` means "has an online component", so it is true for hybrid too;
+    // what distinguishes hybrid is that the venue is sent as well.
+    isOnline: v.locationMode !== 'in_person',
+    onlineUrl: v.locationMode === 'in_person' ? absent : v.onlineUrl.trim(),
     capacity,
-    venue: v.isOnline ? absent : venue,
+    venue: v.locationMode === 'online' ? absent : venue,
   };
 }
 
@@ -236,22 +263,33 @@ export function EventForm({
         </View>
       </View>
 
-      <View style={styles.switchRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.label}>Online event</Text>
-          <Text style={styles.hint}>Streamed instead of in person.</Text>
+      <View>
+        <Text style={styles.label}>How can people attend?</Text>
+        <View style={styles.segmented}>
+          {LOCATION_MODES.map((m) => {
+            const on = value.locationMode === m.value;
+            return (
+              <Pressable
+                key={m.value}
+                disabled={disabled}
+                onPress={() => set('locationMode', m.value)}
+                style={[styles.segment, on && styles.segmentOn]}
+              >
+                <Ionicons
+                  name={m.icon}
+                  size={16}
+                  color={on ? color.ink[0] : color.ink[600]}
+                />
+                <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{m.label}</Text>
+              </Pressable>
+            );
+          })}
         </View>
-        <Switch
-          value={value.isOnline}
-          onValueChange={(b) => set('isOnline', b)}
-          disabled={disabled}
-          trackColor={{ false: color.ink[200], true: color.ink[900] }}
-          thumbColor={color.ink[0]}
-        />
+        <Text style={styles.hint}>{LOCATION_MODES.find((m) => m.value === value.locationMode)?.hint}</Text>
       </View>
 
-      {value.isOnline ? (
-        <Field label="Stream link">
+      {value.locationMode !== 'in_person' && (
+        <Field label="Stream link" hint="Where people watch — YouTube, Zoom, whatever you use.">
           <TextInput
             value={value.onlineUrl}
             onChangeText={(t) => set('onlineUrl', t)}
@@ -263,7 +301,9 @@ export function EventForm({
             keyboardType="url"
           />
         </Field>
-      ) : (
+      )}
+
+      {value.locationMode !== 'online' && (
         <View style={styles.venueBox}>
           <Field label="Venue name">
             <TextInput
@@ -374,7 +414,26 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: color.ink[900], borderColor: color.ink[900] },
   chipText: { fontSize: fontSize.xs, color: color.ink[700], textTransform: 'capitalize' },
   chipTextOn: { color: color.ink[0] },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  segmented: {
+    flexDirection: 'row',
+    gap: spacing[2],
+    marginTop: spacing[3],
+    marginBottom: spacing[2],
+  },
+  segment: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[1],
+    borderWidth: 1,
+    borderColor: color.ink[200],
+    borderRadius: radius.full,
+    paddingVertical: spacing[3],
+  },
+  segmentOn: { backgroundColor: color.ink[900], borderColor: color.ink[900] },
+  segmentText: { fontSize: fontSize.sm, color: color.ink[700] },
+  segmentTextOn: { color: color.ink[0], fontWeight: fontWeight.semibold },
   venueBox: {
     gap: spacing[4],
     padding: spacing[4],
