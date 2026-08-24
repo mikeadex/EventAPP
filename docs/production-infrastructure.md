@@ -258,7 +258,23 @@ when you start taking payments.
 5. Confirm Neon backup retention; add `pg_dump` if the window is thin.
 6. Cloudflare R2 → the six `S3_*` vars → redeploy → organiser uploads work.
 7. ICO registration + DPIA + solicitor review of the legal pages.
-8. Push notifications (needs a native build, so batch with other native work).
+8. **The batched native build.** Several things now wait on one new binary,
+   and none of them can arrive over the air, because EAS Update ships
+   JavaScript and every one of these needs a native module:
+   - Social sign-in on mobile. The buttons are withheld on the current build
+     — `canUseSocialSignIn()` finds no `ExpoWebBrowser`, which is deliberate:
+     the alternative was a button that red-screened when tapped. Apple on iOS
+     additionally uses `expo-apple-authentication` and the `usesAppleSignIn`
+     entitlement; both are committed and neither has run on a device yet.
+   - Push notifications.
+   - The QR scanner for check-in.
+
+   Sequencing that matters: `eas.json` already points both profiles at
+   `api.ekklesiaevents.com`, so the build picks up the new domain by itself.
+   Existing installs keep working on the old `*.vercel.app` hostname until
+   then, and an OTA can move them early if wanted — but it will not give them
+   the buttons. Apple's rule bites here too: the moment this build offers
+   Google on iOS it must also offer Sign in with Apple, which it does.
 9. Stripe, only when paid tickets are actually wanted.
 
 Items 1–4 are what separate "works when I am watching" from "runs without me".
