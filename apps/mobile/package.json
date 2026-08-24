@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "echo 'no tests yet'",
     "clean": "rm -rf .expo dist .turbo *.tsbuildinfo",
-    "ota:prod": "EXPO_PUBLIC_API_URL=https://ekklesiabackend-bay.vercel.app EXPO_PUBLIC_WEB_URL=https://ekklesia-web-indol.vercel.app eas update --channel production"
+    "ota:prod": "EXPO_PUBLIC_API_URL=https://api.ekklesiaevents.com EXPO_PUBLIC_WEB_URL=https://ekklesiaevents.com eas update --channel production"
   },
   "dependencies": {
     "@babel/runtime": "^7.25.0",

@@ -247,9 +247,9 @@ when you start taking payments.
 
 0. Social sign-in credentials (section 9) — the server is ready and waiting;
    web works the moment they exist.
-1. ~~Buy the domain~~ — done: `ekklesiaevents.com`. Now migrate onto it; this
-   unblocks email (and so password reset) **and fixes web sign-in in Safari**.
-   See "Domain migration" below for the ordered steps.
+1. ~~Buy the domain, migrate onto it~~ — done: `ekklesiaevents.com`. Web
+   sign-in is confirmed working on it. Kept below as a record of what was
+   changed and why.
 2. Resend + DNS records → set `RESEND_API_KEY`, `EMAIL_FROM` → **redeploy**.
 3. Sentry on API + mobile — stop finding bugs by user report.
 4. Uptime check on `/health`.
@@ -263,10 +263,13 @@ Items 1–4 are what separate "works when I am watching" from "runs without me".
 
 ---
 
-### Domain migration — ekklesiaevents.com
+### Domain migration — ekklesiaevents.com (done)
 
-The domain is not only an email dependency. It is what fixes web sign-in in
-Safari, and it should be done before inviting real users.
+Completed. Web sign-in works on the new domain. Recorded here because the
+reasoning matters if the hostnames ever move again.
+
+The domain was not only an email dependency — it is what fixed web sign-in in
+Safari.
 
 **Why.** Cookies are scoped by *registrable domain*, not by origin. Today the
 web app and the API share only `vercel.app`, which is on the Public Suffix
@@ -341,12 +344,17 @@ ones, so mobile installs already in the wild keep running throughout.
    publish with `pnpm run ota:prod`. Never a bare `eas update` — the script
    pins the public URLs, and a bare update once baked a LAN IP into production.
 
-6. Housekeeping once settled: drop the `*.vercel.app` web origin from
-   `TRUSTED_ORIGINS`, then set `advanced.defaultCookieAttributes` in
-   `apps/api/src/modules/auth/auth.ts` back to `SameSite=Lax`. Neither is
-   required — `None` works fine first-party — but `Lax` is the better default
-   once nothing needs the cookie sent cross-site, and the two go together:
-   flipping to `Lax` is what finally stops the old vercel.app URL working.
+6. Housekeeping, done: the `*.vercel.app` web origin is out of
+   `TRUSTED_ORIGINS`, and `advanced.defaultCookieAttributes` is gone from
+   `apps/api/src/modules/auth/auth.ts` so cookies sit at Better Auth's
+   `SameSite=Lax` default again. Still outstanding: delete the old
+   `*.vercel.app` redirect URI from the Google OAuth client, which is now
+   unused — `BETTER_AUTH_URL` only ever produces the `api.` one.
+
+Both projects keep their `*.vercel.app` hostnames, so old mobile installs
+survived the move. They are no longer a fallback for the web app, though:
+its origin is out of `TRUSTED_ORIGINS` and `Lax` would block the cookie
+anyway.
 
 Deep links still use the `ekklesia://` scheme. Universal links on
 `ekklesiaevents.com` are a separate piece of native work; batch them with push

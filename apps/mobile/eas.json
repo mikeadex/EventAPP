@@ -26,8 +26,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://ekklesiabackend-bay.vercel.app",
-        "EXPO_PUBLIC_WEB_URL": "https://ekklesia-web-indol.vercel.app",
+        "EXPO_PUBLIC_API_URL": "https://api.ekklesiaevents.com",
+        "EXPO_PUBLIC_WEB_URL": "https://ekklesiaevents.com",
         "COREPACK_INTEGRITY_KEYS": "0"
       },
       "node": "22.14.0"
@@ -40,8 +40,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://ekklesiabackend-bay.vercel.app",
-        "EXPO_PUBLIC_WEB_URL": "https://ekklesia-web-indol.vercel.app",
+        "EXPO_PUBLIC_API_URL": "https://api.ekklesiaevents.com",
+        "EXPO_PUBLIC_WEB_URL": "https://ekklesiaevents.com",
         "COREPACK_INTEGRITY_KEYS": "0"
       },
       "node": "22.14.0",
