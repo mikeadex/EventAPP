@@ -5,6 +5,7 @@ import { CurrentUserService } from './current-user.service.js';
 import { enabledSocialProviders } from './social-providers.js';
 import { NativeAuthController } from './native-handoff.controller.js';
 import { SocialStartController } from './social-start.controller.js';
+import { AppleDomainController } from './apple-domain.controller.js';
 
 /**
  * Better Auth exposes its own request handler. We mount it under /auth/*
@@ -58,6 +59,7 @@ class DeploymentConfigController {
     DeploymentConfigController,
     NativeAuthController,
     SocialStartController,
+    AppleDomainController,
   ],
   providers: [CurrentUserService],
   exports: [CurrentUserService],

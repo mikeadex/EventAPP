@@ -19,9 +19,9 @@ events can now be hybrid — but no third-party service has been switched on yet
 
 | Layer | Service | Where | State |
 |---|---|---|---|
-| API | Vercel serverless (NestJS 10, CommonJS) | `ekklesiabackend-bay.vercel.app` | Live, auto-deploys from `main` |
+| API | Vercel serverless (NestJS 10, CommonJS) | `api.ekklesiaevents.com` | Live, auto-deploys from `main` |
 | Database | Neon Postgres (+ Prisma 5.22) | `eu-*` Neon project | Live, migrations via `prisma migrate deploy` |
-| Web | Vercel (Next.js) | `ekklesia-web-indol.vercel.app` | Live, Git-connected, root `apps/web` |
+| Web | Vercel (Next.js) | `ekklesiaevents.com` | Live, Git-connected, root `apps/web` |
 | Auth | Better Auth 1.6.11, bearer plugin | in-API | Live, 30-day sessions |
 | Mobile builds | EAS Build | iOS cloud / Android local | TestFlight + Play internal testing |
 | Mobile updates | EAS Update (expo-updates) | channel `production` | Live — ship JS without a store review |
@@ -313,12 +313,12 @@ ones, so mobile installs already in the wild keep running throughout.
    | Variable | Value |
    | --- | --- |
    | `BETTER_AUTH_URL` | `https://api.ekklesiaevents.com` |
-   | `TRUSTED_ORIGINS` | `https://ekklesiaevents.com,https://www.ekklesiaevents.com,https://ekklesia-web-indol.vercel.app` |
+   | `TRUSTED_ORIGINS` | `https://ekklesiaevents.com,https://www.ekklesiaevents.com` |
    | `WEB_URL` | `https://ekklesiaevents.com` |
 
-   The old `*.vercel.app` web origin stays in `TRUSTED_ORIGINS` only until the
-   new domain is confirmed working; drop it in the cleanup step, since leaving
-   it is what would keep needing `SameSite=None`.
+   The old `*.vercel.app` web origin is deliberately absent — keeping it is what
+   would have kept `SameSite=None` necessary. The consequence is that the old
+   web URL is CORS-blocked, which is the intended end state.
 
    **Web project:**
 
@@ -372,22 +372,60 @@ pages render buttons from that list and show nothing when it is empty.
 
 *Google* — Google Cloud Console → APIs & Services → Credentials → OAuth client
 ID (Web application). Authorised redirect URI:
-`https://ekklesiabackend-bay.vercel.app/auth/callback/google`.
+`https://api.ekklesiaevents.com/auth/callback/google`.
 Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
 
 *Microsoft (Outlook)* — Entra ID → App registrations → New registration, with
 "Accounts in any organizational directory and personal Microsoft accounts" so
 Outlook.com addresses work. Redirect URI (type Web):
-`https://ekklesiabackend-bay.vercel.app/auth/callback/microsoft`.
+`https://api.ekklesiaevents.com/auth/callback/microsoft`.
 Set `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`; `MICROSOFT_TENANT_ID`
 defaults to `common`.
 
-*Apple* — Developer portal → Identifiers → Services ID (this is the OAuth client
-id, not the app bundle id), plus a Sign in with Apple key (.p8). Return URL:
-`https://ekklesiabackend-bay.vercel.app/auth/callback/apple`.
-Set `APPLE_CLIENT_ID` (the Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`,
-`APPLE_PRIVATE_KEY` (the .p8 contents — `\n` escapes are un-escaped for you),
-and `APPLE_BUNDLE_ID` (`com.ekklesia`) for the native flow.
+*Apple* — the fiddliest of the three, because it needs four pieces of identity
+rather than a client id and secret, and it will not work until Apple has
+verified the domain. In the developer portal:
+
+1. **Identifiers → your App ID** → enable the *Sign In with Apple* capability.
+2. **Identifiers → + → Services IDs.** This is the OAuth client id, *not* the
+   app bundle id — something like `com.ekklesiaevents.web`. Enable *Sign In
+   with Apple* on it and hit **Configure**:
+   - Primary App ID: the App ID from step 1
+   - Domains and Subdomains: `api.ekklesiaevents.com`
+   - Return URLs: `https://api.ekklesiaevents.com/auth/callback/apple`
+3. Apple offers a **domain association file** in that dialog. Download it and
+   put its contents in `APPLE_DOMAIN_ASSOCIATION` on the API project, then
+   redeploy. It is then served at
+   `https://api.ekklesiaevents.com/.well-known/apple-developer-domain-association.txt`
+   (see `apple-domain.controller.ts`), which is where Apple looks — the route
+   is excluded from the `/v1` prefix for exactly that reason. Redeploy *before*
+   pressing Verify, or verification fails and has to be retried.
+4. **Keys → +** → enable *Sign In with Apple*, pick the same primary App ID,
+   and download the `.p8`. **Apple lets you download it once.** Note the Key ID
+   shown next to it.
+5. Team ID is on the Membership page.
+
+Then set, on the API project:
+
+| Variable | Where it comes from |
+| --- | --- |
+| `APPLE_CLIENT_ID` | the Services ID from step 2 |
+| `APPLE_TEAM_ID` | Membership page |
+| `APPLE_KEY_ID` | the key from step 4 |
+| `APPLE_PRIVATE_KEY` | the `.p8` contents; `\n` escapes are un-escaped for you |
+| `APPLE_BUNDLE_ID` | `com.ekklesia` — the native flow only |
+| `APPLE_DOMAIN_ASSOCIATION` | the file from step 3 |
+
+Apple's "client secret" is a short-lived JWT signed with that key rather than a
+static string; Better Auth builds it from the four values, which is why there is
+no `APPLE_CLIENT_SECRET`.
+
+One trap that is already handled: Apple returns the callback as a cross-site
+`POST` (`response_mode=form_post`), and a `SameSite=Lax` cookie is not sent on
+one of those. Better Auth's callback accepts the POST and immediately redirects
+to itself as a GET, which is a same-site top-level navigation, so the state
+cookie is sent on the second hop. No configuration needed — but if Apple ever
+fails with a state error while Google works, that mechanism is where to look.
 
 Remember Vercel env changes need a **redeploy** to take effect.
 
