@@ -39,19 +39,14 @@ export type SocialResult =
 export async function signInWithProvider(provider: string): Promise<SocialResult> {
   if (!canUseSocialSignIn()) return { ok: false, reason: 'unsupported' };
 
-  let authUrl: string;
-  try {
-    // The server answers with the provider's consent URL rather than redirecting,
-    // because there is no browser here to follow a 302.
-    const res = await api<{ url?: string; redirect?: boolean }>('/auth/sign-in/social', {
-      method: 'POST',
-      body: { provider, callbackURL: `${BASE}/v1/native-auth/handoff` },
-    });
-    if (!res.url) return { ok: false, reason: 'failed', message: 'No sign-in URL returned' };
-    authUrl = res.url;
-  } catch (e) {
-    return { ok: false, reason: 'failed', message: e instanceof Error ? e.message : undefined };
-  }
+  // Point the web view at the server's start endpoint rather than asking for a
+  // URL here. The OAuth state cookie has to be set inside that web view; when
+  // the app made the request itself the cookie landed on this fetch — which
+  // discards cookies by design — and every callback failed with state_mismatch.
+  const handoff = `${BASE}/v1/native-auth/handoff`;
+  const authUrl =
+    `${BASE}/v1/social/start?provider=${encodeURIComponent(provider)}` +
+    `&redirect=${encodeURIComponent(handoff)}`;
 
   let result: { type: string; url?: string };
   try {

@@ -25,6 +25,14 @@ export class NativeAuthController {
     const scheme = process.env.MOBILE_DEEPLINK_SCHEME ?? 'ekklesia';
     const target = `${scheme}://auth/social`;
 
+    // This is also the errorCallbackURL for the native flow, so a failure
+    // upstream arrives here as ?error=. Pass the real reason through rather
+    // than reporting the generic no_session it would otherwise produce.
+    const upstream = typeof req.query.error === 'string' ? req.query.error : null;
+    if (upstream) {
+      return res.redirect(`${target}?error=${encodeURIComponent(upstream)}`);
+    }
+
     try {
       const auth = await getAuth();
       const headers = new Headers();

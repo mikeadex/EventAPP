@@ -45,10 +45,43 @@ const RESET_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
 
 // Origins the API will accept auth requests from. Includes the mobile deep-link
 // scheme so the native app's bearer-token flow is trusted.
-const trustedOrigins = [
-  ...(process.env.TRUSTED_ORIGINS ?? '').split(',').filter(Boolean),
-  `${process.env.MOBILE_DEEPLINK_SCHEME ?? 'ekklesia'}://`,
-];
+// Read lazily rather than at module load: on Vercel this module is imported
+// during the build, when the env is not yet the runtime env.
+export function trustedOriginList(): string[] {
+  return [
+    ...(process.env.TRUSTED_ORIGINS ?? '').split(',').filter(Boolean),
+    process.env.BETTER_AUTH_URL ?? 'http://localhost:4000',
+    `${process.env.MOBILE_DEEPLINK_SCHEME ?? 'ekklesia'}://`,
+  ];
+}
+
+/**
+ * Whether a post-sign-in redirect target is one of ours.
+ *
+ * Better Auth applies this check as *router* middleware, so it only runs for
+ * requests that go through auth.handler. Calling auth.api.* server-side skips
+ * it — which would leave social-start.controller.ts an open redirect. Hence
+ * the same check, applied by hand at that call site.
+ */
+export function isTrustedRedirect(url: string): boolean {
+  const origins = trustedOriginList();
+  if (origins.some((o) => o.endsWith('://') && url.startsWith(o))) return true;
+  try {
+    const target = new URL(url);
+    return origins.some((o) => {
+      try {
+        return new URL(o).origin === target.origin;
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    // Not absolute — a bare path can only mean this API's own origin. But
+    // "//evil.example.com" is a *protocol-relative* URL that browsers resolve
+    // to another host, so only a single leading slash counts as a path.
+    return url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\');
+  }
+}
 
 let cached: Promise<AuthInstance> | null = null;
 
@@ -76,7 +109,7 @@ async function createAuth() {
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:4000',
     basePath: '/auth', // routes live at /auth/* (not the default /api/auth/*)
-    trustedOrigins,
+    trustedOrigins: trustedOriginList(),
     // The bearer plugin lets native clients authenticate with
     // `Authorization: Bearer <session-token>` instead of cookies. On sign-in the
     // server returns the token in a `set-auth-token` response header; the mobile

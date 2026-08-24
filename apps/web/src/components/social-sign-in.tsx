@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api-client';
-import { authClient } from '@/lib/auth-client';
+import { apiClient, BASE } from '@/lib/api-client';
 
 /**
  * Sign-in buttons for whichever providers this deployment can actually
@@ -43,9 +42,24 @@ function ProviderMark({ id }: { id: string }) {
   );
 }
 
+/** Better Auth's codes are terse; say something a person can act on. */
+const ERRORS: Record<string, string> = {
+  please_restart_the_process: 'That took too long — please try again.',
+  invalid_code: "Couldn't complete sign-in. Please try again.",
+  account_not_linked:
+    'An account with that email already exists. Sign in with your password first, then link this provider.',
+};
+
 export function SocialSignIn({ callbackURL = '/' }: { callbackURL?: string }) {
   const [providers, setProviders] = useState<string[]>([]);
   const [pending, setPending] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  // A failed provider round trip comes back here with ?error=<code>.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('error');
+    if (code) setFailure(ERRORS[code] ?? 'Sign-in failed. Please try again.');
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,18 +84,33 @@ export function SocialSignIn({ callbackURL = '/' }: { callbackURL?: string }) {
         <span className="text-xs uppercase tracking-wider text-ink-400">or</span>
         <span className="h-px flex-1 bg-ink-100" />
       </div>
+      {failure && (
+        <p role="alert" className="mt-4 text-sm text-ink-700">
+          {failure}
+        </p>
+      )}
       <div className="mt-4 space-y-2">
         {providers.map((id) => (
           <button
             key={id}
             type="button"
             disabled={pending !== null}
-            onClick={async () => {
+            onClick={() => {
               setPending(id);
-              // Better Auth redirects the browser to the provider; control does
-              // not return here on success, so `pending` is only reset on error.
-              const res = await authClient.signIn.social({ provider: id, callbackURL });
-              if (res?.error) setPending(null);
+              // A full navigation, not an XHR: the state cookie must be set
+              // first-party on the API's own domain, or the browser drops it
+              // and the callback fails with state_mismatch. The return URL is
+              // absolute so we land back here rather than on the API root.
+              const back = new URL(callbackURL, window.location.origin).toString();
+              // On failure return to this page rather than the post-login
+              // target, so the error is visible next to the sign-in form.
+              // Path only: reusing the full href would stack an ?error= from a
+              // previous attempt onto the next one.
+              const onError = window.location.origin + window.location.pathname;
+              window.location.href =
+                `${BASE}/v1/social/start?provider=${encodeURIComponent(id)}` +
+                `&redirect=${encodeURIComponent(back)}` +
+                `&errorRedirect=${encodeURIComponent(onError)}`;
             }}
             className="flex w-full items-center justify-center gap-2 rounded-md border border-ink-200 px-4 py-2.5 font-medium text-ink-800 hover:bg-ink-100 disabled:opacity-60"
           >

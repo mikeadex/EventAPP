@@ -16,6 +16,15 @@ const LABELS: Record<string, string> = {
   microsoft: 'Continue with Microsoft',
 };
 
+/** Better Auth's codes are terse; say something a person can act on. */
+const ERRORS: Record<string, string> = {
+  please_restart_the_process: 'That took too long — please try again',
+  invalid_code: "Couldn't complete sign-in — please try again",
+  no_session: "Couldn't complete sign-in — please try again",
+  handoff_failed: "Couldn't complete sign-in — please try again",
+  account_not_linked: 'That email already has an account. Sign in with your password first.',
+};
+
 const ICONS: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
   google: 'logo-google',
   apple: 'logo-apple',
@@ -52,7 +61,9 @@ export function SocialSignIn({ onSignedIn }: { onSignedIn: () => void }) {
       showToast('Update the app to sign in this way');
       return;
     }
-    showToast(res.message ?? "Couldn't sign in — try again");
+    showToast(
+      (res.message && ERRORS[res.message]) ?? res.message ?? "Couldn't sign in — try again",
+    );
   }
 
   return (
