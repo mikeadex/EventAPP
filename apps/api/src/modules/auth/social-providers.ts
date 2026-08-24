@@ -43,11 +43,20 @@ function normalizePem(raw: string): string {
   // supporting because the failure it avoids is opaque: OpenSSL answers a
   // damaged key with "DECODER routines::unsupported" and no hint of the cause.
   if (!text.includes('-----BEGIN')) {
+    let decoded = '';
     try {
-      const decoded = Buffer.from(text, 'base64').toString('utf8');
-      if (decoded.includes('-----BEGIN')) text = decoded.replace(/\r\n/g, '\n').trim();
+      decoded = Buffer.from(text, 'base64').toString('utf8');
     } catch {
-      // Not base64 either — fall through and let the signer produce the error.
+      // Not base64 — leave it and let the signer produce the error.
+    }
+    if (decoded.includes('-----BEGIN')) {
+      text = decoded.replace(/\r\n/g, '\n').trim();
+    } else if (/^[A-Za-z0-9+/=\s]+$/.test(text) && text.replace(/\s+/g, '').length > 100) {
+      // Base64 with no armour: the body of the .p8 selected without its BEGIN
+      // and END lines. An easy mistake — they read like decoration rather than
+      // part of the key — and one the armour-seeking repair below cannot see,
+      // so put the lines back before it runs.
+      text = `-----BEGIN PRIVATE KEY-----\n${text.replace(/\s+/g, '')}\n-----END PRIVATE KEY-----`;
     }
   }
 
