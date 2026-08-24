@@ -28,7 +28,7 @@ function credential(name: string): string | undefined {
  * sends you hunting the wrong problem. Cheaper to normalise all three.
  */
 function normalizePem(raw: string): string {
-  const text = raw
+  let text = raw
     .replace(/\\n/g, '\n')
     .replace(/\r\n/g, '\n')
     .trim()
@@ -36,6 +36,20 @@ function normalizePem(raw: string): string {
     // to see in a dashboard field that renders the value as dots.
     .replace(/^["']|["']$/g, '')
     .trim();
+
+  // Also accept the whole PEM base64-encoded — `base64 -i AuthKey_X.p8`. A PEM
+  // has to survive a multi-line paste into a dashboard field intact, and it
+  // frequently does not; a single base64 line has nothing left to mangle. Worth
+  // supporting because the failure it avoids is opaque: OpenSSL answers a
+  // damaged key with "DECODER routines::unsupported" and no hint of the cause.
+  if (!text.includes('-----BEGIN')) {
+    try {
+      const decoded = Buffer.from(text, 'base64').toString('utf8');
+      if (decoded.includes('-----BEGIN')) text = decoded.replace(/\r\n/g, '\n').trim();
+    } catch {
+      // Not base64 either — fall through and let the signer produce the error.
+    }
+  }
 
   // Rebuilt unconditionally rather than only when newlines are missing. The
   // damage is rarely all-or-nothing: armour lines survive while the body gets
@@ -123,10 +137,19 @@ function build(): Record<string, unknown> {
       // Deliberately not fatal. Signing runs while the auth instance is being
       // built, so throwing here would take email and Google sign-in down too —
       // a bad Apple key should cost you the Apple button, nothing else.
-      // The message only; never the key, not even its length.
+      //
+      // Shape, never contents. OpenSSL's "DECODER routines::unsupported" is
+      // the same message for a truncated key, a key with a mangled body and a
+      // value that is not a key at all, so the message alone cannot tell you
+      // which. Length and armour can, and neither reveals key material.
+      const pem = normalizePem(appleKey);
       console.error(
         '[auth] Apple sign-in disabled: could not sign the client secret —',
         e instanceof Error ? e.message : 'unknown error',
+        `| after normalising: ${pem.length} chars,`,
+        `begins ${pem.startsWith('-----BEGIN') ? 'yes' : 'NO'},`,
+        `ends ${pem.trimEnd().endsWith('-----') ? 'yes' : 'NO'},`,
+        `${pem.split('\n').length} lines`,
       );
     }
   }
