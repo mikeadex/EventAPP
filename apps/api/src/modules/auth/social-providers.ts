@@ -28,15 +28,25 @@ function credential(name: string): string | undefined {
  * sends you hunting the wrong problem. Cheaper to normalise all three.
  */
 function normalizePem(raw: string): string {
-  const text = raw.replace(/\\n/g, '\n').replace(/\r\n/g, '\n').trim();
-  if (text.includes('\n')) return text;
+  const text = raw
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .trim()
+    // Pasting a value with its surrounding quotes is easy to do and impossible
+    // to see in a dashboard field that renders the value as dots.
+    .replace(/^["']|["']$/g, '')
+    .trim();
 
-  // One long line: rebuild the armour, wrapping the body at 64 chars as PEM wants.
-  const match = /-----BEGIN ([A-Z ]+)-----(.*)-----END \1-----/.exec(text);
+  // Rebuilt unconditionally rather than only when newlines are missing. The
+  // damage is rarely all-or-nothing: armour lines survive while the body gets
+  // space-separated, or the wrap lands at the wrong width. Taking the base64
+  // body and re-wrapping it at 64 characters is correct for an intact key too,
+  // so there is no case worth detecting.
+  const match = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/.exec(text);
   if (!match) return text;
   const label = match[1]!;
   const wrapped = match[2]!.replace(/\s+/g, '').match(/.{1,64}/g)?.join('\n') ?? '';
-  return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----`;
+  return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----\n`;
 }
 
 /**
