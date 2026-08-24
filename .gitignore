@@ -45,3 +45,11 @@ android/app/build
 # first), so EAS runs `npm install`, which ignores pnpm-workspace.yaml and
 # never installs the app dependencies.
 package-lock.json
+
+# Signing keys and certificates — never commit. This repo is public.
+# Apple auth keys arrive as AuthKey_XXXXXXXXXX.p8 and are downloadable once.
+*.p8
+*.pem
+*.key
+*.p12
+*.mobileprovision
