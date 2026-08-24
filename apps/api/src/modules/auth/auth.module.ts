@@ -43,7 +43,23 @@ class AuthHandlerController {
     const auth = await getAuth();
     const response = await auth.handler(request);
     res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
+
+    // Set-Cookie is the one header that legitimately repeats, and `setHeader`
+    // overwrites rather than appends — so forwarding it in the loop below meant
+    // only the last one ever reached the browser. A successful OAuth callback
+    // sets the session *and* clears the state cookie, so the session was being
+    // thrown away by the cleanup that followed it: sign-in succeeded, reported
+    // no error, and landed back on the login page with no session.
+    //
+    // `getSetCookie()` is the only accessor that keeps them separate; `forEach`
+    // and `get()` both flatten. Express emits one header per array entry.
+    const setCookies = response.headers.getSetCookie?.() ?? [];
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() === 'set-cookie') return;
+      res.setHeader(key, value);
+    });
+    if (setCookies.length) res.setHeader('set-cookie', setCookies);
+
     const body = await response.text();
     res.send(body);
   }
