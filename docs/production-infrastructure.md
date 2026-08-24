@@ -247,9 +247,9 @@ when you start taking payments.
 
 0. Social sign-in credentials (section 9) — the server is ready and waiting;
    web works the moment they exist.
-1. Buy the domain. This blocks email (and so password reset), **and it is what
-   finally fixes web sign-in in Safari** — see "The domain is a sign-in
-   dependency" below.
+1. ~~Buy the domain~~ — done: `ekklesiaevents.com`. Now migrate onto it; this
+   unblocks email (and so password reset) **and fixes web sign-in in Safari**.
+   See "Domain migration" below for the ordered steps.
 2. Resend + DNS records → set `RESEND_API_KEY`, `EMAIL_FROM` → **redeploy**.
 3. Sentry on API + mobile — stop finding bugs by user report.
 4. Uptime check on `/health`.
@@ -263,26 +263,79 @@ Items 1–4 are what separate "works when I am watching" from "runs without me".
 
 ---
 
-### The domain is a sign-in dependency, not just an email one
+### Domain migration — ekklesiaevents.com
 
-Web and API currently live on two unrelated `*.vercel.app` hostnames. Because
-`vercel.app` is on the Public Suffix List, the browser treats them as different
-**sites**, not merely different origins. The session cookie is therefore a
-third-party cookie from the web app's point of view.
+The domain is not only an email dependency. It is what fixes web sign-in in
+Safari, and it should be done before inviting real users.
 
-It is set `SameSite=None; Secure` so that Chrome, Edge and Firefox send it — but
-**Safari blocks third-party cookies outright**, so signing in to the web app on
-Safari (including every browser on iOS) will not stick. The mobile apps are
-unaffected: they authenticate with bearer tokens from SecureStore and send no
-cookies at all.
+**Why.** Cookies are scoped by *registrable domain*, not by origin. Today the
+web app and the API share only `vercel.app`, which is on the Public Suffix
+List — so the browser counts them as different **sites** and the session cookie
+is third-party. It is currently sent `SameSite=None; Secure` to work around
+that, which Chrome, Edge and Firefox honour but Safari blocks outright (on iOS
+that means every browser, since they all use WebKit). Once the two hostnames
+share `ekklesiaevents.com` the cookie is first-party and the problem is gone.
 
-The fix is not a code change, it is the domain. Put the web app on
-`ekklesia.example` and the API on `api.ekklesia.example` and they share a
-registrable domain, at which point the cookie is first-party everywhere and
-`advanced.defaultCookieAttributes` in `apps/api/src/modules/auth/auth.ts` should
-go back to `SameSite=Lax`.
+**Hostname → project.** A domain is not assigned to one project; each hostname
+is added to a project and Vercel routes by hostname.
 
-Until then, test web sign-in in Chrome.
+| Hostname | Vercel project | Role |
+| --- | --- | --- |
+| `ekklesiaevents.com` | ekklesia-web | the site (primary) |
+| `www.ekklesiaevents.com` | ekklesia-web | redirect to apex |
+| `api.ekklesiaevents.com` | ekklesiabackend | the API |
+
+Both projects keep their `*.vercel.app` hostnames working alongside the custom
+ones, so mobile installs already in the wild keep running throughout.
+
+**Steps, in order.**
+
+1. Add each hostname to its project in Vercel (Project → Settings → Domains).
+   Vercel prints the exact DNS record to create for each one — use those values
+   rather than any written here, as the apex record in particular changes.
+   Create them at the registrar, then wait for verification and the TLS
+   certificate.
+
+2. Set the environment variables. **API project:**
+
+   | Variable | Value |
+   | --- | --- |
+   | `BETTER_AUTH_URL` | `https://api.ekklesiaevents.com` |
+   | `TRUSTED_ORIGINS` | `https://ekklesiaevents.com,https://www.ekklesiaevents.com` |
+   | `WEB_URL` | `https://ekklesiaevents.com` |
+
+   **Web project:**
+
+   | Variable | Value |
+   | --- | --- |
+   | `NEXT_PUBLIC_API_URL` | `https://api.ekklesiaevents.com` |
+   | `NEXT_PUBLIC_WEB_URL` | `https://ekklesiaevents.com` |
+
+   `TRUSTED_ORIGINS` drives both CORS (`bootstrap.ts`) and Better Auth's origin
+   check, so it must list every origin the browser actually uses. Redeploy both
+   projects afterwards — `NEXT_PUBLIC_*` is inlined at build time, so the web
+   app will not pick up a new value without one.
+
+3. In the Google Cloud console, add `https://api.ekklesiaevents.com/auth/callback/google`
+   to the OAuth client's authorised redirect URIs. Leave the existing
+   `*.vercel.app` URI in place until the migration is confirmed.
+
+4. Verify: sign in on `https://ekklesiaevents.com` in **Safari**. That is the
+   case that fails today, so it is the one worth checking.
+
+5. Only then, in the repo: point mobile at the new API (`apps/mobile/eas.json`,
+   both profiles, and the `ota:prod` script in `apps/mobile/package.json`), and
+   publish with `pnpm run ota:prod`. Never a bare `eas update` — the script
+   pins the public URLs, and a bare update once baked a LAN IP into production.
+
+6. Housekeeping once settled: set `advanced.defaultCookieAttributes` in
+   `apps/api/src/modules/auth/auth.ts` back to `SameSite=Lax`. Not required —
+   `None` works fine first-party — but `Lax` is the better default now that
+   nothing needs the cookie sent cross-site.
+
+Deep links still use the `ekklesia://` scheme. Universal links on
+`ekklesiaevents.com` are a separate piece of native work; batch them with push
+notifications rather than doing them here.
 
 ## 9. Social sign-in — Google, Apple, Microsoft
 
