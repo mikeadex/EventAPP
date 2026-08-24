@@ -251,6 +251,8 @@ when you start taking payments.
    sign-in is confirmed working on it. Kept below as a record of what was
    changed and why.
 2. Resend + DNS records → set `RESEND_API_KEY`, `EMAIL_FROM` → **redeploy**.
+   Then register that sending domain with Apple's Private Email Relay, or mail
+   to "Hide My Email" users is silently dropped — see section 9.
 3. Sentry on API + mobile — stop finding bugs by user report.
 4. Uptime check on `/health`.
 5. Confirm Neon backup retention; add `pg_dump` if the window is thin.
@@ -419,6 +421,21 @@ Then set, on the API project:
 Apple's "client secret" is a short-lived JWT signed with that key rather than a
 static string; Better Auth builds it from the four values, which is why there is
 no `APPLE_CLIENT_SECRET`.
+
+**Private Email Relay — do this when Resend is set up.** Apple's setup banner
+lists a fourth step, *Register Email Sources for Communication*, and it is not
+optional for us. Anyone who signs in with "Hide My Email" gives us a
+`@privaterelay.appleid.com` address, and Apple **silently drops** mail sent to
+it from a domain that has not been registered under the Services ID's
+configuration. The failure mode is the worst kind: password resets to those
+users vanish with no bounce and no error on our side, and only that subset of
+users is affected, so it looks like a flaky mailer rather than a
+misconfiguration.
+
+It cannot be done until there is a verified sending domain, so it belongs with
+the Resend step: register `ekklesiaevents.com` (and the exact `EMAIL_FROM`
+address) as an email source, then test a password reset against a Hide My Email
+account before trusting it.
 
 One trap that is already handled: Apple returns the callback as a cross-site
 `POST` (`response_mode=form_post`), and a `SameSite=Lax` cookie is not sent on
