@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { getAuth } from './auth.js';
 import { CurrentUserService } from './current-user.service.js';
 import { enabledSocialProviders } from './social-providers.js';
+import { NativeAuthController } from './native-handoff.controller.js';
 
 /**
  * Better Auth exposes its own request handler. We mount it under /auth/*
@@ -51,7 +52,7 @@ class DeploymentConfigController {
 
 @Global()
 @Module({
-  controllers: [AuthHandlerController, DeploymentConfigController],
+  controllers: [AuthHandlerController, DeploymentConfigController, NativeAuthController],
   providers: [CurrentUserService],
   exports: [CurrentUserService],
 })

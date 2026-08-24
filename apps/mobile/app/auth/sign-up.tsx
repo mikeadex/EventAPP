@@ -12,6 +12,7 @@ import {
 import { router, Link } from 'expo-router';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { signUp } from '@/lib/auth-client';
+import { SocialSignIn } from '@/components/social-sign-in';
 
 export default function SignUpScreen() {
   const [name, setName] = useState('');
@@ -75,6 +76,8 @@ export default function SignUpScreen() {
           <Text style={styles.btnText}>Create account</Text>
         )}
       </Pressable>
+
+      <SocialSignIn onSignedIn={() => router.replace('/(tabs)')} />
 
       <View style={{ marginTop: spacing[6], flexDirection: 'row' }}>
         <Text style={styles.muted}>Already have one? </Text>

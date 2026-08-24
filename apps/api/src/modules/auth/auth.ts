@@ -65,7 +65,7 @@ export function getAuth(): Promise<AuthInstance> {
 }
 
 async function createAuth() {
-  const [{ betterAuth }, { prismaAdapter }, { bearer }] = await Promise.all([
+  const [{ betterAuth }, { prismaAdapter }, { bearer, oneTimeToken }] = await Promise.all([
     loadBetterAuth(),
     loadBetterAuthPrismaAdapter(),
     loadBetterAuthPlugins(),
@@ -82,7 +82,12 @@ async function createAuth() {
     // server returns the token in a `set-auth-token` response header; the mobile
     // app persists it in SecureStore and replays it, so login survives restarts.
     // (Web continues to use cookies — bearer is purely additive.)
-    plugins: [bearer()],
+    plugins: [
+      bearer(),
+      // Used only to hand a web-view session to the native app after social
+      // sign-in; see native-handoff.controller.ts. Short-lived and single-use.
+      oneTimeToken({ expiresIn: 3 }),
+    ],
     // Only providers whose credentials are present; see social-providers.ts.
     socialProviders: buildSocialProviders(),
     emailAndPassword: {
