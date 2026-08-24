@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from '@/lib/auth-client';
+import { SocialSignIn } from '@/components/social-sign-in';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -69,6 +70,9 @@ export default function SignInPage() {
           {pending ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+
+      <SocialSignIn />
+
       <p className="mt-6 text-sm text-ink-500">
         New to Ekklesia?{' '}
         <Link href="/sign-up" className="font-medium text-brand-600 hover:underline">

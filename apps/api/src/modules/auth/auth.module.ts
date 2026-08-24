@@ -1,7 +1,8 @@
-import { All, Controller, Global, Module, Req, Res } from '@nestjs/common';
+import { All, Controller, Get, Global, Module, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { getAuth } from './auth.js';
 import { CurrentUserService } from './current-user.service.js';
+import { enabledSocialProviders } from './social-providers.js';
 
 /**
  * Better Auth exposes its own request handler. We mount it under /auth/*
@@ -30,9 +31,27 @@ class AuthHandlerController {
   }
 }
 
+/**
+ * What this deployment can actually do, for clients to read before rendering.
+ *
+ * Social sign-in is the first entry: a provider whose credentials are missing
+ * simply has no button, rather than a button that dead-ends at a broken consent
+ * screen. Exposes provider ids only — never client ids or secrets.
+ *
+ * Not under `auth/` because Better Auth owns that path with a catch-all, and
+ * not `v1/...` because the global prefix would double it to /v1/v1.
+ */
+@Controller('config')
+class DeploymentConfigController {
+  @Get()
+  config() {
+    return { socialProviders: enabledSocialProviders() };
+  }
+}
+
 @Global()
 @Module({
-  controllers: [AuthHandlerController],
+  controllers: [AuthHandlerController, DeploymentConfigController],
   providers: [CurrentUserService],
   exports: [CurrentUserService],
 })

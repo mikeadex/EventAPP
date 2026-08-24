@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { useDeadConnectionRetry } from '../../prisma/db-retry.js';
 import { EmailService } from '../email/email.service.js';
 import { passwordResetEmail } from '../email/templates/password-reset.js';
+import { buildSocialProviders } from './social-providers.js';
 
 /**
  * better-auth is published as pure ESM: `"type": "module"`, a single
@@ -82,6 +83,8 @@ async function createAuth() {
     // app persists it in SecureStore and replays it, so login survives restarts.
     // (Web continues to use cookies — bearer is purely additive.)
     plugins: [bearer()],
+    // Only providers whose credentials are present; see social-providers.ts.
+    socialProviders: buildSocialProviders(),
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false, // flip on once email provider is wired

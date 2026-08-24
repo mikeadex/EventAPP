@@ -8,6 +8,11 @@ Everything below is grounded in the current repo: the env vars are the ones the
 code actually reads (`grep process.env`), and the "configured in production"
 column is what `vercel env ls production` reports for `ekklesia_backend`.
 
+**Re-audited 2026-08-15.** Production still has the same five variables it had
+on day one. Everything in section 2 remains outstanding. Since the first pass,
+CI was fixed and is green, the host workflow shipped on web and mobile, and
+events can now be hybrid — but no third-party service has been switched on yet.
+
 ---
 
 ## 1. What is already running
@@ -53,6 +58,7 @@ The code reads thirteen more. Each missing group disables a real feature:
 | `RESEND_API_KEY`, `EMAIL_FROM` | All transactional email | **Silently logs instead of sending.** Password reset is a dead end — the user gets no email and no error. Highest-impact gap. |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`, `S3_PUBLIC_BASE` | Organiser image uploads | `POST /v1/uploads/sign` returns **503**. Event covers can only be external URLs. |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Paid tickets | Payment flows fail. Free RSVPs are unaffected. |
+| `GOOGLE_*`, `APPLE_*`, `MICROSOFT_*` | Social sign-in | No buttons appear. Email/password is unaffected. See section 9. |
 
 `API_PORT` and `NODE_ENV` need no action (serverless supplies them);
 `MOBILE_DEEPLINK_SCHEME` already defaults to `ekklesia`.
@@ -70,17 +76,22 @@ user RSVPs. All of it works, and a presigned cover-image upload succeeds
 locally against MinIO. It is **web only** (`/organizer/…`); the mobile app is
 attendee-facing.
 
-What is missing for a host to actually run events unaided:
+**Updated 2026-08-15.** The gaps listed here have since been built, on web and
+in the mobile app: event editing, ticket types (so paid tickets can be defined),
+an attendee list with door check-in, three-step host onboarding that puts new
+hosts into a `PENDING` review queue, and hybrid in-person/online events.
+
+What is still missing for a host to run events unaided:
 
 - **No S3 in production**, so cover-image upload is the one step that fails
   outside local dev (`503`). Priority 2 below.
-- **No edit page.** Events can be created and published but not changed
-  afterwards from the UI, though `PATCH /v1/events/:id` exists.
-- **No ticket-type UI.** Creation posts no ticket types, and RSVP invents a free
-  one on the fly. That means free RSVP events work, and **paid tickets cannot be
-  defined through the UI at all** — a prerequisite for Stripe being useful.
-- **No attendee or check-in screen**, so a host cannot see who is coming or scan
-  a ticket at the door.
+- **No way to edit host details after setup** — there is no update endpoint on
+  organizations at all, so a typo in the host name or About text is permanent.
+- **No admin review UI.** Hosts reach `PENDING`, but approving one currently
+  means a database update. Deferred to the web app by choice.
+- **No QR scanner** — check-in is type-the-code or tap-the-row.
+- **Events are same-day only** — one date with two times, so an overnight or
+  weekend event cannot be expressed.
 
 ## 3. Services to add, in priority order
 
@@ -234,6 +245,8 @@ when you start taking payments.
 
 ## 8. Suggested order of work
 
+0. Social sign-in credentials (section 9) — the server is ready and waiting;
+   web works the moment they exist.
 1. Buy the domain (blocks email, which blocks password reset).
 2. Resend + DNS records → set `RESEND_API_KEY`, `EMAIL_FROM` → **redeploy**.
 3. Sentry on API + mobile — stop finding bugs by user report.
@@ -245,3 +258,53 @@ when you start taking payments.
 9. Stripe, only when paid tickets are actually wanted.
 
 Items 1–4 are what separate "works when I am watching" from "runs without me".
+
+---
+
+## 9. Social sign-in — Google, Apple, Microsoft
+
+The server side is built and deployed. Each provider switches itself on only
+when its credentials are present, so nothing changes until you create them, and
+a half-configured provider is left out rather than offering a button that
+dead-ends. `GET /v1/config` reports which are live; the web sign-in and sign-up
+pages render buttons from that list and show nothing when it is empty.
+
+**What only you can create** (they are accounts and signing keys):
+
+*Google* — Google Cloud Console → APIs & Services → Credentials → OAuth client
+ID (Web application). Authorised redirect URI:
+`https://ekklesiabackend-bay.vercel.app/auth/callback/google`.
+Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+
+*Microsoft (Outlook)* — Entra ID → App registrations → New registration, with
+"Accounts in any organizational directory and personal Microsoft accounts" so
+Outlook.com addresses work. Redirect URI (type Web):
+`https://ekklesiabackend-bay.vercel.app/auth/callback/microsoft`.
+Set `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`; `MICROSOFT_TENANT_ID`
+defaults to `common`.
+
+*Apple* — Developer portal → Identifiers → Services ID (this is the OAuth client
+id, not the app bundle id), plus a Sign in with Apple key (.p8). Return URL:
+`https://ekklesiabackend-bay.vercel.app/auth/callback/apple`.
+Set `APPLE_CLIENT_ID` (the Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`,
+`APPLE_PRIVATE_KEY` (the .p8 contents — `\n` escapes are un-escaped for you),
+and `APPLE_BUNDLE_ID` (`com.ekklesia`) for the native flow.
+
+Remember Vercel env changes need a **redeploy** to take effect.
+
+**Two things to plan around.**
+
+*Apple's rule.* If the iOS app offers Google or Microsoft sign-in, it **must**
+also offer Sign in with Apple. So Apple is not optional once the others ship on
+mobile — it is a review requirement.
+
+*Mobile needs a native build.* The web flow is a browser redirect and works
+today. Native cannot redirect without `expo-web-browser` (and ideally
+`expo-apple-authentication` for the proper Apple sheet), which are native
+modules. Adding them means a new binary and a store submission — it cannot ride
+the over-the-air channel everything else has used. Plan it alongside the other
+native work already queued (push notifications, the QR scanner), so one build
+cycle covers all three.
+
+*Privacy policy.* Naming Google, Apple and Microsoft as third-party
+authentication providers is part of switching this on, not an afterthought.
