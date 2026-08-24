@@ -281,9 +281,15 @@ is added to a project and Vercel routes by hostname.
 
 | Hostname | Vercel project | Role |
 | --- | --- | --- |
-| `ekklesiaevents.com` | ekklesia-web | the site (primary) |
-| `www.ekklesiaevents.com` | ekklesia-web | redirect to apex |
+| `www.ekklesiaevents.com` | ekklesia-web | the site (canonical) |
+| `ekklesiaevents.com` | ekklesia-web | 308 redirect to `www` |
 | `api.ekklesiaevents.com` | ekklesiabackend | the API |
+
+As configured, the apex redirects to `www`, so **`www` is the canonical
+origin** and every URL below uses it. Flipping the primary to the bare domain
+in Vercel is fine too — just swap the values consistently, because a
+`WEB_URL` that only ever redirects will produce links with a needless hop and
+an origin that never matches.
 
 Both projects keep their `*.vercel.app` hostnames working alongside the custom
 ones, so mobile installs already in the wild keep running throughout.
@@ -301,15 +307,19 @@ ones, so mobile installs already in the wild keep running throughout.
    | Variable | Value |
    | --- | --- |
    | `BETTER_AUTH_URL` | `https://api.ekklesiaevents.com` |
-   | `TRUSTED_ORIGINS` | `https://ekklesiaevents.com,https://www.ekklesiaevents.com` |
-   | `WEB_URL` | `https://ekklesiaevents.com` |
+   | `TRUSTED_ORIGINS` | `https://www.ekklesiaevents.com,https://ekklesiaevents.com,https://ekklesia-web-indol.vercel.app` |
+   | `WEB_URL` | `https://www.ekklesiaevents.com` |
+
+   The old `*.vercel.app` web origin stays in `TRUSTED_ORIGINS` only until the
+   new domain is confirmed working; drop it in the cleanup step, since leaving
+   it is what would keep needing `SameSite=None`.
 
    **Web project:**
 
    | Variable | Value |
    | --- | --- |
    | `NEXT_PUBLIC_API_URL` | `https://api.ekklesiaevents.com` |
-   | `NEXT_PUBLIC_WEB_URL` | `https://ekklesiaevents.com` |
+   | `NEXT_PUBLIC_WEB_URL` | `https://www.ekklesiaevents.com` |
 
    `TRUSTED_ORIGINS` drives both CORS (`bootstrap.ts`) and Better Auth's origin
    check, so it must list every origin the browser actually uses. Redeploy both
@@ -320,18 +330,20 @@ ones, so mobile installs already in the wild keep running throughout.
    to the OAuth client's authorised redirect URIs. Leave the existing
    `*.vercel.app` URI in place until the migration is confirmed.
 
-4. Verify: sign in on `https://ekklesiaevents.com` in **Safari**. That is the
-   case that fails today, so it is the one worth checking.
+4. Verify: sign in on `https://www.ekklesiaevents.com` in **Safari**. That is
+   the case that fails today, so it is the one worth checking.
 
 5. Only then, in the repo: point mobile at the new API (`apps/mobile/eas.json`,
    both profiles, and the `ota:prod` script in `apps/mobile/package.json`), and
    publish with `pnpm run ota:prod`. Never a bare `eas update` — the script
    pins the public URLs, and a bare update once baked a LAN IP into production.
 
-6. Housekeeping once settled: set `advanced.defaultCookieAttributes` in
-   `apps/api/src/modules/auth/auth.ts` back to `SameSite=Lax`. Not required —
-   `None` works fine first-party — but `Lax` is the better default now that
-   nothing needs the cookie sent cross-site.
+6. Housekeeping once settled: drop the `*.vercel.app` web origin from
+   `TRUSTED_ORIGINS`, then set `advanced.defaultCookieAttributes` in
+   `apps/api/src/modules/auth/auth.ts` back to `SameSite=Lax`. Neither is
+   required — `None` works fine first-party — but `Lax` is the better default
+   once nothing needs the cookie sent cross-site, and the two go together:
+   flipping to `Lax` is what finally stops the old vercel.app URL working.
 
 Deep links still use the `ekklesia://` scheme. Universal links on
 `ekklesiaevents.com` are a separate piece of native work; batch them with push
