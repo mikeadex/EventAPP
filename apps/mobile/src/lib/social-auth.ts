@@ -1,19 +1,26 @@
+import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { api } from './api';
 import { authClient } from './auth-client';
 
 /**
- * Social sign-in for the native app.
+ * Social sign-in for the native app. Two routes, for one awkward reason.
  *
- * The flow crosses two worlds. Better Auth runs OAuth in a web view and ends
- * with a session **cookie**, but this app authenticates with a bearer token
- * from SecureStore and sends no cookies at all. So the server's
- * /v1/native-auth/handoff mints a single-use token from that cookie session and
- * bounces back into the app on the deep link; we exchange it here for a real
- * session.
+ * Better Auth's OAuth flow runs in a web view and ends with a session
+ * **cookie**, but this app authenticates with a bearer token from SecureStore
+ * and sends no cookies at all. Bridging that is what /v1/native-auth/handoff is
+ * for: it mints a single-use token from the cookie session and bounces back
+ * into the app on the deep link, and we trade it for a real session here. That
+ * is the route Google and Android Apple take.
  *
- * Going through `authClient` for the exchange is what persists the login: its
- * `onSuccess` reads the `set-auth-token` header and writes it to SecureStore,
+ * Apple on iOS skips all of it. Its native sheet returns a signed identity
+ * token directly, the server verifies it against Apple's public keys, and a
+ * session comes straight back — no web view, no cookie, nothing to hand over.
+ * Better UX and materially less machinery, so it is preferred wherever the
+ * binary has the module.
+ *
+ * Either way the exchange goes through `authClient`, and that is what persists
+ * the login: its `onSuccess` reads the `set-auth-token` header into SecureStore,
  * exactly as email sign-in does.
  */
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -32,11 +39,105 @@ export function canUseSocialSignIn(): boolean {
   return requireOptionalNativeModule('ExpoWebBrowser') != null;
 }
 
+/**
+ * Whether Apple's own sign-in sheet is available.
+ *
+ * iOS only, and gated the same way: existing binaries predate
+ * expo-apple-authentication, so this has to answer false rather than throw on
+ * import. Preferred over the web view when present — it is Face ID in a native
+ * sheet instead of a browser, and it is what App Review expects to see on iOS.
+ */
+export function canUseNativeApple(): boolean {
+  return Platform.OS === 'ios' && requireOptionalNativeModule('ExpoAppleAuthentication') != null;
+}
+
+type AppleAuthModule = {
+  AppleAuthenticationScope: { FULL_NAME: number; EMAIL: number };
+  signInAsync(options: { requestedScopes: number[] }): Promise<{
+    identityToken: string | null;
+    email?: string | null;
+    fullName?: { givenName?: string | null; familyName?: string | null } | null;
+  }>;
+};
+
+/**
+ * Sign in through Apple's native sheet.
+ *
+ * Simpler than the web-view flow it replaces: Apple hands back a signed identity
+ * token, the server verifies it against Apple's public keys, and a session comes
+ * straight back. No OAuth state cookie, no web view, and no one-time token
+ * handoff — all of which exist only because a browser session cannot be handed
+ * to a bearer-token client directly.
+ *
+ * The token's audience is the app's bundle id rather than the Services ID, which
+ * is why the server is given APPLE_BUNDLE_ID.
+ */
+async function signInWithNativeApple(): Promise<SocialResult> {
+  let credential: Awaited<ReturnType<AppleAuthModule['signInAsync']>>;
+  try {
+    // Required lazily so the module is only touched on a build that has it.
+    const Apple = require('expo-apple-authentication') as AppleAuthModule;
+    credential = await Apple.signInAsync({
+      requestedScopes: [
+        Apple.AppleAuthenticationScope.FULL_NAME,
+        Apple.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+  } catch (e) {
+    // Apple reports a dismissed sheet as an error rather than an empty result.
+    const code = (e as { code?: string } | null)?.code;
+    if (code === 'ERR_REQUEST_CANCELED' || code === 'ERR_CANCELED') {
+      return { ok: false, reason: 'cancelled' };
+    }
+    return { ok: false, reason: 'failed', message: e instanceof Error ? e.message : undefined };
+  }
+
+  if (!credential.identityToken) {
+    return { ok: false, reason: 'failed', message: 'Apple returned no identity token' };
+  }
+
+  try {
+    // Through authClient so its onSuccess captures set-auth-token into SecureStore.
+    // Name and email are sent because Apple only discloses them on the *first*
+    // authorisation ever granted to this app — miss them and the account has no
+    // name, with no second chance to ask.
+    const res = await authClient.$fetch('/sign-in/social', {
+      method: 'POST',
+      body: {
+        provider: 'apple',
+        idToken: {
+          token: credential.identityToken,
+          user: {
+            email: credential.email ?? undefined,
+            name:
+              credential.fullName?.givenName || credential.fullName?.familyName
+                ? {
+                    firstName: credential.fullName.givenName ?? undefined,
+                    lastName: credential.fullName.familyName ?? undefined,
+                  }
+                : undefined,
+          },
+        },
+      },
+    });
+    if ((res as { error?: unknown })?.error) {
+      return { ok: false, reason: 'failed', message: 'Could not complete sign-in' };
+    }
+  } catch (e) {
+    return { ok: false, reason: 'failed', message: e instanceof Error ? e.message : undefined };
+  }
+
+  return { ok: true };
+}
+
 export type SocialResult =
   | { ok: true }
   | { ok: false; reason: 'cancelled' | 'unsupported' | 'failed'; message?: string };
 
 export async function signInWithProvider(provider: string): Promise<SocialResult> {
+  // Apple's own sheet where the binary supports it; the web view is the fallback
+  // for Android and for builds without the native module.
+  if (provider === 'apple' && canUseNativeApple()) return signInWithNativeApple();
   if (!canUseSocialSignIn()) return { ok: false, reason: 'unsupported' };
 
   // Point the web view at the server's start endpoint rather than asking for a
@@ -93,11 +194,16 @@ export async function signInWithProvider(provider: string): Promise<SocialResult
 
 /** Providers this deployment can actually complete, so buttons match reality. */
 export async function fetchSocialProviders(): Promise<string[]> {
+  const web = canUseSocialSignIn();
+  const nativeApple = canUseNativeApple();
   // No point offering providers this binary cannot complete.
-  if (!canUseSocialSignIn()) return [];
+  if (!web && !nativeApple) return [];
   try {
     const c = await api<{ socialProviders?: string[] }>('/v1/config');
-    return c.socialProviders ?? [];
+    // Apple survives on either path; everything else needs the web view. The two
+    // are separate native modules, so a binary really can have one and not the
+    // other, and offering a button that dead-ends is the thing worth avoiding.
+    return (c.socialProviders ?? []).filter((id) => (id === 'apple' ? nativeApple || web : web));
   } catch {
     return [];
   }
