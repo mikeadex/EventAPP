@@ -17,13 +17,28 @@ class AuthHandlerController {
   @All('*')
   async handle(@Req() req: Request, @Res() res: Response) {
     const url = new URL(req.originalUrl, `${req.protocol}://${req.get('host')}`);
+    const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
+
+    // The raw bytes, not a re-serialisation of the parsed body. We forward the
+    // original content-type unchanged, so re-encoding as JSON produced requests
+    // that claimed to be one format and carried another. Sign in with Apple
+    // returns its callback as a cross-site `form_post`, and that arrived as a
+    // JSON string labelled application/x-www-form-urlencoded: Better Auth
+    // parsed nothing out of it, `state` and `code` were silently lost, and the
+    // callback died as state_not_found — which the error page then reported as
+    // "UNKNOWN" on a 404. Only Apple hit it, because it is the only provider
+    // that does not come back as a GET with query parameters.
+    //
+    // `rawBody` is available because both entrypoints construct Nest with
+    // `rawBody: true`. The fallback covers a body parser having run without it.
+    // Express's own types have no rawBody; Nest adds it when configured.
+    const raw = (req as Request & { rawBody?: Buffer }).rawBody;
+    const forwarded = hasBody ? (raw ?? JSON.stringify(req.body)) : undefined;
+
     const request = new Request(url, {
       method: req.method,
       headers: req.headers as Record<string, string>,
-      body:
-        req.method === 'GET' || req.method === 'HEAD'
-          ? undefined
-          : JSON.stringify(req.body),
+      body: forwarded,
     });
     const auth = await getAuth();
     const response = await auth.handler(request);
