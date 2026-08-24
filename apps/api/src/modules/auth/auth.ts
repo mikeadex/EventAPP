@@ -83,6 +83,9 @@ export function isTrustedRedirect(url: string): boolean {
   }
 }
 
+// HTTPS-only cookies, and the gate for SameSite=None below.
+const secureCookies = process.env.NODE_ENV === 'production';
+
 let cached: Promise<AuthInstance> | null = null;
 
 /**
@@ -153,7 +156,23 @@ async function createAuth() {
     },
     advanced: {
       crossSubDomainCookies: { enabled: false },
-      useSecureCookies: process.env.NODE_ENV === 'production',
+      useSecureCookies: secureCookies,
+      // Better Auth defaults its cookies to SameSite=Lax. In production the web
+      // app and this API are different *sites* — vercel.app is on the Public
+      // Suffix List — so the browser stores the session cookie at the OAuth
+      // callback (a top-level navigation) but never sends it on the web app's
+      // XHRs. Sign-in appeared to succeed and then the app still saw no user.
+      //
+      // SameSite=None is the only thing that works while the two live on
+      // unrelated domains, and it requires Secure — hence the gate. It also
+      // makes the session a third-party cookie, which Safari blocks outright:
+      // web sign-in stays broken there until web and API share a registrable
+      // domain (ekklesia.example + api.ekklesia.example), at which point this
+      // should go back to Lax. Locally both are localhost, so Lax is correct
+      // and None would need HTTPS we do not have.
+      ...(secureCookies
+        ? { defaultCookieAttributes: { sameSite: 'none' as const, secure: true } }
+        : {}),
     },
   });
 }

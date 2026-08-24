@@ -247,7 +247,9 @@ when you start taking payments.
 
 0. Social sign-in credentials (section 9) — the server is ready and waiting;
    web works the moment they exist.
-1. Buy the domain (blocks email, which blocks password reset).
+1. Buy the domain. This blocks email (and so password reset), **and it is what
+   finally fixes web sign-in in Safari** — see "The domain is a sign-in
+   dependency" below.
 2. Resend + DNS records → set `RESEND_API_KEY`, `EMAIL_FROM` → **redeploy**.
 3. Sentry on API + mobile — stop finding bugs by user report.
 4. Uptime check on `/health`.
@@ -260,6 +262,27 @@ when you start taking payments.
 Items 1–4 are what separate "works when I am watching" from "runs without me".
 
 ---
+
+### The domain is a sign-in dependency, not just an email one
+
+Web and API currently live on two unrelated `*.vercel.app` hostnames. Because
+`vercel.app` is on the Public Suffix List, the browser treats them as different
+**sites**, not merely different origins. The session cookie is therefore a
+third-party cookie from the web app's point of view.
+
+It is set `SameSite=None; Secure` so that Chrome, Edge and Firefox send it — but
+**Safari blocks third-party cookies outright**, so signing in to the web app on
+Safari (including every browser on iOS) will not stick. The mobile apps are
+unaffected: they authenticate with bearer tokens from SecureStore and send no
+cookies at all.
+
+The fix is not a code change, it is the domain. Put the web app on
+`ekklesia.example` and the API on `api.ekklesia.example` and they share a
+registrable domain, at which point the cookie is first-party everywhere and
+`advanced.defaultCookieAttributes` in `apps/api/src/modules/auth/auth.ts` should
+go back to `SameSite=Lax`.
+
+Until then, test web sign-in in Chrome.
 
 ## 9. Social sign-in — Google, Apple, Microsoft
 
