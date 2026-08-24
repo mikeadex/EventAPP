@@ -281,15 +281,18 @@ is added to a project and Vercel routes by hostname.
 
 | Hostname | Vercel project | Role |
 | --- | --- | --- |
-| `www.ekklesiaevents.com` | ekklesia-web | the site (canonical) |
-| `ekklesiaevents.com` | ekklesia-web | 308 redirect to `www` |
+| `ekklesiaevents.com` | ekklesia-web | the site (canonical) |
+| `www.ekklesiaevents.com` | ekklesia-web | 307 redirect to the apex |
 | `api.ekklesiaevents.com` | ekklesiabackend | the API |
 
-As configured, the apex redirects to `www`, so **`www` is the canonical
-origin** and every URL below uses it. Flipping the primary to the bare domain
-in Vercel is fine too — just swap the values consistently, because a
-`WEB_URL` that only ever redirects will produce links with a needless hop and
-an origin that never matches.
+The apex is the canonical origin and every URL below uses it. If the primary
+is ever flipped to `www` in Vercel, swap these values consistently — a
+`WEB_URL` that only ever redirects produces links with a needless hop and an
+origin that never matches what the browser sends.
+
+Which one is primary makes no difference to the cookie problem: the apex and
+`api.` share the registrable domain either way, which is the only thing
+`SameSite` cares about.
 
 Both projects keep their `*.vercel.app` hostnames working alongside the custom
 ones, so mobile installs already in the wild keep running throughout.
@@ -307,8 +310,8 @@ ones, so mobile installs already in the wild keep running throughout.
    | Variable | Value |
    | --- | --- |
    | `BETTER_AUTH_URL` | `https://api.ekklesiaevents.com` |
-   | `TRUSTED_ORIGINS` | `https://www.ekklesiaevents.com,https://ekklesiaevents.com,https://ekklesia-web-indol.vercel.app` |
-   | `WEB_URL` | `https://www.ekklesiaevents.com` |
+   | `TRUSTED_ORIGINS` | `https://ekklesiaevents.com,https://www.ekklesiaevents.com,https://ekklesia-web-indol.vercel.app` |
+   | `WEB_URL` | `https://ekklesiaevents.com` |
 
    The old `*.vercel.app` web origin stays in `TRUSTED_ORIGINS` only until the
    new domain is confirmed working; drop it in the cleanup step, since leaving
@@ -319,7 +322,7 @@ ones, so mobile installs already in the wild keep running throughout.
    | Variable | Value |
    | --- | --- |
    | `NEXT_PUBLIC_API_URL` | `https://api.ekklesiaevents.com` |
-   | `NEXT_PUBLIC_WEB_URL` | `https://www.ekklesiaevents.com` |
+   | `NEXT_PUBLIC_WEB_URL` | `https://ekklesiaevents.com` |
 
    `TRUSTED_ORIGINS` drives both CORS (`bootstrap.ts`) and Better Auth's origin
    check, so it must list every origin the browser actually uses. Redeploy both
@@ -330,8 +333,8 @@ ones, so mobile installs already in the wild keep running throughout.
    to the OAuth client's authorised redirect URIs. Leave the existing
    `*.vercel.app` URI in place until the migration is confirmed.
 
-4. Verify: sign in on `https://www.ekklesiaevents.com` in **Safari**. That is
-   the case that fails today, so it is the one worth checking.
+4. Verify: sign in on `https://ekklesiaevents.com` in **Safari**. That is the
+   case that fails today, so it is the one worth checking.
 
 5. Only then, in the repo: point mobile at the new API (`apps/mobile/eas.json`,
    both profiles, and the `ota:prod` script in `apps/mobile/package.json`), and
