@@ -41,3 +41,15 @@ export const CheckInSchema = z.object({
   ticketCode: z.string().min(6).max(64),
   eventId: z.string().min(1),
 });
+
+/**
+ * A host messaging everyone holding a ticket for one event.
+ *
+ * Length-capped because this lands on a lock screen: a push notification is
+ * truncated by the OS well before 500 characters, and anything longer would be
+ * written in the belief it will be read in full.
+ */
+export const AnnouncementSchema = z.object({
+  message: z.string().trim().min(1).max(500),
+});
+export type AnnouncementInput = z.infer<typeof AnnouncementSchema>;

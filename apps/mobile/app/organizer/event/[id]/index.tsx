@@ -246,6 +246,15 @@ export default function OrganizerEventScreen() {
           <Ionicons name="chevron-forward" size={18} color={color.ink[0]} />
         </Pressable>
 
+        <Pressable
+          style={styles.announceBtn}
+          onPress={() => router.push(`/organizer/event/${id}/announce`)}
+        >
+          <Ionicons name="megaphone-outline" size={18} color={color.ink[900]} />
+          <Text style={styles.announceText}>Message attendees</Text>
+          <Ionicons name="chevron-forward" size={18} color={color.ink[400]} />
+        </Pressable>
+
         {cancelled ? (
           <Text style={styles.notice}>This event is cancelled and can no longer be edited.</Text>
         ) : null}
@@ -385,6 +394,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: color.ink[500],
   },
+  announceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    borderWidth: 1,
+    borderColor: color.ink[200],
+    borderRadius: radius.md,
+    padding: spacing[4],
+  },
+  announceText: { flex: 1, fontSize: fontSize.base, color: color.ink[900], fontWeight: fontWeight.medium },
   attendeesBtn: {
     flexDirection: 'row',
     alignItems: 'center',

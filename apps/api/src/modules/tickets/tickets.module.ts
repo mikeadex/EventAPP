@@ -85,6 +85,22 @@ class TicketsController {
     return this.tickets.listForEvent(eventId);
   }
 
+  /** Message everyone holding a ticket for this event. */
+  @Post('events/:eventId/announce')
+  @UseGuards(OrgMembershipGuard)
+  @OrgScope('eventParam:eventId')
+  // EVENT_UPDATE rather than a check-in permission: door staff hold
+  // TICKET_CHECK_IN, and being able to admit people should not imply being
+  // able to push a message to every attendee.
+  @RequirePermissions(Permission.EVENT_UPDATE)
+  announce(
+    @Param('eventId') eventId: string,
+    @Req() req: AuthedOrgRequest,
+    @Body() body: unknown,
+  ) {
+    return this.tickets.announce(eventId, req.user.id, body);
+  }
+
   /** Admit a ticket at the door by its code. */
   @Post('events/:eventId/check-in')
   @UseGuards(OrgMembershipGuard)

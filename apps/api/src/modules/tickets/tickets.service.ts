@@ -6,7 +6,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { RsvpSchema, type RsvpInput } from '@ekklesia/shared';
+import {
+  RsvpSchema,
+  type RsvpInput,
+  AnnouncementSchema,
+} from '@ekklesia/shared';
 import type { Prisma } from '@prisma/client';
 import { randomId } from '../../common/random-id.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -181,6 +185,57 @@ export class TicketsService {
    * on a lock screen, so the event title carries it and the detail lives in the
    * ticket the tap opens.
    */
+  /**
+   * Message everyone holding a live ticket for this event.
+   *
+   * Ticket holders only — not saves or past attendees. Someone who booked has
+   * asked to hear about this event; anyone else has not, and a host with a
+   * megaphone pointed at people who never opted in is how an app earns itself
+   * a mute.
+   *
+   * The organiser is excluded from their own announcement, which otherwise
+   * arrives on their phone a second after they hit send and reads like a bug.
+   */
+  async announce(eventId: string, actorUserId: string, body: unknown) {
+    const input = AnnouncementSchema.parse(body);
+
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, title: true, organizationId: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+
+    const holders = await this.prisma.ticket.findMany({
+      where: { eventId, status: { in: ['RESERVED', 'ISSUED', 'CHECKED_IN'] } },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    const userIds = holders
+      .map((t) => t.userId)
+      .filter((id): id is string => !!id && id !== actorUserId);
+
+    // Written before sending: an announcement that reached people needs to be
+    // on the record whatever Expo then does, and push failures are swallowed.
+    await this.audit.write({
+      actorUserId,
+      organizationId: event.organizationId,
+      action: 'event.announce',
+      targetType: 'event',
+      targetId: eventId,
+      metadata: { recipients: userIds.length } as Prisma.InputJsonValue,
+    });
+
+    const { sent } = await this.push.sendToUsers(userIds, {
+      title: event.title,
+      body: input.message,
+      data: { type: 'event', eventId },
+    });
+
+    // `recipients` counts people, `sent` counts devices that accepted — they
+    // differ, and conflating them would overstate reach to the host.
+    return { recipients: userIds.length, sent };
+  }
+
   private async sendRsvpPush(userId: string, eventId: string, ticketId: string | undefined) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
