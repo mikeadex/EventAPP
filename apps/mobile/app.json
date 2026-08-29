@@ -61,7 +61,13 @@
           }
         }
       ],
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Ekklesia uses the camera to scan attendee tickets at check-in."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -15,7 +15,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
-import { api, ApiError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { checkInTicket } from '@/lib/check-in';
+import { canUseScanner } from '@/lib/scanner';
 import { EmptyState, ErrorState } from '@/components/states';
 
 interface Attendee {
@@ -37,19 +39,6 @@ interface AttendeeList {
  * An already-admitted ticket is the common case on a door, so the 409's
  * structured payload is rendered as a local time rather than an ISO string.
  */
-function describeFailure(err: unknown): string {
-  if (!(err instanceof ApiError)) return 'Check-in failed';
-  const payload = err.payload as { checkedInAt?: string; name?: string } | null;
-  if (err.status === 409 && payload?.checkedInAt) {
-    const at = new Date(payload.checkedInAt).toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    return `${payload.name ?? 'This ticket'} was already checked in at ${at}`;
-  }
-  return err.message;
-}
-
 export default function AttendeesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -92,15 +81,14 @@ export default function AttendeesScreen() {
     setPending(true);
     setResult(null);
     try {
-      const res = await api<{ name: string }>(`/v1/events/${id}/check-in`, {
-        method: 'POST',
-        body: { code: trimmed },
-      });
-      setResult({ ok: true, text: `${res.name} checked in` });
-      setCode('');
-      await load();
-    } catch (e) {
-      setResult({ ok: false, text: describeFailure(e) });
+      const res = await checkInTicket(id, trimmed);
+      if (res.ok) {
+        setResult({ ok: true, text: `${res.name} checked in` });
+        setCode('');
+        await load();
+      } else {
+        setResult({ ok: false, text: res.message });
+      }
     } finally {
       setPending(false);
       // Stay in the field so codes can be entered one after another.
@@ -150,6 +138,18 @@ export default function AttendeesScreen() {
           <Text style={styles.checkBtnText}>{pending ? '…' : 'Check in'}</Text>
         </Pressable>
       </View>
+
+      {/* Withheld on builds without expo-camera, exactly as the social buttons
+          are — this screen's JS reaches older installs over the air. */}
+      {canUseScanner() && (
+        <Pressable
+          style={styles.scanBtn}
+          onPress={() => router.push(`/organizer/event/${id}/scan`)}
+        >
+          <Ionicons name="qr-code-outline" size={18} color={color.ink[900]} />
+          <Text style={styles.scanBtnText}>Scan tickets</Text>
+        </Pressable>
+      )}
 
       {result ? (
         <View style={[styles.result, !result.ok && styles.resultBad]}>
@@ -263,6 +263,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkBtnText: { color: color.ink[0], fontWeight: fontWeight.semibold },
+  scanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    borderWidth: 1,
+    borderColor: color.ink[200],
+    borderRadius: radius.full,
+    paddingVertical: spacing[3],
+    marginTop: spacing[3],
+  },
+  scanBtnText: { fontSize: fontSize.base, color: color.ink[900], fontWeight: fontWeight.medium },
   result: {
     flexDirection: 'row',
     alignItems: 'center',
