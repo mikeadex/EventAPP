@@ -659,3 +659,21 @@ model Device {
   @@index([userId])
   @@index([disabledAt])
 }
+
+/// One row per notification we have already sent, so a retry cannot send twice.
+///
+/// The reminder job runs on a cron and is therefore at-least-once: a timeout, a
+/// redeploy mid-run, or an overlapping invocation would otherwise notify the
+/// same person repeatedly about the same event. The unique constraint is the
+/// guard — an insert that collides means somebody else already sent it.
+model NotificationLog {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  /// e.g. "event.reminder"
+  kind      String
+  sentAt    DateTime @default(now())
+
+  @@unique([userId, eventId, kind])
+  @@index([eventId, kind])
+}

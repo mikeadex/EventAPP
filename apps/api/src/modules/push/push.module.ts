@@ -13,6 +13,8 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuthGuard, AuthedRequest } from '../auth/auth.guard.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { PushService } from './push.service.js';
+import { RemindersService } from './reminders.service.js';
+import { CronController } from './cron.controller.js';
 
 const RegisterSchema = z.object({
   token: z.string().min(1),
@@ -63,8 +65,8 @@ class DevicesController {
 
 @Module({
   imports: [AuthModule],
-  controllers: [DevicesController],
-  providers: [PrismaService, PushService],
+  controllers: [DevicesController, CronController],
+  providers: [PrismaService, PushService, RemindersService],
   exports: [PushService],
 })
 export class PushModule {}

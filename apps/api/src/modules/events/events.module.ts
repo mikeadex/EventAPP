@@ -20,6 +20,7 @@ import {
   type AuthedOrgRequest,
 } from '../../common/org-membership.guard.js';
 import { EventsService } from './events.service.js';
+import { PushModule } from '../push/push.module.js';
 
 @Controller()
 class EventsController {
@@ -112,6 +113,7 @@ class EventsController {
 }
 
 @Module({
+  imports: [PushModule],
   controllers: [EventsController],
   providers: [EventsService],
   exports: [EventsService],

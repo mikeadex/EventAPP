@@ -9,5 +9,16 @@
       "includeFiles": "{dist,lib}/**"
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index.js" }]
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index.js"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/v1/cron/reminders",
+      "schedule": "*/30 * * * *"
+    }
+  ]
 }

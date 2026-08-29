@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -18,12 +19,16 @@ import type { Prisma } from '@prisma/client';
 import { randomId } from '../../common/random-id.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditLogService } from '../../common/audit-log.service.js';
+import { PushService } from '../push/push.service.js';
 
 @Injectable()
 export class EventsService {
+  private readonly logger = new Logger(EventsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditLogService,
+    private readonly push: PushService,
   ) {}
 
   // ─── Public discovery ────────────────────────────────────────────────────
@@ -384,7 +389,90 @@ export class EventsService {
       targetType: 'event',
       targetId: eventId,
     });
+
+    // After the commit, and never allowed to fail the publish.
+    void this.notifyPastAttendees(evt.organizationId, eventId, actorUserId).catch((err) => {
+      this.logger.warn(`Publish push failed: ${(err as Error).message}`);
+    });
+
     return updated;
+  }
+
+  /**
+   * Tell people who have been to this host's events before that there is a new
+   * one.
+   *
+   * Scoped to the last 12 months on purpose. "You came to something two years
+   * ago" is not a relationship, and notifying on it is the difference between a
+   * useful heads-up and the reason someone turns notifications off. This is a
+   * stand-in for following the host, which is still deferred — when Phase B
+   * lands, this should key off follows instead, and the recency window can go.
+   */
+  private async notifyPastAttendees(
+    organizationId: string,
+    eventId: string,
+    actorUserId: string,
+  ) {
+    const [event, org] = await Promise.all([
+      this.prisma.event.findUnique({ where: { id: eventId }, select: { title: true } }),
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { name: true },
+      }),
+    ]);
+    if (!event || !org) return;
+
+    const since = new Date();
+    since.setMonth(since.getMonth() - 12);
+
+    const past = await this.prisma.ticket.findMany({
+      where: {
+        event: { organizationId, startsAt: { gte: since }, id: { not: eventId } },
+        status: { in: ['ISSUED', 'CHECKED_IN'] },
+      },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    const userIds = past
+      .map((t) => t.userId)
+      .filter((uid): uid is string => !!uid && uid !== actorUserId);
+    if (userIds.length === 0) return;
+
+    await this.push.sendToUsers(userIds, {
+      title: org.name,
+      body: `New event: ${event.title}`,
+      data: { type: 'event', eventId },
+    });
+  }
+
+  /**
+   * Tell ticket holders an event is off.
+   *
+   * The most important notification in the app — someone who does not get this
+   * travels to a venue for nothing. Sent to holders rather than past attendees,
+   * and the sender is not excluded: an organiser cancelling their own event
+   * seeing the confirmation land is reassuring rather than confusing.
+   */
+  private async notifyCancellation(eventId: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { title: true },
+    });
+    if (!event) return;
+
+    const holders = await this.prisma.ticket.findMany({
+      where: { eventId, status: { in: ['RESERVED', 'ISSUED', 'CHECKED_IN'] } },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    const userIds = holders.map((t) => t.userId).filter((uid): uid is string => !!uid);
+    if (userIds.length === 0) return;
+
+    await this.push.sendToUsers(userIds, {
+      title: 'Event cancelled',
+      body: event.title,
+      data: { type: 'event', eventId },
+    });
   }
 
   async cancel(eventId: string, actorUserId: string, reason: string | undefined) {
@@ -408,6 +496,12 @@ export class EventsService {
       targetId: eventId,
       metadata: reason ? ({ reason } as Prisma.InputJsonValue) : undefined,
     });
+
+    // After the commit, and never allowed to fail the cancellation.
+    void this.notifyCancellation(eventId).catch((err) => {
+      this.logger.warn(`Cancellation push failed: ${(err as Error).message}`);
+    });
+
     return updated;
   }
 
