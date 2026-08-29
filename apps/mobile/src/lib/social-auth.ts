@@ -61,6 +61,30 @@ type AppleAuthModule = {
 };
 
 /**
+ * Tell the client's session store to refetch.
+ *
+ * `onSuccess` in auth-client.ts persists the bearer token, but that is a fetch
+ * hook and says nothing to the reactive session atom. Better Auth refetches
+ * that atom only for a fixed list of paths — /sign-in/email, /sign-up/email,
+ * /sign-out and a few others — and neither /sign-in/social nor
+ * /one-time-token/verify is on it. So a social sign-in genuinely succeeded, the
+ * token was stored, and `useSession()` still returned null: signed in, yet every
+ * gated screen still asking you to sign in.
+ *
+ * Nudging the signal directly is what the client's own sign-in actions do.
+ */
+function refreshSession(): void {
+  try {
+    (authClient as unknown as { $store: { notify: (signal: string) => void } }).$store.notify(
+      '$sessionSignal',
+    );
+  } catch {
+    // Never fail a completed sign-in over a refresh nudge; the session is real
+    // either way and the next app launch reads it from SecureStore.
+  }
+}
+
+/**
  * Sign in through Apple's native sheet.
  *
  * Simpler than the web-view flow it replaces: Apple hands back a signed identity
@@ -127,6 +151,7 @@ async function signInWithNativeApple(): Promise<SocialResult> {
     return { ok: false, reason: 'failed', message: e instanceof Error ? e.message : undefined };
   }
 
+  refreshSession();
   return { ok: true };
 }
 
@@ -189,6 +214,7 @@ export async function signInWithProvider(provider: string): Promise<SocialResult
     return { ok: false, reason: 'failed', message: e instanceof Error ? e.message : undefined };
   }
 
+  refreshSession();
   return { ok: true };
 }
 
