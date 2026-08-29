@@ -250,9 +250,20 @@ when you start taking payments.
 1. ~~Buy the domain, migrate onto it~~ — done: `ekklesiaevents.com`. Web
    sign-in is confirmed working on it. Kept below as a record of what was
    changed and why.
-2. Resend + DNS records → set `RESEND_API_KEY`, `EMAIL_FROM` → **redeploy**.
-   Then register that sending domain with Apple's Private Email Relay, or mail
-   to "Hide My Email" users is silently dropped — see section 9.
+2. ~~Resend~~ — done. Sending from `Ekklesia <david@ekklesiaevents.com>`,
+   password reset confirmed arriving.
+
+   **Still outstanding: register that sender with Apple's Private Email
+   Relay** (developer.apple.com → Services → Sign in with Apple for Email
+   Communication). Until then, mail to "Hide My Email" users is dropped by
+   Apple with no bounce — see section 9.
+
+   Worth remembering how this component fails: `EmailService.send` logs and
+   returns `{ id: null }` rather than throwing, because the caller has already
+   committed the user-facing action. That is the right behaviour, but it means
+   a broken mailer is invisible from the outside — the API returns 200 either
+   way, and Better Auth returns 200 for unknown addresses too so accounts
+   cannot be enumerated. Resend's dashboard is the real log.
 3. Sentry on API + mobile — stop finding bugs by user report.
 4. Uptime check on `/health`.
 5. Confirm Neon backup retention; add `pg_dump` if the window is thin.
