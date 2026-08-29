@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { ToastHost } from '@/components/toast';
+import { PushHost } from '@/components/push-host';
 
 /**
  * Root error boundary — expo-router renders this (instead of a redbox/blank
@@ -41,6 +42,8 @@ export default function RootLayout() {
       </Stack>
       {/* Single host for showToast() — overlays every screen. */}
       <ToastHost />
+      {/* Renders nothing; keeps the push token fresh and routes taps. */}
+      <PushHost />
     </View>
   );
 }

@@ -14,6 +14,7 @@ import {
 import type { Request } from 'express';
 import { Permission } from '@ekklesia/shared';
 import { AuthGuard } from '../auth/auth.guard.js';
+import { PushModule } from '../push/push.module.js';
 import type { AuthedRequest } from '../auth/auth.guard.js';
 import { OrgScope, RequirePermissions } from '../../common/decorators.js';
 import {
@@ -103,6 +104,7 @@ class TicketsController {
 }
 
 @Module({
+  imports: [PushModule],
   controllers: [TicketsController],
   providers: [TicketsService],
   exports: [TicketsService],

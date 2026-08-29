@@ -25,6 +25,7 @@ import { useSession } from '@/lib/auth-client';
 import { api, ApiError } from '@/lib/api';
 import { FadeIn, Skeleton } from '@/components/states';
 import { showToast } from '@/components/toast';
+import { registerForPush } from '@/lib/push';
 import { locationLabel, locationLine, locationMode } from '@/lib/event-location';
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -246,6 +247,11 @@ export default function EventDetailScreen() {
       setRsvpTicketId(res.tickets[0]?.id ?? null);
       setShowMe(false);
       setCelebrate(true);
+      // The only moment where asking for notifications explains itself: they
+      // have just committed to being somewhere, so a reminder is obviously
+      // wanted. iOS grants one prompt per install, so it is spent here rather
+      // than on launch. Fire-and-forget — declining is a choice, not an error.
+      void registerForPush({ prompt: true });
     } catch (e) {
       // The server refusing a duplicate is confirmation, not an error —
       // settle into the "going" state instead of showing a red message.

@@ -42,6 +42,7 @@ model User {
   tickets          Ticket[]
   donations        Donation[]
   savedEvents      SavedEvent[]
+  devices          Device[]
   reportsFiled     Report[]               @relation("ReportsFiled")
   moderationActs   ModerationAction[]
   notificationPrefs NotificationPreference?
@@ -633,4 +634,28 @@ model Consent {
   revokedAt DateTime?
 
   @@index([userId, kind])
+}
+
+/// A device that can receive push notifications.
+///
+/// Keyed on the Expo push token rather than a device id: the token is what Expo
+/// addresses, it can change on reinstall, and the same physical phone signing in
+/// as a different person must not inherit the previous session's notifications —
+/// so the token row is reassigned to whoever registers it last.
+model Device {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Expo push token, e.g. ExponentPushToken[xxxxxxxx]
+  token         String   @unique
+  platform      String   // "ios" | "android"
+  /// Cleared when Expo reports the token dead, so we stop sending to it without
+  /// losing the row and its history.
+  disabledAt    DateTime?
+  lastSeenAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([disabledAt])
 }

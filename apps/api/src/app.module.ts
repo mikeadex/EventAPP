@@ -17,6 +17,7 @@ import { PaymentsModule } from './modules/payments/payments.module.js';
 import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module.js';
 import { ModerationModule } from './modules/moderation/moderation.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
+import { PushModule } from './modules/push/push.module.js';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AdminModule } from './modules/admin/admin.module.js';
     ModerationModule,
     AdminModule,
     UploadsModule,
+    PushModule,
   ],
 })
 export class AppModule {}

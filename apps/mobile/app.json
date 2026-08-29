@@ -67,6 +67,12 @@
         {
           "cameraPermission": "Ekklesia uses the camera to scan attendee tickets at check-in."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#131011"
+        }
       ]
     ],
     "experiments": {

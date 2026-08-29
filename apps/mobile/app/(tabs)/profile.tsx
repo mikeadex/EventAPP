@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { signOut, useSession } from '@/lib/auth-client';
+import { unregisterFromPush } from '@/lib/push';
 import { api } from '@/lib/api';
 
 function MenuRow({
@@ -85,6 +86,10 @@ export default function ProfileScreen() {
   const initial = (session.user.name ?? session.user.email ?? '?').charAt(0).toUpperCase();
 
   async function doSignOut() {
+    // First, while the session is still valid — the call is authenticated.
+    // Otherwise this phone keeps receiving the previous account's
+    // notifications, which is a privacy problem rather than an annoyance.
+    await unregisterFromPush();
     await signOut();
     router.replace('/(tabs)');
   }

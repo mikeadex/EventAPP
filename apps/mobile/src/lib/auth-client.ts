@@ -81,7 +81,14 @@ export const {
   sendVerificationEmail,
 } = authClient;
 
-/** Sign out: clear the server session AND the locally stored token. */
+/**
+ * Sign out: clear the server session AND the locally stored token.
+ *
+ * Push de-registration is deliberately *not* here. push.ts imports api.ts,
+ * which imports this file, so calling it from here would close a cycle. The
+ * sign-out UI calls `unregisterFromPush()` first instead — which is also where
+ * it belongs, since it has to happen while the session is still valid.
+ */
 export async function signOut(): Promise<void> {
   try {
     await authClient.signOut();

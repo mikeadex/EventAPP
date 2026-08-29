@@ -12,6 +12,7 @@ import { randomId } from '../../common/random-id.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditLogService } from '../../common/audit-log.service.js';
 import { EmailService } from '../email/email.service.js';
+import { PushService } from '../push/push.service.js';
 import { rsvpConfirmationEmail } from '../email/templates/rsvp-confirmation.js';
 
 @Injectable()
@@ -22,6 +23,7 @@ export class TicketsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditLogService,
     private readonly email: EmailService,
+    private readonly push: PushService,
   ) {}
 
   /**
@@ -156,6 +158,12 @@ export class TicketsService {
     // Fire-and-forget email confirmation. Runs after the transaction commits
     // so the ticket is durable even if Resend hiccups. Errors are swallowed
     // by EmailService.
+    // Same fire-and-forget treatment as the email, and for the same reason:
+    // the RSVP is already durable, and no notification is worth failing it.
+    void this.sendRsvpPush(userId, eventId, result.tickets[0]?.id).catch((err) => {
+      this.logger.warn(`RSVP push dispatch failed: ${(err as Error).message}`);
+    });
+
     void this.sendRsvpConfirmation(userId, result.tickets[0]?.id).catch((err) => {
       this.logger.warn(`RSVP email dispatch failed: ${(err as Error).message}`);
     });
@@ -168,6 +176,26 @@ export class TicketsService {
    * record (and recipient email) from the DB rather than trusting in-memory
    * state, so any post-commit mutations are reflected.
    */
+  /**
+   * Confirm the RSVP on the device. Deliberately terse — a notification is read
+   * on a lock screen, so the event title carries it and the detail lives in the
+   * ticket the tap opens.
+   */
+  private async sendRsvpPush(userId: string, eventId: string, ticketId: string | undefined) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { title: true },
+    });
+    if (!event) return;
+    await this.push.sendToUsers([userId], {
+      title: "You're going",
+      body: event.title,
+      // Routed on tap: straight to the ticket, which is what someone opening
+      // this notification actually wants.
+      data: ticketId ? { type: 'ticket', ticketId } : { type: 'event', eventId },
+    });
+  }
+
   private async sendRsvpConfirmation(userId: string, ticketId: string | undefined) {
     if (!ticketId) return;
     const ticket = await this.prisma.ticket.findUnique({
