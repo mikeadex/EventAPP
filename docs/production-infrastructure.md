@@ -297,7 +297,27 @@ when you start taking payments.
    buttons hidden until 27 August — `canUseSocialSignIn()` found no
    `ExpoWebBrowser` in a binary predating the dependency, and withheld the
    buttons rather than crashing on tap.
-9. Stripe, only when paid tickets are actually wanted.
+9. Stripe — see section 10.
+
+### Future: announcement delivery report
+
+When a host sends an announcement, email them a short summary afterwards:
+how many attendees it reached, how many devices accepted it, and how many
+could not be delivered.
+
+Worth doing because the send is deliberately opaque right now. `PushService`
+swallows failures by design, so a host who messages 40 attendees and reaches 12
+has no way to know. The numbers already exist — `announce()` returns
+`recipients` and `sent`, and they differ for real reasons: people with
+notifications off, tokens retired as `DeviceNotRegistered`, attendees who have
+never opened the app on a phone.
+
+Two things to get right when building it. The report should explain the gap
+rather than just state it, or "sent to 12 of 40" reads as a bug. And it should
+be honest that Expo's ticket only means *accepted for delivery* — the receipt
+that confirms the device actually got it is fetched separately, about a day
+later, which is a second job if the number needs to be true rather than
+indicative.
 
 Items 1–4 are what separate "works when I am watching" from "runs without me".
 
