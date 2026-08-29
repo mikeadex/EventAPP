@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { router, Link } from 'expo-router';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
-import { signIn } from '@/lib/auth-client';
+import { signIn, sendVerificationEmail } from '@/lib/auth-client';
 import { SocialSignIn } from '@/components/social-sign-in';
 
 export default function SignInScreen() {
@@ -19,17 +19,39 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Set only for EMAIL_NOT_VERIFIED, so the offer to resend appears exactly
+  // when it is the thing standing in the way.
+  const [unverified, setUnverified] = useState(false);
+  const [resent, setResent] = useState(false);
 
   async function submit() {
     setPending(true);
     setError(null);
+    setUnverified(false);
+    setResent(false);
     const res = await signIn.email({ email, password });
     setPending(false);
     if (res.error) {
-      setError(res.error.message ?? 'Sign-in failed');
+      const code = (res.error as { code?: string }).code;
+      setUnverified(code === 'EMAIL_NOT_VERIFIED');
+      setError(
+        code === 'EMAIL_NOT_VERIFIED'
+          ? 'Confirm your email before signing in. Check your inbox for the link.'
+          : (res.error.message ?? 'Sign-in failed'),
+      );
       return;
     }
     router.replace('/(tabs)');
+  }
+
+  /** Without this, losing the confirmation email leaves the account unusable. */
+  async function resend() {
+    setPending(true);
+    await sendVerificationEmail({ email }).catch(() => {
+      /* Same generic outcome either way — never reveal whether the address exists. */
+    });
+    setPending(false);
+    setResent(true);
   }
 
   return (
@@ -60,6 +82,12 @@ export default function SignInScreen() {
       />
 
       {error && <Text style={styles.error}>{error}</Text>}
+      {unverified && !resent && (
+        <Pressable onPress={() => void resend()} disabled={pending} style={styles.resend}>
+          <Text style={styles.link}>Resend confirmation email</Text>
+        </Pressable>
+      )}
+      {resent && <Text style={styles.sent}>Confirmation email sent — check your inbox.</Text>}
 
       <Link href="/auth/forgot-password" style={styles.forgot}>
         <Text style={styles.link}>Forgot password?</Text>
@@ -101,6 +129,8 @@ const styles = StyleSheet.create({
     color: color.ink[900],
   },
   error: { color: color.danger, marginBottom: spacing[3], fontSize: fontSize.sm },
+  resend: { marginBottom: spacing[3] },
+  sent: { color: color.ink[500], marginBottom: spacing[3], fontSize: fontSize.sm },
   forgot: { alignSelf: 'flex-end', marginBottom: spacing[4] },
   btn: {
     backgroundColor: color.brand[600],

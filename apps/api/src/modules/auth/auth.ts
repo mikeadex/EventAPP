@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { useDeadConnectionRetry } from '../../prisma/db-retry.js';
 import { EmailService } from '../email/email.service.js';
 import { passwordResetEmail } from '../email/templates/password-reset.js';
+import { verifyEmailTemplate } from '../email/templates/verify-email.js';
 import { buildSocialProviders } from './social-providers.js';
 
 /**
@@ -42,6 +43,7 @@ useDeadConnectionRetry(prisma);
 const emailService = new EmailService();
 
 const RESET_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
+const VERIFY_TOKEN_TTL_SECONDS = 60 * 60 * 24; // 1 day — signing up is not always finished at a desk
 
 // Origins the API will accept auth requests from. Includes the mobile deep-link
 // scheme so the native app's bearer-token flow is trusted.
@@ -126,9 +128,36 @@ async function createAuth() {
     ],
     // Only providers whose credentials are present; see social-providers.ts.
     socialProviders: buildSocialProviders(),
+    // Verification applies to email/password signups only. Google and Apple
+    // assert the address themselves, and Better Auth marks those verified on
+    // the provider's word — so a social sign-in is never asked to confirm.
+    //
+    // Accounts predating this were backfilled to emailVerified = true by
+    // migration, rather than being locked out of an app they already use.
+    emailVerification: {
+      sendOnSignUp: true,
+      // Straight into the app once confirmed, rather than stopping on a page
+      // that only says "verified" and leaves them to find their way back.
+      autoSignInAfterVerification: true,
+      expiresIn: VERIFY_TOKEN_TTL_SECONDS,
+      sendVerificationEmail: async ({ user, url }) => {
+        const { subject, html, text } = verifyEmailTemplate({
+          url,
+          name: user.name,
+          expiresInLabel: '24 hours',
+        });
+        await emailService.send({
+          to: user.email,
+          subject,
+          html,
+          text,
+          tags: [{ name: 'type', value: 'verify-email' }],
+        });
+      },
+    },
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: false, // flip on once email provider is wired
+      requireEmailVerification: true,
       minPasswordLength: 12,
       maxPasswordLength: 128,
       resetPasswordTokenExpiresIn: RESET_TOKEN_TTL_SECONDS,

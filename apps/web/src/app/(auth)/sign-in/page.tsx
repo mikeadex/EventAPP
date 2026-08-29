@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from '@/lib/auth-client';
+import { signIn, sendVerificationEmail } from '@/lib/auth-client';
 import { SocialSignIn } from '@/components/social-sign-in';
 
 export default function SignInPage() {
@@ -12,19 +12,41 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Set only for EMAIL_NOT_VERIFIED, so the offer to resend appears exactly
+  // when it is the thing standing in the way.
+  const [unverified, setUnverified] = useState(false);
+  const [resent, setResent] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setPending(true);
     setError(null);
+    setUnverified(false);
+    setResent(false);
     const res = await signIn.email({ email, password });
     setPending(false);
     if (res.error) {
-      setError(res.error.message ?? 'Sign-in failed');
+      const code = (res.error as { code?: string }).code;
+      setUnverified(code === 'EMAIL_NOT_VERIFIED');
+      setError(
+        code === 'EMAIL_NOT_VERIFIED'
+          ? 'Confirm your email before signing in. Check your inbox for the link.'
+          : (res.error.message ?? 'Sign-in failed'),
+      );
       return;
     }
     router.push('/');
     router.refresh();
+  }
+
+  /** Without this, losing the confirmation email leaves the account unusable. */
+  async function resend() {
+    setPending(true);
+    await sendVerificationEmail({ email, callbackURL: '/' }).catch(() => {
+      /* Same generic outcome either way — never reveal whether the address exists. */
+    });
+    setPending(false);
+    setResent(true);
   }
 
   return (
@@ -61,6 +83,19 @@ export default function SignInPage() {
           <p role="alert" className="text-sm text-danger">
             {error}
           </p>
+        )}
+        {unverified && !resent && (
+          <button
+            type="button"
+            onClick={() => void resend()}
+            disabled={pending}
+            className="text-sm font-medium text-brand-600 underline disabled:opacity-60"
+          >
+            Resend confirmation email
+          </button>
+        )}
+        {resent && (
+          <p className="text-sm text-ink-500">Confirmation email sent — check your inbox.</p>
         )}
         <button
           type="submit"

@@ -78,6 +78,7 @@ export const {
   resetPassword,
   updateUser,
   changePassword,
+  sendVerificationEmail,
 } = authClient;
 
 /** Sign out: clear the server session AND the locally stored token. */
