@@ -245,8 +245,8 @@ when you start taking payments.
 
 ## 8. Suggested order of work
 
-0. Social sign-in credentials (section 9) — the server is ready and waiting;
-   web works the moment they exist.
+0. ~~Social sign-in~~ — done. Google and Apple are live on web, iOS and
+   Android. Microsoft is still unconfigured and entirely optional.
 1. ~~Buy the domain, migrate onto it~~ — done: `ekklesiaevents.com`. Web
    sign-in is confirmed working on it. Kept below as a record of what was
    changed and why.
@@ -258,23 +258,19 @@ when you start taking payments.
 5. Confirm Neon backup retention; add `pg_dump` if the window is thin.
 6. Cloudflare R2 → the six `S3_*` vars → redeploy → organiser uploads work.
 7. ICO registration + DPIA + solicitor review of the legal pages.
-8. **The batched native build.** Several things now wait on one new binary,
-   and none of them can arrive over the air, because EAS Update ships
-   JavaScript and every one of these needs a native module:
-   - Social sign-in on mobile. The buttons are withheld on the current build
-     — `canUseSocialSignIn()` finds no `ExpoWebBrowser`, which is deliberate:
-     the alternative was a button that red-screened when tapped. Apple on iOS
-     additionally uses `expo-apple-authentication` and the `usesAppleSignIn`
-     entitlement; both are committed and neither has run on a device yet.
-   - Push notifications.
-   - The QR scanner for check-in.
+8. **The next native build.** Social sign-in shipped in the build of
+   2026-08-27 (iOS in TestFlight, Android `.aab` on EAS), so what remains for
+   a future binary is:
+   - Push notifications — not started, no dependency yet.
+   - The QR scanner for check-in — not started, no dependency yet.
+   - Universal links on `ekklesiaevents.com`, if the `ekklesia://` scheme is
+     ever to be replaced.
 
-   Sequencing that matters: `eas.json` already points both profiles at
-   `api.ekklesiaevents.com`, so the build picks up the new domain by itself.
-   Existing installs keep working on the old `*.vercel.app` hostname until
-   then, and an OTA can move them early if wanted — but it will not give them
-   the buttons. Apple's rule bites here too: the moment this build offers
-   Google on iOS it must also offer Sign in with Apple, which it does.
+   Remember the dividing line: EAS Update ships JavaScript, so anything
+   needing a native module waits for a build. That is what kept the sign-in
+   buttons hidden until 27 August — `canUseSocialSignIn()` found no
+   `ExpoWebBrowser` in a binary predating the dependency, and withheld the
+   buttons rather than crashing on tap.
 9. Stripe, only when paid tickets are actually wanted.
 
 Items 1–4 are what separate "works when I am watching" from "runs without me".
@@ -289,13 +285,14 @@ reasoning matters if the hostnames ever move again.
 The domain was not only an email dependency — it is what fixed web sign-in in
 Safari.
 
-**Why.** Cookies are scoped by *registrable domain*, not by origin. Today the
-web app and the API share only `vercel.app`, which is on the Public Suffix
-List — so the browser counts them as different **sites** and the session cookie
-is third-party. It is currently sent `SameSite=None; Secure` to work around
-that, which Chrome, Edge and Firefox honour but Safari blocks outright (on iOS
-that means every browser, since they all use WebKit). Once the two hostnames
-share `ekklesiaevents.com` the cookie is first-party and the problem is gone.
+**Why.** Cookies are scoped by *registrable domain*, not by origin. Before the
+move, the web app and the API shared only `vercel.app`, which is on the Public
+Suffix List — so the browser counted them as different **sites** and the session
+cookie was third-party. `SameSite=None; Secure` worked around it for Chrome,
+Edge and Firefox, but Safari blocks third-party cookies outright (on iOS that
+means every browser, since they all use WebKit). Now that both hostnames share
+`ekklesiaevents.com` the cookie is first-party and the setting is back to
+`Lax`.
 
 **Hostname → project.** A domain is not assigned to one project; each hostname
 is added to a project and Vercel routes by hostname.
@@ -379,6 +376,27 @@ Deep links still use the `ekklesia://` scheme. Universal links on
 notifications rather than doing them here.
 
 ## 9. Social sign-in — Google, Apple, Microsoft
+
+**Status: Google and Apple are live** on web, iOS and Android as of
+2026-08-27. Microsoft remains unconfigured and optional. What follows is the
+setup record, kept because the failure modes were expensive to find.
+
+**One thing worth knowing if the Apple key is ever rotated.** Better Auth does
+not build Apple's client secret at 1.6.11 — `AppleOptions` takes `clientId`,
+`appBundleIdentifier` and `audience`, and inherits a required `clientSecret`.
+Give it a team id and private key and it ignores them silently, then fails
+every sign-in with `CLIENT_ID_AND_SECRET_REQUIRED`. `social-providers.ts`
+mints the ES256 assertion itself. If a future upgrade starts building it, that
+code should go — but check, do not assume.
+
+**And a diagnostic dead end, so nobody repeats it.** Apple validates the
+authorization code *before* the client credentials, so a token exchange with a
+fake code returns `invalid_grant` even when the credentials are entirely
+wrong. There is no way to test an Apple credential set without a real
+sign-in — not via the token endpoint, not via `/auth/revoke`. If sign-in fails
+with `invalid_client`, check the four values against the portal; do not try to
+probe Apple for an answer.
+
 
 The server side is built and deployed. Each provider switches itself on only
 when its credentials are present, so nothing changes until you create them, and
