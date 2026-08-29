@@ -23,7 +23,8 @@
         "image": "latest"
       },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "image": "latest"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.ekklesiaevents.com",
@@ -37,7 +38,8 @@
       "channel": "production",
       "autoIncrement": true,
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "image": "latest"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.ekklesiaevents.com",
