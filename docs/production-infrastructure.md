@@ -269,13 +269,28 @@ when you start taking payments.
 5. Confirm Neon backup retention; add `pg_dump` if the window is thin.
 6. Cloudflare R2 → the six `S3_*` vars → redeploy → organiser uploads work.
 7. ICO registration + DPIA + solicitor review of the legal pages.
-8. **The next native build.** Social sign-in shipped in the build of
-   2026-08-27 (iOS in TestFlight, Android `.aab` on EAS), so what remains for
-   a future binary is:
-   - Push notifications — not started, no dependency yet.
-   - The QR scanner for check-in — not started, no dependency yet.
+8. **The next native build.** Social sign-in shipped 2026-08-27. Push
+   notifications and the QR scanner are now built and deployed server-side,
+   but **neither can reach a device without a new binary** — both need native
+   modules, and EAS Update ships JavaScript only. What is waiting:
+   - **Push notifications.** All four triggers are live on the API: RSVP
+     confirmation, host announcements, event reminders (Vercel cron, every 30
+     minutes, needs `CRON_SECRET`), and new-event alerts to people who
+     attended that host in the last 12 months. Cancellations notify ticket
+     holders too. The client registers a token after an RSVP — the one moment
+     where asking for permission explains itself, and iOS grants exactly one
+     prompt per install.
+   - **The QR scanner.** Uses the check-in API that already existed.
    - Universal links on `ekklesiaevents.com`, if the `ekklesia://` scheme is
      ever to be replaced.
+
+   Both are gated on `requireOptionalNativeModule`, so on the current build the
+   buttons are simply absent rather than crashing — which reads as "the feature
+   is missing" rather than as a bug.
+
+   **New-event alerts stand in for following a host.** Phase B (follows) is
+   still deferred, so they key off past attendance with a 12-month window.
+   When follows land, that should key off them and the window can go.
 
    Remember the dividing line: EAS Update ships JavaScript, so anything
    needing a native module waits for a build. That is what kept the sign-in
