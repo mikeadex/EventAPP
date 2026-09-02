@@ -56,7 +56,7 @@ The code reads thirteen more. Each missing group disables a real feature:
 | Env vars | Feature | Behaviour today (verified in code) |
 |---|---|---|
 | `RESEND_API_KEY`, `EMAIL_FROM` | All transactional email | **Silently logs instead of sending.** Password reset is a dead end — the user gets no email and no error. Highest-impact gap. |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`, `S3_PUBLIC_BASE` | Organiser image uploads | `POST /v1/uploads/sign` returns **503**. Event covers can only be external URLs. |
+| ~~`S3_*`~~ | Organiser image uploads | **Done** — Backblaze B2, live 2026-09-02. |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Paid tickets | Payment flows fail. Free RSVPs are unaffected. |
 | `GOOGLE_*`, `APPLE_*`, `MICROSOFT_*` | Social sign-in | No buttons appear. Email/password is unaffected. See section 9. |
 
@@ -122,7 +122,7 @@ What is still missing for a host to run events unaided:
 
 ### Priority 2 — needed for full feature parity
 
-**Object storage — Cloudflare R2** (recommended over AWS S3)
+**Object storage — Backblaze B2** (in use since 2026-09-02)
 - The code uses the S3 API via `@aws-sdk/client-s3` with a configurable
   `S3_ENDPOINT`, so R2 is a drop-in: no code changes, just the six env vars.
 - **Zero egress fees**, which matters because event cover images are read far
@@ -542,3 +542,37 @@ cycle covers all three.
 
 *Privacy policy.* Naming Google, Apple and Microsoft as third-party
 authentication providers is part of switching this on, not an afterthought.
+
+---
+
+## 11. Object storage — Backblaze B2
+
+Live since 2026-09-02. The code talks to a configurable S3-compatible endpoint,
+so B2 needed no code changes — only the six `S3_*` variables.
+
+**Two mistakes cost real time getting here, both worth knowing.**
+
+*The endpoint needs a scheme.* Backblaze prints it as
+`s3.<region>.backblazeb2.com`, and pasting that verbatim made the AWS SDK throw
+a bare `TypeError: Invalid URL` from inside its endpoint resolver — naming no
+variable and never mentioning storage. `uploads.service.ts` now adds `https://`
+if it is missing and validates the endpoint at construction, so a bad value says
+which variable is wrong instead of producing a stack trace on first upload.
+
+*`S3_PUBLIC_BASE` is the storage host, not the website.* It was briefly set to
+`ekklesiaevents.com`, which built image URLs pointing at the Next.js app —
+uploads succeeded and every image 404'd. It must be the B2 endpoint, or left
+unset so it falls back to it. The URL is assembled as
+`{S3_PUBLIC_BASE}/{bucket}/{key}`, so the value must not already contain the
+bucket.
+
+**The bucket must be public.** B2 creates buckets private, and a private bucket
+serves a presigned upload perfectly well while refusing the plain public URL we
+then store — so the upload looks fine and the image never appears.
+
+**Still worth doing:** put a CDN in front on `images.ekklesiaevents.com`.
+Backblaze has a bandwidth agreement with Cloudflare that makes egress free
+through it, and a custom domain means storage can move later without stranding
+every image URL already written to the database. Doing it before there are
+hundreds of images is much cheaper than after — `S3_PUBLIC_BASE` is baked into
+every stored URL at upload time.
