@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import type { Route } from 'next';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { ImageUpload } from '@/components/image-upload';
+import { EventGalleryEditor } from '@/components/event-gallery-editor';
 import { TicketTypesEditor } from '@/components/ticket-types-editor';
 import { LocationModePicker, modeOf, type LocationMode } from '@/components/location-mode-picker';
 
@@ -313,6 +314,17 @@ export default function EditEventPage() {
           </div>
         </form>
       </fieldset>
+
+      <hr className="my-10 border-ink-100" />
+
+      {/* onCoverChange keeps the form's state in step: promoting a gallery
+          image to cover otherwise leaves the field above stale, and the next
+          save would write the old URL back over it. */}
+      <EventGalleryEditor
+        eventId={eventId}
+        coverImageUrl={coverImageUrl}
+        onCoverChange={setCoverImageUrl}
+      />
 
       <hr className="my-10 border-ink-100" />
 
