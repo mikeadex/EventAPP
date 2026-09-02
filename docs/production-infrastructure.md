@@ -576,3 +576,60 @@ through it, and a custom domain means storage can move later without stranding
 every image URL already written to the database. Doing it before there are
 hundreds of images is much cheaper than after — `S3_PUBLIC_BASE` is baked into
 every stored URL at upload time.
+
+## 12. Moderation — reporting, blocking and the queue
+
+Apple guideline 1.2 requires four things of an app carrying user-generated
+content: a filter, a way to report, a way to block, and acting on reports in a
+timely way. All four now exist.
+
+- **Filter** — `packages/shared/src/content-filter.ts`, applied on event create
+  and update.
+- **Report** — `POST /v1/reports`, from an event page or a host page in the app.
+- **Block** — `/v1/me/blocks`, undone from Settings → Blocked.
+- **Queue** — `/admin/reports`, gated on `PLATFORM_MODERATOR` or above.
+
+The Terms commit us to reviewing every report and acting on objectionable
+content within 24 hours. The queue is ordered oldest-first for that reason, and
+marks anything past 24 hours.
+
+**Nobody can open the queue in production yet.** The seed creates a platform
+admin only when `NODE_ENV !== 'production'`, so on Neon every account is still
+`USER` and the queue refuses everyone. One row to fix, run against production:
+
+```sql
+UPDATE "User" SET "platformRole" = 'PLATFORM_ADMIN' WHERE email = 'david@ekklesiaevents.com';
+```
+
+**Set `MODERATION_EMAIL`,** or nothing tells anyone a report was filed. Its
+absence is logged as an error rather than a warning for that reason.
+
+### platformRole is not on the session
+
+`CurrentUserService` reads `platformRole` from the Better Auth session, but the
+field was never declared in Better Auth's `user.additionalFields` — so it always
+read as `USER`. Two consequences:
+
+1. `PlatformRoleGuard` reads the role from the database instead. That is also
+   the right call on its own merits: a role cached in a session means revoking
+   someone's admin access would not take effect until their session refreshed.
+2. **`OrgMembershipGuard`'s platform-admin bypass has never worked** — the check
+   at `apps/api/src/common/org-membership.guard.ts:96` cannot fire, and
+   `@RequirePlatformRole` on any org-scoped route would always 403. Nothing uses
+   it today, so nothing is broken; it is left alone deliberately, because
+   "fixing" it would silently hand platform admins write access to every
+   organisation, which is a decision rather than a bug fix.
+
+### What the queue cannot do yet
+
+Takedown unpublishes an event (back to `DRAFT`) — reversible, and it does not
+email attendees the way cancelling does. There is **no account suspension**:
+neither `User` nor `Organization` has a `suspendedAt`, so the Terms' "suspending
+or permanently ejecting the account responsible" is currently a manual
+operation. Adding it means a migration plus an enforcement check on every
+authenticated request, which is worth doing deliberately rather than in a rush
+before launch.
+
+The admin nav also links to Organizations, Users, Feature flags and Audit log,
+none of which exist yet. `/admin` itself has no route-level gate — the API
+refuses the data, so nothing leaks, but the shell renders for anyone.
