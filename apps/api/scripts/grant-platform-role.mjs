@@ -6,14 +6,14 @@
  * account is USER and nobody can open the moderation queue. This is how the
  * first one is made, and how moderators are added later.
  *
- * Usage — run it from the repo root with the production connection string in
- * the environment, never committed:
+ * Usage — with the production connection string in the environment, never
+ * committed. Works from any directory in the repo:
  *
  *   DATABASE_URL='postgresql://...' \
- *   node apps/api/scripts/grant-platform-role.mjs david@ekklesiaevents.com
+ *   pnpm --filter @ekklesia/api grant-role -- david@ekklesiaevents.com
  *
  *   DATABASE_URL='postgresql://...' \
- *   node apps/api/scripts/grant-platform-role.mjs sam@example.com PLATFORM_MODERATOR
+ *   pnpm --filter @ekklesia/api grant-role -- sam@example.com PLATFORM_MODERATOR
  *
  * The account must already exist — sign up through the app first. This script
  * deliberately cannot create one: an admin account made outside the normal
@@ -26,12 +26,14 @@ import { PrismaClient } from '@prisma/client';
 
 const ROLES = ['USER', 'PLATFORM_SUPPORT', 'PLATFORM_MODERATOR', 'PLATFORM_ADMIN'];
 
-const args = process.argv.slice(2).filter((a) => a !== '--dry-run');
-const dryRun = process.argv.includes('--dry-run');
-const [email, role = 'PLATFORM_ADMIN'] = args;
+const argv = process.argv.slice(2);
+const dryRun = argv.includes('--dry-run');
+// Anything dash-prefixed is a flag, never a positional. `pnpm run x -- foo`
+// forwards the bare `--` too, which would otherwise be read as the email.
+const [email, role = 'PLATFORM_ADMIN'] = argv.filter((a) => !a.startsWith('-'));
 
 if (!email) {
-  console.error('Usage: node apps/api/scripts/grant-platform-role.mjs <email> [role]');
+  console.error('Usage: pnpm --filter @ekklesia/api grant-role -- <email> [role]');
   console.error(`Roles: ${ROLES.join(', ')}  (default PLATFORM_ADMIN)`);
   process.exit(1);
 }

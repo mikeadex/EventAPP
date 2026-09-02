@@ -604,17 +604,17 @@ verified email and no audit trail. Then grant the role:
 
 ```bash
 DATABASE_URL='<neon production url>' \
-  node apps/api/scripts/grant-platform-role.mjs david@ekklesiaevents.com
+  pnpm --filter @ekklesia/api grant-role -- david@ekklesiaevents.com
 ```
 
-The script prints the database host before it writes, so a grant aimed at
+It runs from any directory in the repo. The script prints the database host before it writes, so a grant aimed at
 production cannot silently land on localhost. It refuses unknown roles, says so
 when the account does not exist, takes `--dry-run`, and writes an audit row for
 the change. The same script adds moderators later:
 
 ```bash
 DATABASE_URL='<neon production url>' \
-  node apps/api/scripts/grant-platform-role.mjs sam@example.com PLATFORM_MODERATOR
+  pnpm --filter @ekklesia/api grant-role -- sam@example.com PLATFORM_MODERATOR
 ```
 
 **Set `MODERATION_EMAIL`,** or nothing tells anyone a report was filed. Its
