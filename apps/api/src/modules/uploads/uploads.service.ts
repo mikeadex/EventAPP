@@ -44,19 +44,44 @@ export class UploadsService {
   private readonly endpoint: string;
   private readonly publicBase: string;
 
+  /**
+   * Object storage hosts print their endpoint without a scheme — Backblaze
+   * shows `s3.eu-central-003.backblazeb2.com`, and pasting that verbatim is the
+   * obvious thing to do. The AWS SDK then throws a bare "Invalid URL" from deep
+   * inside its endpoint resolver, with nothing naming the variable at fault.
+   *
+   * Cheaper to accept both forms than to make everyone learn that.
+   */
+  private static normalizeEndpoint(raw: string | undefined): string | undefined {
+    const value = raw?.trim().replace(/\/+$/, '');
+    if (!value) return undefined;
+    return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  }
+
   constructor() {
-    const endpoint = process.env.S3_ENDPOINT;
+    const endpoint = UploadsService.normalizeEndpoint(process.env.S3_ENDPOINT);
     const region = process.env.S3_REGION ?? 'eu-west-2';
     const bucket = process.env.S3_BUCKET ?? '';
     const accessKeyId = process.env.S3_ACCESS_KEY;
     const secretAccessKey = process.env.S3_SECRET_KEY;
     this.bucket = bucket;
     this.endpoint = endpoint ?? '';
-    this.publicBase = process.env.S3_PUBLIC_BASE ?? endpoint ?? '';
+    this.publicBase =
+      UploadsService.normalizeEndpoint(process.env.S3_PUBLIC_BASE) ?? endpoint ?? '';
 
     if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
       this.logger.warn(
         'S3 not fully configured — POST /v1/uploads/sign will return 503 until S3_* env vars are set.',
+      );
+      this.client = null;
+      return;
+    }
+
+    try {
+      new URL(endpoint);
+    } catch {
+      this.logger.error(
+        `S3_ENDPOINT is not a valid URL — uploads disabled. Expected something like https://s3.<region>.backblazeb2.com`,
       );
       this.client = null;
       return;
