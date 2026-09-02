@@ -85,6 +85,75 @@ export function isTrustedRedirect(url: string): boolean {
   }
 }
 
+/**
+ * Point an emailed auth link back at the web app rather than at this API.
+ *
+ * Better Auth builds the link as
+ * `${BETTER_AUTH_URL}/verify-email?token=…&callbackURL=…` and defaults
+ * `callbackURL` to `/` when the client did not pass one. That `/` is resolved
+ * against the API's own origin, so verifying an address dropped people on
+ * `https://api.ekklesiaevents.com/` — a bare 404, because the API serves no
+ * page there. The last thing a new user sees is an error.
+ *
+ * Fixed here rather than at each call site: web sign-up, mobile sign-up and
+ * "resend verification" all go through Better Auth's own sender, and a client
+ * that forgets to pass a callbackURL should not be able to reintroduce this.
+ *
+ * An absolute callbackURL that is already ours is left alone — that is how the
+ * mobile deep link (`ekklesia://…`) survives.
+ */
+function pointCallbackAtWeb(rawUrl: string): string {
+  const webUrl = process.env.WEB_URL;
+  if (!webUrl) {
+    console.warn('[auth] WEB_URL is not set — emailed links will resolve against the API');
+    return rawUrl;
+  }
+
+  let link: URL;
+  try {
+    link = new URL(rawUrl);
+  } catch {
+    return rawUrl;
+  }
+
+  const current = link.searchParams.get('callbackURL');
+  // Already absolute and one of ours (including the mobile scheme) — leave it.
+  if (current && /^[a-z][a-z0-9+.-]*:/i.test(current) && isTrustedRedirect(current)) {
+    return rawUrl;
+  }
+
+  // Only a *single* leading slash is a path on our site. "//evil.example.com"
+  // is protocol-relative and resolves to another host entirely, so it must not
+  // be carried over — same trap as isTrustedRedirect guards against above.
+  const path =
+    current && current.startsWith('/') && !current.startsWith('//') && !current.startsWith('/\\')
+      ? current
+      : '/';
+
+  let absolute: string;
+  try {
+    absolute = new URL(path, webUrl).toString();
+  } catch {
+    console.warn('[auth] WEB_URL is not a valid URL — leaving the emailed link alone');
+    return rawUrl;
+  }
+
+  // Better Auth rejects a redirect to an origin outside trustedOrigins, which
+  // would turn this 404 into an error page instead of fixing it. Say so loudly,
+  // and drop the callbackURL rather than forwarding one we could not vet —
+  // failing back to the 404 is bad, but sending someone else's link is worse.
+  if (!isTrustedRedirect(absolute)) {
+    console.error(
+      '[auth] WEB_URL is not in TRUSTED_ORIGINS — add it, or verification links will be rejected',
+    );
+    link.searchParams.delete('callbackURL');
+    return link.toString();
+  }
+
+  link.searchParams.set('callbackURL', absolute);
+  return link.toString();
+}
+
 // HTTPS-only cookies, and the gate for SameSite=None below.
 const secureCookies = process.env.NODE_ENV === 'production';
 
@@ -142,7 +211,7 @@ async function createAuth() {
       expiresIn: VERIFY_TOKEN_TTL_SECONDS,
       sendVerificationEmail: async ({ user, url }) => {
         const { subject, html, text } = verifyEmailTemplate({
-          url,
+          url: pointCallbackAtWeb(url),
           name: user.name,
           expiresInLabel: '24 hours',
         });
