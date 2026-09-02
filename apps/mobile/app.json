@@ -73,6 +73,12 @@
         {
           "color": "#131011"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ekklesia uses your photos so you can add pictures to your events."
+        }
       ]
     ],
     "experiments": {

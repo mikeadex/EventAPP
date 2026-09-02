@@ -25,6 +25,7 @@ import { useSession } from '@/lib/auth-client';
 import { api, ApiError } from '@/lib/api';
 import { FadeIn, Skeleton } from '@/components/states';
 import { showToast } from '@/components/toast';
+import { EventGallery, type GalleryItem } from '@/components/event-gallery';
 import { registerForPush } from '@/lib/push';
 import { locationLabel, locationLine, locationMode } from '@/lib/event-location';
 
@@ -124,6 +125,7 @@ export default function EventDetailScreen() {
   const { data: session } = useSession();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [rsvpState, setRsvpState] = useState<'idle' | 'pending' | 'done'>('idle');
   const [rsvpErr, setRsvpErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -171,6 +173,23 @@ export default function EventDetailScreen() {
     }
     void load();
   }, [params.id, params.orgSlug, params.eventSlug]);
+
+  // Fetched separately from the event, and deliberately not blocking it: a
+  // gallery that fails to load should cost you the photos, not the page.
+  useEffect(() => {
+    if (!event) return;
+    let cancelled = false;
+    void api<GalleryItem[]>(`/v1/events/${event.id}/media`)
+      .then((items) => {
+        if (!cancelled) setGallery(items);
+      })
+      .catch(() => {
+        /* no gallery rather than a broken event page */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [event]);
 
   useEffect(() => {
     if (!session?.user || !event) return;
@@ -547,6 +566,13 @@ export default function EventDetailScreen() {
               {soldOut ? 'At capacity' : `${seatsLeft} spots left`}
             </Text>
           ) : null}
+
+          {gallery.length > 0 ? (
+            <View style={styles.gallery}>
+              <Text style={styles.sectionTitle}>Photos and video</Text>
+              <EventGallery items={gallery} />
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -806,6 +832,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[2],
   },
   about: { color: color.ink[400], fontSize: fontSize.base, lineHeight: 24 },
+  gallery: { marginTop: spacing[6], gap: spacing[3] },
   capacity: { color: color.ink[500], fontSize: fontSize.sm, marginTop: spacing[4] },
 
   bottomWrap: {

@@ -248,6 +248,15 @@ export default function OrganizerEventScreen() {
 
         <Pressable
           style={styles.announceBtn}
+          onPress={() => router.push(`/organizer/event/${id}/media`)}
+        >
+          <Ionicons name="images-outline" size={18} color={color.ink[900]} />
+          <Text style={styles.announceText}>Photos and video</Text>
+          <Ionicons name="chevron-forward" size={18} color={color.ink[400]} />
+        </Pressable>
+
+        <Pressable
+          style={styles.announceBtn}
           onPress={() => router.push(`/organizer/event/${id}/announce`)}
         >
           <Ionicons name="megaphone-outline" size={18} color={color.ink[900]} />
