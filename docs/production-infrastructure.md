@@ -595,10 +595,26 @@ marks anything past 24 hours.
 
 **Nobody can open the queue in production yet.** The seed creates a platform
 admin only when `NODE_ENV !== 'production'`, so on Neon every account is still
-`USER` and the queue refuses everyone. One row to fix, run against production:
+`USER` and the queue refuses everyone.
 
-```sql
-UPDATE "User" SET "platformRole" = 'PLATFORM_ADMIN' WHERE email = 'david@ekklesiaevents.com';
+Two steps, in order. First **sign up normally** at ekklesiaevents.com with the
+address the moderator will use — there is deliberately no way to create an admin
+account from a script, because one made outside signup has no password, no
+verified email and no audit trail. Then grant the role:
+
+```bash
+DATABASE_URL='<neon production url>' \
+  node apps/api/scripts/grant-platform-role.mjs david@ekklesiaevents.com
+```
+
+The script prints the database host before it writes, so a grant aimed at
+production cannot silently land on localhost. It refuses unknown roles, says so
+when the account does not exist, takes `--dry-run`, and writes an audit row for
+the change. The same script adds moderators later:
+
+```bash
+DATABASE_URL='<neon production url>' \
+  node apps/api/scripts/grant-platform-role.mjs sam@example.com PLATFORM_MODERATOR
 ```
 
 **Set `MODERATION_EMAIL`,** or nothing tells anyone a report was filed. Its
