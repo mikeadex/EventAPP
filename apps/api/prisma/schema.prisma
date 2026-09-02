@@ -273,6 +273,7 @@ model Event {
   capacity      Int?
   attendeeCount Int     @default(0)
   coverImageUrl String?
+  media         EventMedia[]
 
   publishedAt DateTime?
   cancelledAt DateTime?
@@ -676,4 +677,41 @@ model NotificationLog {
 
   @@unique([userId, eventId, kind])
   @@index([eventId, kind])
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+/// A photo or video attached to an event, shown as a gallery on the event page.
+///
+/// Separate from `Event.coverImageUrl`, which stays as the single image used on
+/// cards, in search results and in link previews — a different job from a
+/// gallery, and one that wants exactly one answer. A host picks any gallery
+/// image as the cover; the two are kept in sync by the API, not by the client.
+///
+/// Video is stored as a provider and id rather than an embed URL, so the player
+/// can change without a migration and so a pasted link is validated once, on the
+/// way in, rather than trusted on the way out.
+model EventMedia {
+  id           String    @id @default(cuid())
+  eventId      String
+  event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  kind         MediaKind
+  /// IMAGE: the stored file URL. VIDEO: the canonical watch URL.
+  url          String
+  /// VIDEO: poster frame. Unused for images, which are served resized.
+  thumbnailUrl String?
+  /// VIDEO only: "youtube" | "vimeo" and the id within that provider.
+  provider     String?
+  providerId   String?
+  caption      String?
+  /// Order within the gallery. Sparse integers so a reorder rewrites the whole
+  /// set rather than shuffling neighbours.
+  position     Int
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([eventId, position])
 }

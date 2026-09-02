@@ -110,3 +110,37 @@ export const EventSearchSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 export type EventSearchInput = z.infer<typeof EventSearchSchema>;
+
+/**
+ * Adding one item to an event's gallery.
+ *
+ * An image carries a URL we issued from a presigned upload; a video carries the
+ * link the host pasted, which the server parses and stores as provider + id.
+ * Discriminated on `kind` so neither branch can be filled in with the other's
+ * fields.
+ */
+export const AddEventMediaSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('IMAGE'),
+    url: z.string().url(),
+    caption: z.string().trim().max(200).optional(),
+  }),
+  z.object({
+    kind: z.literal('VIDEO'),
+    /** Raw pasted link — validated and normalised server-side. */
+    url: z.string().trim().min(1),
+    caption: z.string().trim().max(200).optional(),
+  }),
+]);
+export type AddEventMediaInput = z.infer<typeof AddEventMediaSchema>;
+
+export const UpdateEventMediaSchema = z.object({
+  caption: z.string().trim().max(200).nullable().optional(),
+});
+export type UpdateEventMediaInput = z.infer<typeof UpdateEventMediaSchema>;
+
+/** The full ordered list of media ids, as the gallery should now read. */
+export const ReorderEventMediaSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(30),
+});
+export type ReorderEventMediaInput = z.infer<typeof ReorderEventMediaSchema>;
