@@ -43,6 +43,7 @@ model User {
   donations        Donation[]
   savedEvents      SavedEvent[]
   devices          Device[]
+  blocks           Block[]      @relation("BlocksMade")
   reportsFiled     Report[]               @relation("ReportsFiled")
   moderationActs   ModerationAction[]
   notificationPrefs NotificationPreference?
@@ -714,4 +715,26 @@ model EventMedia {
   updatedAt    DateTime  @updatedAt
 
   @@index([eventId, position])
+}
+
+/// One person choosing not to see another user or organisation.
+///
+/// Required by App Store guideline 1.2 for user-generated content, but useful
+/// on its own terms: someone who has had a bad experience with a host should be
+/// able to stop seeing them without needing anyone's permission or review.
+///
+/// Deliberately one-directional and private. The blocked party is never told,
+/// because notifying them turns a quiet exit into a confrontation.
+model Block {
+  id             String   @id @default(cuid())
+  blockerId      String
+  blocker        User     @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  /// Exactly one of these is set.
+  blockedUserId  String?
+  blockedOrgId   String?
+  createdAt      DateTime @default(now())
+
+  @@unique([blockerId, blockedUserId])
+  @@unique([blockerId, blockedOrgId])
+  @@index([blockerId])
 }

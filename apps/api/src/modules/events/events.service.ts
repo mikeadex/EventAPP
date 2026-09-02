@@ -14,6 +14,7 @@ import {
   type CreateEventInput,
   type EventSearchInput,
   type UpdateEventInput,
+  checkContent,
 } from '@ekklesia/shared';
 import type { Prisma } from '@prisma/client';
 import { randomId } from '../../common/random-id.js';
@@ -242,6 +243,7 @@ export class EventsService {
   // ─── Organizer operations ────────────────────────────────────────────────
   async create(organizationId: string, actorUserId: string, body: unknown) {
     const input: CreateEventInput = CreateEventSchema.parse(body);
+    this.screen(input.title, input.summary, input.description);
     return this.prisma.$transaction(async (tx) => {
       const slug = await this.allocateSlug(tx, organizationId, input.title);
 
@@ -315,6 +317,9 @@ export class EventsService {
 
   async update(eventId: string, actorUserId: string, body: unknown) {
     const input: UpdateEventInput = UpdateEventSchema.parse(body);
+    // Screened here too, or an approved listing could simply be edited into
+    // something the filter would have refused at creation.
+    this.screen(input.title, input.summary, input.description);
     const existing = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: { id: true, organizationId: true, status: true, startsAt: true, endsAt: true },
@@ -361,6 +366,26 @@ export class EventsService {
       metadata: input as unknown as Prisma.InputJsonValue,
     });
     return updated;
+  }
+
+  /**
+   * Refuse text no listing should carry.
+   *
+   * Applied at create and update, not only publish: a draft is still stored,
+   * still visible to everyone in the organisation, and editing an approved
+   * listing into something else would otherwise be a way straight past this.
+   *
+   * The message names what tripped it. A blank refusal on a platform where a
+   * legitimate listing might discuss addiction or abuse would leave a host
+   * guessing, and a host who gives up is a worse outcome than a report.
+   */
+  private screen(...parts: (string | null | undefined)[]): void {
+    const result = checkContent(...parts);
+    if (!result.ok) {
+      throw new BadRequestException(
+        `This listing cannot be published because of the wording: ${result.matched.join(', ')}. Please edit it, or contact us if you think this is wrong.`,
+      );
+    }
   }
 
   async publish(eventId: string, actorUserId: string) {
