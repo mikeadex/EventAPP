@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
-import { api } from '@/lib/api';
+import { api, describeApiError } from '@/lib/api';
+import { ReportSheet } from '@/components/report-sheet';
+import { showToast } from '@/components/toast';
 
 interface Org {
   id: string;
@@ -27,6 +30,7 @@ interface EventItem {
 
 export default function HostScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
+  const [reporting, setReporting] = useState(false);
   const [org, setOrg] = useState<Org | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +86,48 @@ export default function HostScreen() {
                 </View>
               </View>
               {org.description && <Text style={styles.body}>{org.description}</Text>}
+
+              <View style={styles.safetyRow}>
+                <Pressable style={styles.safetyBtn} onPress={() => setReporting(true)}>
+                  <Ionicons name="flag-outline" size={16} color={color.ink[600]} />
+                  <Text style={styles.safetyText}>Report</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.safetyBtn}
+                  onPress={() => {
+                    // Confirmed, because it changes what they see and they may
+                    // have meant to tap Report.
+                    Alert.alert(
+                      `Block ${org.name}?`,
+                      "You won't see their events. They aren't told, and you can undo this in Settings.",
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Block',
+                          style: 'destructive',
+                          onPress: () => {
+                            void api('/v1/me/blocks', {
+                              method: 'POST',
+                              body: { organizationId: org.id },
+                            })
+                              .then(() => {
+                                showToast(`Blocked ${org.name}`);
+                                router.back();
+                              })
+                              .catch((e) =>
+                                showToast(describeApiError(e, 'Could not block that host')),
+                              );
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                >
+                  <Ionicons name="ban-outline" size={16} color={color.ink[600]} />
+                  <Text style={styles.safetyText}>Block</Text>
+                </Pressable>
+              </View>
+
               <Text style={[styles.sectionLabel, { marginTop: spacing[6] }]}>
                 Upcoming events
               </Text>
@@ -119,11 +165,30 @@ export default function HostScreen() {
           )}
         />
       </View>
+
+      <ReportSheet
+        visible={reporting}
+        onClose={() => setReporting(false)}
+        target={{ organizationId: org.id }}
+        what="this host"
+      />
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  safetyRow: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[4] },
+  safetyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    borderWidth: 1,
+    borderColor: color.ink[200],
+    borderRadius: radius.full,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+  },
+  safetyText: { fontSize: fontSize.xs, color: color.ink[600], fontWeight: fontWeight.medium },
   c: { flex: 1, backgroundColor: color.ink[50] },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   error: { color: color.danger },

@@ -26,6 +26,7 @@ import { api, ApiError } from '@/lib/api';
 import { FadeIn, Skeleton } from '@/components/states';
 import { showToast } from '@/components/toast';
 import { EventGallery, type GalleryItem } from '@/components/event-gallery';
+import { ReportSheet } from '@/components/report-sheet';
 import { registerForPush } from '@/lib/push';
 import { locationLabel, locationLine, locationMode } from '@/lib/event-location';
 
@@ -126,6 +127,7 @@ export default function EventDetailScreen() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [reporting, setReporting] = useState(false);
   const [rsvpState, setRsvpState] = useState<'idle' | 'pending' | 'done'>('idle');
   const [rsvpErr, setRsvpErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -452,7 +454,14 @@ export default function EventDetailScreen() {
           <View style={[styles.topBar, { top: insets.top + spacing[1] }]}>
             <RoundButton icon="chevron-back" onPress={() => router.back()} label="Go back" />
             <Text style={styles.topTitle}>Details</Text>
-            <RoundButton icon="share-outline" onPress={shareEvent} label="Share event" />
+            <View style={styles.topActions}>
+              <RoundButton icon="share-outline" onPress={shareEvent} label="Share event" />
+              <RoundButton
+                icon="flag-outline"
+                onPress={() => setReporting(true)}
+                label="Report this event"
+              />
+            </View>
           </View>
 
           {/* Title + social proof overlaid at the bottom of the hero */}
@@ -650,6 +659,13 @@ export default function EventDetailScreen() {
           </Pressable>
         </View>
       </Modal>
+
+      <ReportSheet
+        visible={reporting}
+        onClose={() => setReporting(false)}
+        target={{ eventId: event.id }}
+        what="this event"
+      />
     </View>
   );
 }
@@ -832,6 +848,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[2],
   },
   about: { color: color.ink[400], fontSize: fontSize.base, lineHeight: 24 },
+  topActions: { flexDirection: 'row', gap: spacing[2] },
   gallery: { marginTop: spacing[6], gap: spacing[3] },
   capacity: { color: color.ink[500], fontSize: fontSize.sm, marginTop: spacing[4] },
 

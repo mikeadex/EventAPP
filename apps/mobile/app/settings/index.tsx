@@ -105,6 +105,14 @@ export default function SettingsScreen() {
               label="Change password"
               onPress={() => router.push('/settings/change-password')}
             />
+            <View style={styles.divider} />
+            {/* The only way to undo a block, so it lives at the top level
+                rather than behind anything. */}
+            <SettingsRow
+              icon="ban-outline"
+              label="Blocked"
+              onPress={() => router.push('/settings/blocked')}
+            />
           </View>
         </>
       ) : null}
