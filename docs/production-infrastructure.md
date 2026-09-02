@@ -20,7 +20,7 @@ events can now be hybrid — but no third-party service has been switched on yet
 | Layer | Service | Where | State |
 |---|---|---|---|
 | API | Vercel serverless (NestJS 10, CommonJS) | `api.ekklesiaevents.com` | Live, auto-deploys from `main` |
-| Database | Neon Postgres (+ Prisma 5.22) | `eu-*` Neon project | Live, migrations via `prisma migrate deploy` |
+| Database | Neon Postgres (+ Prisma 5.22) | Neon `us-east-1` (**not** EU — see §4) | Live, migrations via `prisma migrate deploy` |
 | Web | Vercel (Next.js) | `ekklesiaevents.com` | Live, Git-connected, root `apps/web` |
 | Auth | Better Auth 1.6.11, bearer plugin | in-API | Live, 30-day sessions |
 | Mobile builds | EAS Build | iOS cloud / Android local | TestFlight + Play internal testing |
@@ -148,6 +148,27 @@ casually.
 ---
 
 ## 4. Database — what to do about Neon
+
+**The database is in `us-east-1`, not the EU.** This doc previously said `eu-*`,
+which was wrong. It matters more here than on a typical project: the Privacy
+Policy identifies RSVPs to faith events as **special category data** under
+Article 9, and the controller is UK-based.
+
+This is legally workable, and the policy already describes it — §7 says data is
+processed outside the UK and EEA "including in the United States", relying on the
+UK IDTA or SCCs plus a **transfer risk assessment**. Two things follow:
+
+1. **That transfer risk assessment needs to actually exist.** The policy asserts
+   one does. It is the first thing a legal reviewer will ask for, and the ICO
+   expects it in writing for Article 9 data going to the US.
+2. **Moving region later is not a settings change.** Neon cannot relocate a
+   project between regions — it means a new project and a data migration. Doing
+   that now, with almost no real user data, is a morning's work. After launch it
+   is a maintenance window and a risk.
+
+Worth a decision before launch rather than after: keep `us-east-1` and hold a
+written TRA, or move to a Neon EU region and simplify the transfer story to
+nothing.
 
 The current setup works, but two things deserve attention before real data
 exists:
