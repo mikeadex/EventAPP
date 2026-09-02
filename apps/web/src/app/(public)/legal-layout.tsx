@@ -31,3 +31,52 @@ export function Section({ heading, children }: { heading: string; children: Reac
     </section>
   );
 }
+
+/**
+ * The legal-basis and retention tables.
+ *
+ * Stacks into labelled blocks below `sm` rather than scrolling sideways. A
+ * horizontally scrolling table hides the right-hand column behind a gesture
+ * nobody knows is there, and on these two tables that column is the actual
+ * answer — the legal basis, or how long we keep something. Repeating the
+ * column name against each value costs a little space and loses nothing.
+ */
+export function LegalTable({
+  columns,
+  rows,
+}: {
+  columns: string[];
+  rows: React.ReactNode[][];
+}) {
+  return (
+    <table className="w-full border-collapse text-sm">
+      {/* Hidden while stacked: each cell carries its own label there. */}
+      <thead className="hidden sm:table-header-group">
+        <tr className="border-b border-ink-200 text-left">
+          {columns.map((c) => (
+            <th key={c} className="py-2 pr-4 font-medium text-ink-900 last:pr-0">
+              {c}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="block sm:table-row-group">
+        {rows.map((row, i) => (
+          <tr
+            key={i}
+            className="block border-b border-ink-100 py-3 sm:table-row sm:py-0 sm:align-top"
+          >
+            {row.map((cell, j) => (
+              <td key={j} className="block py-1 sm:table-cell sm:py-3 sm:pr-4 sm:last:pr-0">
+                <span className="mb-0.5 block text-xs font-medium text-ink-500 sm:hidden">
+                  {columns[j]}
+                </span>
+                {cell}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
