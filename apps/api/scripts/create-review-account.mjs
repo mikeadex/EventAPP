@@ -105,17 +105,67 @@ const signUp = await call('/auth/sign-up/email', {
   method: 'POST',
   body: { email: EMAIL, password: PASSWORD, name: NAME },
 });
+/**
+ * Mark the account's email verified directly.
+ *
+ * Sign-up no longer returns a session: `requireEmailVerification` is on, so the
+ * account cannot sign in until its address is confirmed by clicking a link in
+ * an email. A review account has no mailbox anyone is watching, so without this
+ * the reviewer is handed credentials that cannot log in — which is a rejection,
+ * not a bug they will report back to us.
+ *
+ * Needs DATABASE_URL because there is deliberately no API route that marks
+ * somebody else verified.
+ */
+async function verifyDirectly() {
+  if (!process.env.DATABASE_URL) {
+    console.error(`
+✗ The account was created but cannot sign in yet: its email is unverified,
+  and sign-in requires verification.
+
+  Re-run with DATABASE_URL set so this script can confirm the address:
+
+    DATABASE_URL='<neon production url>' API_URL=${API} \\
+      REVIEW_EMAIL=${EMAIL} pnpm --filter @ekklesia/api review-account
+
+  Or click the verification link sent to ${EMAIL}, if that mailbox is real.
+`);
+    process.exit(1);
+  }
+  const { PrismaClient } = await import('@prisma/client');
+  const prisma = new PrismaClient();
+  try {
+    await prisma.user.update({ where: { email: EMAIL }, data: { emailVerified: true } });
+    console.log('✓ marked the review address verified');
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+async function signIn() {
+  const res = await call('/auth/sign-in/email', {
+    method: 'POST',
+    body: { email: EMAIL, password: PASSWORD },
+  });
+  return res.ok && res.payload?.token ? res.payload.token : null;
+}
+
 if (signUp.ok && signUp.payload?.token) {
   token = signUp.payload.token;
   console.log('✓ created the review account');
 } else {
-  const signIn = await call('/auth/sign-in/email', {
-    method: 'POST',
-    body: { email: EMAIL, password: PASSWORD },
-  });
-  if (!signIn.ok || !signIn.payload?.token) fail('sign-up and sign-in', signUp);
-  token = signIn.payload.token;
-  console.log('✓ account already existed — signed in');
+  // Either the account is new but unverified, or it already existed. Both end
+  // in the same place: verify if needed, then sign in.
+  const created = signUp.ok && signUp.payload?.user;
+  if (created) console.log('✓ created the review account');
+
+  token = await signIn();
+  if (!token) {
+    await verifyDirectly();
+    token = await signIn();
+  }
+  if (!token) fail('signing in after verification', signUp);
+  if (!created) console.log('✓ account already existed — signed in');
 }
 
 // ─── 2. Church ───────────────────────────────────────────────────────────────
