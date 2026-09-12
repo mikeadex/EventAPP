@@ -100,11 +100,6 @@ const iso = (msFromNow) => new Date(Date.now() + msFromNow).toISOString();
 console.log(`API: ${API}`);
 
 // ─── 1. Account ──────────────────────────────────────────────────────────────
-let token;
-const signUp = await call('/auth/sign-up/email', {
-  method: 'POST',
-  body: { email: EMAIL, password: PASSWORD, name: NAME },
-});
 /**
  * Mark the account's email verified directly.
  *
@@ -142,30 +137,74 @@ async function verifyDirectly() {
   }
 }
 
+/** Returns the session token, or the error code explaining why not. */
 async function signIn() {
   const res = await call('/auth/sign-in/email', {
     method: 'POST',
     body: { email: EMAIL, password: PASSWORD },
   });
-  return res.ok && res.payload?.token ? res.payload.token : null;
+  if (res.ok && res.payload?.token) return { token: res.payload.token };
+  return { code: res.payload?.code ?? `HTTP_${res.status}`, res };
 }
 
-if (signUp.ok && signUp.payload?.token) {
-  token = signUp.payload.token;
-  console.log('✓ created the review account');
-} else {
-  // Either the account is new but unverified, or it already existed. Both end
-  // in the same place: verify if needed, then sign in.
-  const created = signUp.ok && signUp.payload?.user;
-  if (created) console.log('✓ created the review account');
+/**
+ * Sign in first, and only sign up if that fails.
+ *
+ * Sign-up cannot tell us whether it created anything: Better Auth answers a
+ * duplicate sign-up with a fabricated 200 — a fresh-looking id and
+ * `emailVerified: false` — so that an attacker cannot use it to discover which
+ * addresses are registered. Reading that as "created" made this script claim it
+ * had made an account when it had not, which is the one thing a script run
+ * against production must not do.
+ *
+ * Signing in first is unambiguous: it either works or names its reason.
+ */
+function refuseWrongPassword() {
+  console.error(`
+✗ ${EMAIL} is already registered, and not with this password. Nothing was
+  changed. Re-run with that account's real password, or pick a different
+  REVIEW_EMAIL.
+`);
+  process.exit(1);
+}
 
-  token = await signIn();
-  if (!token) {
-    await verifyDirectly();
-    token = await signIn();
+let token;
+{
+  let attempt = await signIn();
+
+  if (attempt.token) {
+    console.log('✓ account already existed — signed in');
+  } else {
+    if (attempt.code !== 'EMAIL_NOT_VERIFIED') {
+      // No account we can use, so make one. A duplicate is answered with that
+      // same fabricated 200, so the sign-in afterwards is what tells us whether
+      // we actually own this address.
+      const signUp = await call('/auth/sign-up/email', {
+        method: 'POST',
+        body: { email: EMAIL, password: PASSWORD, name: NAME },
+      });
+      if (!signUp.ok) fail('creating the review account', signUp);
+      attempt = await signIn();
+      if (attempt.code === 'INVALID_EMAIL_OR_PASSWORD') refuseWrongPassword();
+      console.log('✓ created the review account');
+    } else {
+      console.log('✓ account already existed — but its email was never verified');
+    }
+
+    // Only ever verify an address we have just proved we hold the password for.
+    // EMAIL_NOT_VERIFIED is that proof: it is returned for correct credentials
+    // and an unconfirmed address. Verifying on any weaker signal would mean a
+    // mistyped REVIEW_EMAIL could confirm a stranger's address for them.
+    if (attempt.code === 'EMAIL_NOT_VERIFIED') {
+      await verifyDirectly();
+      attempt = await signIn();
+    }
+    if (!attempt.token) {
+      if (attempt.code === 'INVALID_EMAIL_OR_PASSWORD') refuseWrongPassword();
+      fail('signing in after verification', attempt.res);
+    }
   }
-  if (!token) fail('signing in after verification', signUp);
-  if (!created) console.log('✓ account already existed — signed in');
+  token = attempt.token;
 }
 
 // ─── 2. Church ───────────────────────────────────────────────────────────────
@@ -176,21 +215,40 @@ let orgId = me.payload?.memberships?.[0]?.organizationId;
 if (orgId) {
   console.log('✓ already owns a church');
 } else {
-  const org = await call('/v1/organizations', {
-    method: 'POST',
-    token,
-    body: {
-      name: ORG_NAME,
-      slug: ORG_SLUG,
-      kind: 'church',
-      country: 'GB',
-      currency: 'GBP',
-      shortDescription: 'A demo church used for app review.',
-    },
-  });
+  /**
+   * Slugs are unique across the platform, so a demo church left behind by an
+   * earlier review account blocks this one — and that account's password is
+   * long gone, so adopting its church is not an option. Take the next free
+   * slug instead of stopping: the point is a reviewable account, and the slug
+   * is not what is being reviewed.
+   */
+  const createChurch = (slug) =>
+    call('/v1/organizations', {
+      method: 'POST',
+      token,
+      body: {
+        name: ORG_NAME,
+        slug,
+        kind: 'church',
+        country: 'GB',
+        currency: 'GBP',
+        shortDescription: 'A demo church used for app review.',
+      },
+    });
+
+  let slug = ORG_SLUG;
+  let org = await createChurch(slug);
+  for (let n = 2; !org.ok && org.status === 409 && n <= 20; n += 1) {
+    slug = `${ORG_SLUG}-${n}`;
+    org = await createChurch(slug);
+  }
   if (!org.ok) fail('creating the church', org);
   orgId = org.payload.id;
-  console.log(`✓ created the church (${ORG_SLUG})`);
+  console.log(
+    slug === ORG_SLUG
+      ? `✓ created the church (${slug})`
+      : `✓ created the church (${slug} — "${ORG_SLUG}" was already taken)`,
+  );
 }
 
 // ─── 3. A published event to look at ─────────────────────────────────────────
