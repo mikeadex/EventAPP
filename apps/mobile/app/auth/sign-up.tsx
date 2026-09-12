@@ -20,6 +20,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [checkYourEmail, setCheckYourEmail] = useState(false);
 
   async function submit() {
     setPending(true);
@@ -30,7 +31,33 @@ export default function SignUpScreen() {
       setError(res.error.message ?? 'Sign-up failed');
       return;
     }
+    // Verification is required, so sign-up returns no session. Dropping someone
+    // into the tabs here leaves them signed out with nothing explaining why,
+    // and no idea an email is waiting for them.
+    if (!res.data?.token) {
+      setCheckYourEmail(true);
+      return;
+    }
     router.replace('/(tabs)');
+  }
+
+  if (checkYourEmail) {
+    return (
+      <View style={[styles.c, { justifyContent: 'center' }]}>
+        <Text style={styles.h}>Check your email</Text>
+        <Text style={styles.m}>
+          We&rsquo;ve sent a verification link to {email}. Tap it to finish setting up your
+          account, then sign in.
+        </Text>
+        <Text style={[styles.m, { marginTop: spacing[3] }]}>
+          The link lasts 24 hours. If it doesn&rsquo;t arrive, check your spam folder — or try
+          signing in, which will offer to send another.
+        </Text>
+        <Pressable style={styles.btn} onPress={() => router.replace('/auth/sign-in')}>
+          <Text style={styles.btnText}>Go to sign in</Text>
+        </Pressable>
+      </View>
+    );
   }
 
   return (

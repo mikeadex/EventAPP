@@ -13,6 +13,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [checkYourEmail, setCheckYourEmail] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -24,8 +25,35 @@ export default function SignUpPage() {
       setError(res.error.message ?? 'Sign-up failed');
       return;
     }
+    // Signing up no longer signs you in: verification is required, so the
+    // response carries a null token. Navigating here would drop someone on the
+    // home page silently signed out, with nothing saying an email is waiting —
+    // they then try to sign in and are told their email is not verified.
+    if (!res.data?.token) {
+      setCheckYourEmail(true);
+      return;
+    }
     router.push('/');
     router.refresh();
+  }
+
+  if (checkYourEmail) {
+    return (
+      <div>
+        <h1 className="font-display text-3xl text-ink-900">Check your email</h1>
+        <p className="mt-3 text-ink-700">
+          We&rsquo;ve sent a verification link to <strong>{email}</strong>. Click it to finish
+          setting up your account, then sign in.
+        </p>
+        <p className="mt-3 text-sm text-ink-500">
+          The link lasts 24 hours. If it doesn&rsquo;t arrive, check your spam folder — or try
+          signing in, which will offer to send another.
+        </p>
+        <Link href="/sign-in" className="mt-6 inline-block underline">
+          Go to sign in
+        </Link>
+      </div>
+    );
   }
 
   return (
