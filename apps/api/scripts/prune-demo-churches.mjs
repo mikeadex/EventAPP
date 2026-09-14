@@ -22,6 +22,12 @@ import { PrismaClient } from '@prisma/client';
 const REVIEW_EMAIL = process.env.REVIEW_EMAIL;
 const PREFIX = process.env.DEMO_SLUG_PREFIX ?? 'demo-church';
 const doDelete = process.argv.includes('--delete');
+const doUnpublish = process.argv.includes('--unpublish');
+
+if (doDelete && doUnpublish) {
+  console.error('Pass --unpublish or --delete, not both.');
+  process.exit(1);
+}
 
 if (!REVIEW_EMAIL) {
   console.error('Set REVIEW_EMAIL to the account whose demo church should be kept.');
@@ -41,7 +47,13 @@ try {
 }
 console.log(`Database: ${host}${/localhost|127\.0\.0\.1/.test(host) ? '  (LOCAL)' : ''}`);
 console.log(`Keeping the demo church owned by: ${REVIEW_EMAIL}`);
-console.log(doDelete ? 'Mode:     DELETE\n' : 'Mode:     report only (pass --delete to apply)\n');
+console.log(
+  doDelete
+    ? 'Mode:     DELETE\n'
+    : doUnpublish
+      ? 'Mode:     UNPUBLISH (nothing is deleted)\n'
+      : 'Mode:     report only (pass --unpublish or --delete to apply)\n',
+);
 
 const prisma = new PrismaClient();
 
@@ -71,27 +83,57 @@ try {
   }
 
   // Counted before anything is touched, so the report says what is at stake.
+  let ticketsAtRisk = 0;
   for (const o of doomed) {
     const events = await prisma.event.findMany({
       where: { organizationId: o.id },
       select: { id: true, title: true, status: true },
     });
     const tickets = events.length
-      ? await prisma.ticket.count({ where: { eventId: { in: events.map((e) => e.id) } } })
-      : 0;
+      ? await prisma.ticket.findMany({
+          where: { eventId: { in: events.map((e) => e.id) } },
+          select: { code: true, user: { select: { email: true } } },
+        })
+      : [];
+    ticketsAtRisk += tickets.length;
+    const verb = doUnpublish ? 'UNPUBLISH' : 'REMOVE';
     console.log(
-      `  REMOVE  ${o.slug}  (${o.name}) — ${events.length} event(s), ${tickets} ticket(s)`,
+      `  ${verb}  ${o.slug}  (${o.name}) — ${events.length} event(s), ${tickets.length} ticket(s)`,
     );
     for (const e of events) console.log(`            · ${e.title} [${e.status}]`);
-    if (tickets > 0) {
-      console.log(
-        `            ! ${tickets} ticket(s) belong to real people and would be deleted too.`,
-      );
+    // Named, not just counted: whether these are leftovers from an earlier
+    // review run or someone who actually turned up is the whole decision.
+    for (const t of tickets) {
+      console.log(`            · ticket ${t.code} held by ${t.user?.email ?? 'a deleted account'}`);
     }
   }
 
-  if (!doDelete) {
-    console.log('\nNothing was changed. Re-run with --delete to apply.');
+  if (!doDelete && !doUnpublish) {
+    if (ticketsAtRisk > 0) {
+      console.log(`
+Those ${ticketsAtRisk} ticket(s) belong to real accounts. Deleting the church
+deletes them, and whoever holds one simply loses it.
+
+  --unpublish   takes the events out of the public feed, changes nothing else,
+                and is reversible. Enough to stop a reviewer seeing duplicates.
+  --delete      removes the church, its events and those tickets for good.
+
+Prefer --unpublish unless you know those tickets are your own test RSVPs.`);
+    } else {
+      console.log('\nNothing was changed. Re-run with --unpublish or --delete to apply.');
+    }
+    process.exit(0);
+  }
+
+  if (doUnpublish) {
+    for (const o of doomed) {
+      const { count } = await prisma.event.updateMany({
+        where: { organizationId: o.id, status: 'PUBLISHED' },
+        data: { status: 'DRAFT' },
+      });
+      console.log(`✓ unpublished ${count} event(s) from ${o.slug}`);
+    }
+    console.log('\nNothing was deleted. Tickets and accounts are untouched.');
     process.exit(0);
   }
 
