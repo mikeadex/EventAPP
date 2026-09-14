@@ -18,7 +18,8 @@
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "grant-role": "node scripts/grant-platform-role.mjs",
     "review-account": "node scripts/create-review-account.mjs",
-    "prune-demo-churches": "node scripts/prune-demo-churches.mjs"
+    "prune-demo-churches": "node scripts/prune-demo-churches.mjs",
+    "refresh-demo-dates": "node scripts/refresh-demo-dates.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.665.0",
