@@ -54,12 +54,39 @@ try {
 // Project-root node_modules — used as a resolution fallback (see below).
 const PROJECT_NM = path.resolve(projectRoot, 'node_modules');
 
+// Workspace packages are aliased to their TypeScript source by tsconfig
+// `paths`, which Metro honours. Those sources are written for the API's
+// NodeNext build, where Node requires the extension on relative imports — so
+// they say `export * from './slug.js'` while the file on disk is `slug.ts`.
+// Metro takes the specifier literally and fails to resolve it.
+//
+// This maps such a specifier back to the TypeScript beside it. Scoped to
+// `packages/` so a dependency that genuinely ships `.js` is never redirected,
+// and it deliberately prefers `.ts` over any `.js` sitting next to it: stale
+// compiled output in a source tree would otherwise be bundled in preference to
+// the real source, which is a far quieter bug than a failed build.
+const PACKAGES_DIR = path.resolve(workspaceRoot, 'packages');
+function typescriptSourceFor(context, moduleName) {
+  if (!moduleName.startsWith('.') || !moduleName.endsWith('.js')) return null;
+  const origin = context.originModulePath;
+  if (!origin || !origin.startsWith(PACKAGES_DIR + path.sep)) return null;
+  const base = path.resolve(path.dirname(origin), moduleName.slice(0, -'.js'.length));
+  for (const ext of ['.ts', '.tsx']) {
+    if (fs.existsSync(base + ext)) return base + ext;
+  }
+  return null;
+}
+
 const defaultResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   // 1. Force a single React / React-DOM copy (see file header).
   if (moduleName === 'react' || moduleName.startsWith('react/')) {
     return { type: 'sourceFile', filePath: require.resolve(moduleName, { paths: [REACT_NM] }) };
   }
+
+  // 1b. `./foo.js` inside a workspace package means `./foo.ts`.
+  const tsSource = typescriptSourceFor(context, moduleName);
+  if (tsSource) return { type: 'sourceFile', filePath: tsSource };
   if (REACT_DOM_NM && (moduleName === 'react-dom' || moduleName.startsWith('react-dom/'))) {
     return { type: 'sourceFile', filePath: require.resolve(moduleName, { paths: [REACT_DOM_NM] }) };
   }

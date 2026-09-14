@@ -53,3 +53,11 @@ package-lock.json
 *.key
 *.p12
 *.mobileprovision
+
+# Build output must never sit beside its source: Metro and webpack resolve the
+# compiled .js in preference to the .ts, so a stale artefact is silently
+# bundled instead of the code you are editing. tsc emits to dist/.
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
