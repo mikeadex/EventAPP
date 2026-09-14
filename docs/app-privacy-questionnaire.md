@@ -157,11 +157,24 @@ location, and nothing shares a user's location with anyone.
 **In-app purchases or commerce — No.** Every event is free and no payments are
 processed.
 
-## Expected outcome: 13+
+## Outcome: Apple calculates 4+ — override it to 13+
 
-User-generated content with moderation lands here rather than lower.
+With every content answer at None, the questionnaire calculates **4+**. The
+user-generated content capability is disclosed separately and does not raise the
+number by itself.
 
-**13+ is also the answer that has to be right**, because it is the only one
-consistent with the rest of the app: the Terms set a minimum age of 13, and the
-Privacy Policy says the same (higher in EEA states that require it). A rating of
-4+ or 9+ would contradict documents linked from the store listing.
+Do not ship 4+. On the same screen Apple offers *Override to Higher Age Rating*
+and says it is for an app that "has a EULA with age requirements" — which is
+exactly this one. **Set 13+**, because:
+
+- The Terms set a minimum age of 13 and the Privacy Policy says the same. A 4+
+  rating contradicts a document linked from the same listing.
+- Listings and images come from third parties, screened but not pre-approved by
+  a human. If something inappropriate ever reaches a public page, having shipped
+  under a 4+ rating is a much worse position to defend.
+
+Related answers on that screen: **Made for Kids — no** (the Kids Category brings
+parental gates, SDK restrictions and COPPA obligations, and the Terms exclude
+under-13s anyway). **Age Suitability URL** — optional, but
+`https://ekklesiaevents.com/terms` points a reviewer at §2 Eligibility, which
+states the age requirement the override rests on.
