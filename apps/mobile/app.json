@@ -33,10 +33,6 @@
       "permissions": [
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
-      ],
-      "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.SYSTEM_ALERT_WINDOW"
       ]
     },
     "web": {
@@ -50,8 +46,7 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "Ekklesia uses your calendar to add events you choose to save.",
-          "remindersPermission": false
+          "calendarPermission": "Ekklesia uses your calendar to add events you choose to save."
         }
       ],
       [
@@ -68,9 +63,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Ekklesia uses the camera to scan attendee tickets at check-in.",
-          "microphonePermission": false,
-          "recordAudioAndroid": false
+          "cameraPermission": "Ekklesia uses the camera to scan attendee tickets at check-in."
         }
       ],
       [
