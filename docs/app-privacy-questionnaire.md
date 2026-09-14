@@ -99,3 +99,69 @@ If any answer here changes, change the policy in the same pass.
   library, each with a purpose-specific string. Microphone, Reminders and
   `SYSTEM_ALERT_WINDOW` were removed once a prebuild showed they were being
   requested but never used.
+
+---
+
+# Age rating questionnaire — answers
+
+A separate questionnaire from App Privacy, in the same part of App Store
+Connect. Apple's current tiers are **4+, 9+, 13+, 16+, 18+** (the old 12+ and
+17+ were retired in 2025).
+
+## Content questions — all "None"
+
+Ekklesia ships no content of its own in any of these categories:
+
+- Violence, cartoon/fantasy or realistic — **None**
+- Sexual content or nudity — **None**
+- Profanity or crude humour — **None**
+- Alcohol, tobacco or drug use or references — **None**
+- Mature or suggestive themes — **None**
+- Horror or fear themes — **None**
+- Medical or treatment-focused content — **None**
+- Gambling, simulated or real — **None**
+- Contests — **None**
+
+These answer for what *we* publish. What other people publish is the
+user-generated content question below, which is where it belongs.
+
+## The questions that decide the rating
+
+**User-generated content — Yes.** Organisations write their own listings and
+upload their own images. This is the answer that matters, and Apple follows it
+with questions about controls. All three are true and all three are built:
+
+- *Content is moderated* — listings are screened on create and update
+  (`packages/shared/src/content-filter.ts`), and a moderator queue acts on
+  reports at `/admin/reports`.
+- *Users can report content* — from any event or host page in the app, and by
+  email. The Terms commit us to acting within 24 hours.
+- *Users can block other users* — from a host page, undone in Settings →
+  Blocked.
+
+**Unrestricted web access — No.** The app has no browser. The only web view is
+the video player in the event gallery, and it is penned in: `originWhitelist`
+allows `youtube.com` and `player.vimeo.com` only, and the URL is rebuilt
+server-side from a validated video id rather than from anything stored
+(`embedUrlFor`). There is no address bar and no arbitrary navigation.
+
+**Messaging or chat between users — No.** There are no messaging models in the
+schema and no direct messages in the app. An organiser can send a push
+announcement to people holding tickets for their own event
+(`POST /v1/events/:eventId/announce`); that is one-way, scoped to one event, and
+not a conversation.
+
+**Location sharing with other users — No.** The app never reads device
+location, and nothing shares a user's location with anyone.
+
+**In-app purchases or commerce — No.** Every event is free and no payments are
+processed.
+
+## Expected outcome: 13+
+
+User-generated content with moderation lands here rather than lower.
+
+**13+ is also the answer that has to be right**, because it is the only one
+consistent with the rest of the app: the Terms set a minimum age of 13, and the
+Privacy Policy says the same (higher in EEA states that require it). A rating of
+4+ or 9+ would contradict documents linked from the store listing.
