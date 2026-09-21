@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "998572059087",
+    "project_id": "ekklesia-events",
+    "storage_bucket": "ekklesia-events.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998572059087:android:08d2eef6eb95e42ef08aba",
+        "android_client_info": {
+          "package_name": "com.ekklesia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiCMCqulNFLGC-r79_XkA8WhUjYG1Xxvo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

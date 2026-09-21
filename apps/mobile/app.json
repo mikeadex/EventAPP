@@ -29,6 +29,7 @@
         "backgroundColor": "#131011"
       },
       "package": "com.ekklesia",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 1,
       "permissions": [
         "android.permission.READ_CALENDAR",
