@@ -82,6 +82,24 @@ export default function DeleteAccountPage() {
         </p>
       </Section>
 
+      <Section heading="Deleting some of your data, without closing your account">
+        <p>
+          You do not have to delete your whole account to have something removed.
+          Email <a href={`mailto:${CONTACT}`}>{CONTACT}</a> and say what you want deleted — a
+          photo you uploaded, an event listing, your profile details, or your RSVP history.
+        </p>
+        <p>
+          We reply within two working days and complete the request within one month, which is
+          the period UK GDPR allows. If a request would break something — deleting the only
+          copy of an event other people hold tickets for, say — we will tell you what the
+          consequence is and let you decide.
+        </p>
+        <p>
+          Some things you can remove yourself without asking: cancel an RSVP from the event in
+          the app, unsave an event, or edit your profile at any time.
+        </p>
+      </Section>
+
       <Section heading="If you run an organisation">
         <p>
           If you are the only owner of an organisation, we will ask you to transfer
