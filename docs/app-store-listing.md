@@ -1,7 +1,8 @@
 # App Store listing copy
 
-Paste-ready text for App Store Connect. Field limits are enforced by the store;
-the counts here were checked against them.
+Paste-ready text for App Store Connect, and for the Google Play fields that
+differ (see [Google Play](#google-play) at the end). Field limits are enforced
+by the store; the counts here were checked against them.
 
 Scope note: the platform is **churches, ministries and community
 organisations** — `OrgKind` is `CHURCH | MINISTRY | COMMUNITY`, and the event
@@ -134,3 +135,49 @@ Suggested five, in this order, because the first two are what most people see:
 3. A ticket with its QR code
 4. The organiser view — attendees, or the check-in scanner
 5. Report and block, which doubles as evidence for guideline 1.2
+
+---
+
+# Google Play
+
+Play takes the same description, but splits the copy differently and has no
+subtitle, promotional text or keyword field. Visual assets and their specs are
+in [`../store/play/README.md`](../store/play/README.md).
+
+## App name (30)
+
+```
+Ekklesia Events
+```
+
+The listing originally went up as just `Ekklesia`. Match the App Store name —
+one brand across both stores, and "Events" is a word people search.
+
+## Short description (80)
+
+Shown under the app name in search results and above the fold on the listing.
+Play does not index it for ranking, but it is the line that decides whether
+anyone taps through.
+
+```
+Church and community events near you — free to browse, free to attend.
+```
+
+70 characters.
+
+## Full description (4000)
+
+The same text as the App Store **Description** above — paste it unchanged. Play
+renders plain text only; the bullets are literal `•` characters and survive.
+
+## Fields with no App Store equivalent
+
+| Field | Value |
+|---|---|
+| App category | Events |
+| Email address | `david@ekklesiaevents.com` |
+| Website | `https://ekklesiaevents.com` |
+| Privacy policy | `https://ekklesiaevents.com/privacy` |
+| Account deletion URL | `https://ekklesiaevents.com/delete-account` |
+| Contains ads | No |
+| In-app purchases | No |
