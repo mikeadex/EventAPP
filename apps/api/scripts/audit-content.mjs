@@ -50,9 +50,11 @@ try {
       kind: true,
       verificationStatus: true,
       createdAt: true,
+      // Every membership, not only OWNER. An orphaned organisation has no
+      // owner at all, which would make every ticket on it look like an
+      // outsider's and inflate the number this script exists to report.
       memberships: {
-        where: { role: 'OWNER' },
-        select: { user: { select: { id: true, email: true } } },
+        select: { role: true, user: { select: { id: true, email: true } } },
       },
       events: {
         orderBy: { startsAt: 'asc' },
@@ -63,7 +65,13 @@ try {
           visibility: true,
           startsAt: true,
           coverImageUrl: true,
-          tickets: { select: { userId: true, status: true } },
+          tickets: {
+            select: {
+              status: true,
+              attendeeEmail: true,
+              user: { select: { id: true, email: true } },
+            },
+          },
         },
       },
     },
@@ -76,11 +84,14 @@ try {
 
   const now = new Date();
   const iso = (d) => d.toISOString().replace('T', ' ').slice(0, 16);
-  let totalOutsideTickets = 0;
+  const byName = new Map();
+  /** email -> how many tickets that person holds, across every organisation */
+  const holders = new Map();
 
   for (const org of orgs) {
-    const owners = org.memberships.map((m) => m.user);
-    const ownerIds = new Set(owners.map((u) => u.id));
+    byName.set(org.name, [...(byName.get(org.name) ?? []), org.slug]);
+    const owners = org.memberships.filter((m) => m.role === 'OWNER').map((m) => m.user);
+    const insiderIds = new Set(org.memberships.map((m) => m.user.id));
     const published = org.events.filter((e) => e.status === 'PUBLISHED');
     const upcoming = published.filter((e) => e.startsAt > now);
 
@@ -98,18 +109,28 @@ try {
     if (org.events.length) {
       console.log('');
       for (const e of org.events) {
-        // A ticket held by someone who does not run the organisation is a real
-        // booking by a real person, whatever we think of the event.
         const live = e.tickets.filter((t) => t.status !== 'CANCELLED');
-        const outside = live.filter((t) => t.userId && !ownerIds.has(t.userId));
-        totalOutsideTickets += outside.length;
+        // Who actually holds a ticket matters more than how many do. One name
+        // tells you whether this is your own test account or somebody who
+        // found the app and booked a place.
+        const whoCount = new Map();
+        for (const t of live) {
+          const who = t.user?.email ?? t.attendeeEmail ?? '(no email on ticket)';
+          whoCount.set(who, (whoCount.get(who) ?? 0) + 1);
+          holders.set(who, (holders.get(who) ?? 0) + 1);
+        }
+        const outsiders = live.filter((t) => !t.user || !insiderIds.has(t.user.id));
+        const who = [...whoCount]
+          .map(([email, n]) => (n > 1 ? `${email} ×${n}` : email))
+          .join(', ');
         const when = e.startsAt > now ? iso(e.startsAt) : `${iso(e.startsAt)} (past)`;
         const flags = [
           e.status !== 'PUBLISHED' ? e.status : null,
           e.visibility !== 'PUBLIC' ? e.visibility : null,
           e.coverImageUrl ? null : 'no cover image',
-          outside.length ? `⚠ ${outside.length} ticket(s) held by non-members` : null,
-          !outside.length && live.length ? `${live.length} ticket(s), all internal` : null,
+          live.length
+            ? `${live.length} ticket(s)${outsiders.length ? '' : ', all held by members'}: ${who}`
+            : null,
         ].filter(Boolean);
         console.log(
           `    ${when}  ${e.title.slice(0, 32).padEnd(34)}${flags.length ? flags.join(' · ') : ''}`,
@@ -120,17 +141,28 @@ try {
   }
 
   console.log('─'.repeat(72));
-  console.log(`${orgs.length} organisation(s).`);
-  if (totalOutsideTickets) {
-    console.log(
-      `\n⚠ ${totalOutsideTickets} ticket(s) are held by people who do not run the
-  organisation that issued them. Deleting those events cascades to the tickets
-  and those people lose a booking that is currently in their app. Unpublish
-  (status DRAFT) or unlist (visibility UNLISTED) instead — both hide the event
-  from discovery while leaving the ticket intact.`,
-    );
+  console.log(`${orgs.length} organisation(s).\n`);
+
+  const dupes = [...byName].filter(([, slugs]) => slugs.length > 1);
+  if (dupes.length) {
+    console.log('Duplicate organisation names — these look like repeats to anyone browsing:');
+    for (const [name, slugs] of dupes) console.log(`  "${name}"  ->  ${slugs.join(', ')}`);
+    console.log('');
+  }
+
+  if (holders.size) {
+    console.log('Everyone currently holding a ticket to anything, most tickets first:');
+    for (const [email, n] of [...holders].sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${String(n).padStart(3)}  ${email}`);
+    }
+    console.log(`
+Check that list before deleting anything. Deleting an event cascades to its
+tickets, so any name there that is not one of your own test accounts is a
+person who loses a booking they can still see in the app. Unpublishing
+(status DRAFT) or unlisting (visibility UNLISTED) hides the event from
+discovery and leaves the ticket intact.`);
   } else {
-    console.log('\nNo tickets are held by anyone outside the issuing organisation.');
+    console.log('Nobody holds a ticket to anything.');
   }
 } finally {
   await prisma.$disconnect();
