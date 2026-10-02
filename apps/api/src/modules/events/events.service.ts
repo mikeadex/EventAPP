@@ -33,12 +33,18 @@ export class EventsService {
   ) {}
 
   // ─── Public discovery ────────────────────────────────────────────────────
-  async searchPublic(rawQuery: unknown) {
+  /**
+   * @param includeDemo show organisations marked `isDemo`. True only for the
+   *   store-review account, so a reviewer signing in with the credentials we
+   *   publish sees a populated app. Everyone else sees real listings only.
+   */
+  async searchPublic(rawQuery: unknown, includeDemo = false) {
     const input: EventSearchInput = EventSearchSchema.parse(rawQuery);
     const where: Prisma.EventWhereInput = {
       status: 'PUBLISHED',
       visibility: 'PUBLIC',
       deletedAt: null,
+      ...(includeDemo ? {} : { organization: { is: { isDemo: false } } }),
       ...(input.category && {
         category: input.category.toUpperCase() as Prisma.EventWhereInput['category'],
       }),
@@ -124,7 +130,8 @@ export class EventsService {
   }
 
   /** Distinct venue cities with published upcoming events (for the location picker). */
-  async listCities() {
+  /** Cities with upcoming events, for the feed's location picker. */
+  async listCities(includeDemo = false) {
     const rows = await this.prisma.event.findMany({
       where: {
         status: 'PUBLISHED',
@@ -132,6 +139,9 @@ export class EventsService {
         deletedAt: null,
         startsAt: { gte: new Date() },
         venueId: { not: null },
+        // Same filter as searchPublic, or the picker offers a city whose only
+        // events vanish the moment it is chosen.
+        ...(includeDemo ? {} : { organization: { is: { isDemo: false } } }),
       },
       select: { venue: { select: { city: true, country: true } } },
       distinct: ['venueId'],

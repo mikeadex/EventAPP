@@ -20,7 +20,8 @@
     "review-account": "node scripts/create-review-account.mjs",
     "prune-demo-churches": "node scripts/prune-demo-churches.mjs",
     "refresh-demo-dates": "node scripts/refresh-demo-dates.mjs",
-    "audit-content": "node scripts/audit-content.mjs"
+    "audit-content": "node scripts/audit-content.mjs",
+    "demo-content": "node scripts/demo-content.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.665.0",

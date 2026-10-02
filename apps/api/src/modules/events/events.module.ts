@@ -12,6 +12,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { Permission } from '@ekklesia/shared';
 import {
   OrgScope,
@@ -23,6 +24,8 @@ import {
 } from '../../common/org-membership.guard.js';
 import { EventsService } from './events.service.js';
 import { PushModule } from '../push/push.module.js';
+import { AuthModule } from '../auth/auth.module.js';
+import { DemoVisibilityService } from '../auth/demo-visibility.service.js';
 import { EventMediaService } from './event-media.service.js';
 
 @Controller()
@@ -30,17 +33,18 @@ class EventsController {
   constructor(
     private readonly events: EventsService,
     private readonly media: EventMediaService,
+    private readonly demo: DemoVisibilityService,
   ) {}
 
   // ─── Public ──────────────────────────────────────────────────────────────
   @Get('events')
-  search(@Query() query: unknown) {
-    return this.events.searchPublic(query);
+  async search(@Req() req: Request, @Query() query: unknown) {
+    return this.events.searchPublic(query, await this.demo.allows(req));
   }
 
   @Get('events/cities')
-  cities() {
-    return this.events.listCities();
+  async cities(@Req() req: Request) {
+    return this.events.listCities(await this.demo.allows(req));
   }
 
   @Get('events/:eventId/attendees')
@@ -178,7 +182,7 @@ class EventsController {
 }
 
 @Module({
-  imports: [PushModule],
+  imports: [PushModule, AuthModule],
   controllers: [EventsController],
   providers: [EventsService, EventMediaService],
   exports: [EventsService],

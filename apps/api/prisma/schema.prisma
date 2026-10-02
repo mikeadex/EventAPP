@@ -30,6 +30,11 @@ model User {
   name          String?
   image         String?
   platformRole  PlatformRole @default(USER)
+  // Lets this account see organisations marked `isDemo` in public discovery.
+  // Set on the store-review account so a reviewer signing in with the supplied
+  // credentials sees a populated app, while everyone else sees only real
+  // listings. Not a role: it grants visibility of seed data, nothing else.
+  seesDemoContent Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
@@ -137,6 +142,13 @@ model Organization {
   country           String   @db.Char(2)
   currency          String   @db.Char(3)
   timezone          String   @default("Europe/London")
+
+  // Seed and demonstration organisations. Their events are fabricated — a real
+  // venue and time with nothing actually happening — so they are kept out of
+  // public discovery and shown only to accounts with `User.seesDemoContent`.
+  // Events stay reachable by direct link whatever this says, because people
+  // already hold tickets to some of them and a ticket must still open.
+  isDemo            Boolean  @default(false)
 
   verificationStatus VerificationStatus @default(UNVERIFIED)
   verifiedAt         DateTime?

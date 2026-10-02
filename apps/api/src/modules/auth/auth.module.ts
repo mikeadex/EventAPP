@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { getAuth } from './auth.js';
 import { CurrentUserService } from './current-user.service.js';
 import { enabledSocialProviders } from './social-providers.js';
+import { DemoVisibilityService } from './demo-visibility.service.js';
 import { NativeAuthController } from './native-handoff.controller.js';
 import { SocialStartController } from './social-start.controller.js';
 import { AppleDomainController } from './apple-domain.controller.js';
@@ -92,7 +93,7 @@ class DeploymentConfigController {
     SocialStartController,
     AppleDomainController,
   ],
-  providers: [CurrentUserService],
-  exports: [CurrentUserService],
+  providers: [CurrentUserService, DemoVisibilityService],
+  exports: [CurrentUserService, DemoVisibilityService],
 })
 export class AuthModule {}
