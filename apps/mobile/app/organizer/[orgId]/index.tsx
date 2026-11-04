@@ -88,14 +88,24 @@ export default function OrgDashboardScreen() {
           <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
         </Pressable>
         <Text style={styles.h}>Your events</Text>
-        <Pressable
-          onPress={() => router.push(`/organizer/event/new?orgId=${orgId}`)}
-          hitSlop={8}
-          style={styles.backBtn}
-          accessibilityLabel="Create event"
-        >
-          <Ionicons name="add" size={26} color={color.ink[900]} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => router.push(`/organizer/${orgId}/edit`)}
+            hitSlop={8}
+            style={styles.backBtn}
+            accessibilityLabel="Edit your organisation"
+          >
+            <Ionicons name="business-outline" size={21} color={color.ink[900]} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push(`/organizer/event/new?orgId=${orgId}`)}
+            hitSlop={8}
+            style={styles.backBtn}
+            accessibilityLabel="Create event"
+          >
+            <Ionicons name="add" size={26} color={color.ink[900]} />
+          </Pressable>
+        </View>
       </View>
 
       {error && !events ? (
@@ -195,6 +205,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[2],
   },
   backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
   h: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
   verifyBanner: {
     flexDirection: 'row',
