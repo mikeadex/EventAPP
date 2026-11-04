@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,29 +15,66 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { updateUser, useSession } from '@/lib/auth-client';
+import { canPickImages, pickImages, uploadImage } from '@/lib/upload';
+import { showToast } from '@/components/toast';
 
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const { data: session } = useSession();
   const [name, setName] = useState(session?.user?.name ?? '');
   const [pending, setPending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  const currentImage = session?.user?.image ?? null;
+  const [image, setImage] = useState<string | null>(currentImage);
+
   const trimmed = name.trim();
-  const dirty = trimmed.length > 0 && trimmed !== (session?.user?.name ?? '');
+  const dirty =
+    (trimmed.length > 0 && trimmed !== (session?.user?.name ?? '')) || image !== currentImage;
 
   async function save() {
     setPending(true);
     setError(null);
     setSaved(false);
-    const res = await updateUser({ name: trimmed });
+    // Send both every time: the picture and the name are one "save" to the
+    // person pressing the button, and a partial update would leave the screen
+    // showing something that is not what was stored.
+    const res = await updateUser({ name: trimmed, image });
     setPending(false);
     if (res.error) {
       setError(res.error.message ?? 'Could not update profile');
       return;
     }
     setSaved(true);
+  }
+
+  /** Upload happens on pick; `save` only stores the resulting URL. */
+  async function choosePhoto() {
+    const picked = await pickImages({ multiple: false });
+    if (!picked.ok) {
+      if (picked.reason === 'denied') showToast('Allow photo access to set a picture');
+      if (picked.reason === 'unsupported') showToast('Update the app to add a picture');
+      return;
+    }
+    const chosen = picked.images[0];
+    if (!chosen) return;
+
+    setUploading(true);
+    const up = await uploadImage(chosen, 'user_avatar');
+    setUploading(false);
+
+    if (up.ok) {
+      setImage(up.url);
+      setSaved(false);
+      return;
+    }
+    if (up.reason === 'unavailable') {
+      showToast('Photos are unavailable right now — try again later');
+      return;
+    }
+    showToast(up.message ?? "Couldn't upload that photo");
   }
 
   const initial = (trimmed || session?.user?.email || '?').charAt(0).toUpperCase();
@@ -55,9 +93,33 @@ export default function EditProfileScreen() {
       </View>
 
       <View style={styles.avatarWrap}>
-        <View style={styles.avatarLg}>
-          <Text style={styles.avatarText}>{initial}</Text>
-        </View>
+        <Pressable
+          style={styles.avatarLg}
+          disabled={!canPickImages() || uploading || pending}
+          onPress={() => void choosePhoto()}
+          accessibilityRole="button"
+          accessibilityLabel={image ? 'Change your picture' : 'Add a picture'}
+        >
+          {image ? (
+            <Image source={{ uri: image }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          ) : (
+            <Text style={styles.avatarText}>{initial}</Text>
+          )}
+          {uploading ? (
+            <View style={[StyleSheet.absoluteFill, styles.avatarBusy]}>
+              <ActivityIndicator color={color.ink[0]} />
+            </View>
+          ) : canPickImages() ? (
+            <View style={styles.avatarBadge}>
+              <Ionicons name="camera" size={14} color={color.ink[0]} />
+            </View>
+          ) : null}
+        </Pressable>
+        {image && canPickImages() ? (
+          <Pressable onPress={() => setImage(null)} hitSlop={8} disabled={pending}>
+            <Text style={styles.removePhoto}>Remove photo</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <Text style={styles.fieldLabel}>Display name</Text>
@@ -115,7 +177,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
   h: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: color.ink[900] },
 
-  avatarWrap: { alignItems: 'center', marginVertical: spacing[5] },
+  avatarWrap: { alignItems: 'center', marginVertical: spacing[5], gap: spacing[2] },
   avatarLg: {
     width: 88,
     height: 88,
@@ -123,8 +185,28 @@ const styles = StyleSheet.create({
     backgroundColor: color.ink[100],
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   avatarText: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold, color: color.ink[900] },
+  avatarBusy: {
+    backgroundColor: 'rgba(10,9,7,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarBadge: {
+    position: 'absolute',
+    right: 2,
+    bottom: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: color.ink[900],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: color.ink[0],
+  },
+  removePhoto: { fontSize: fontSize.xs, color: color.ink[500], fontWeight: fontWeight.medium },
 
   fieldLabel: {
     fontSize: fontSize.xs,

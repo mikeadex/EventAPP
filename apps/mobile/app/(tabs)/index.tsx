@@ -20,6 +20,7 @@ import { api } from '@/lib/api';
 import { useForegroundRefresh } from '@/lib/use-foreground-refresh';
 import { EmptyState, ErrorState, FadeIn, Skeleton } from '@/components/states';
 import { showToast } from '@/components/toast';
+import { UserAvatar } from '@/components/user-avatar';
 
 interface EventItem {
   id: string;
@@ -388,11 +389,14 @@ export default function DiscoverScreen() {
         <View style={[styles.heroTopBar, { paddingTop: insets.top + spacing[1] }]}>
           {locationPill}
           <Pressable style={styles.heroAvatar} onPress={() => router.push('/profile')} hitSlop={6}>
-            {session?.user ? (
-              <Text style={styles.heroAvatarText}>{initial}</Text>
-            ) : (
-              <Ionicons name="person" size={18} color={color.ink[0]} />
-            )}
+            <UserAvatar
+              uri={session?.user?.image}
+              initial={session?.user ? initial : null}
+              size={42}
+              textStyle={styles.heroAvatarText}
+              signedOutColor={color.ink[0]}
+              style={styles.avatarFill}
+            />
           </Pressable>
         </View>
         <View style={styles.heroBody}>
@@ -426,11 +430,13 @@ export default function DiscoverScreen() {
     <View style={[styles.plainTop, { paddingTop: insets.top + spacing[2] }]}>
       {locationPill}
       <Pressable style={styles.avatar} onPress={() => router.push('/profile')}>
-        {session?.user ? (
-          <Text style={styles.avatarText}>{initial}</Text>
-        ) : (
-          <Ionicons name="person" size={18} color={color.ink[500]} />
-        )}
+        <UserAvatar
+          uri={session?.user?.image}
+          initial={session?.user ? initial : null}
+          size={42}
+          textStyle={styles.avatarText}
+          style={styles.avatarFill}
+        />
       </Pressable>
     </View>
   );
@@ -716,6 +722,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: color.ink[900] },
+  avatarFill: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
 
   searchTrigger: {
     flexDirection: 'row',

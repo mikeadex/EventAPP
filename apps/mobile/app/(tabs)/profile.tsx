@@ -7,6 +7,7 @@ import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/token
 import { signOut, useSession } from '@/lib/auth-client';
 import { unregisterFromPush } from '@/lib/push';
 import { api } from '@/lib/api';
+import { UserAvatar } from '@/components/user-avatar';
 
 function MenuRow({
   icon,
@@ -99,9 +100,13 @@ export default function ProfileScreen() {
       <Text style={styles.h}>Profile</Text>
 
       <View style={styles.profileCard}>
-        <View style={styles.avatarLg}>
-          <Text style={styles.avatarText}>{initial}</Text>
-        </View>
+        <UserAvatar
+          uri={session.user.image}
+          initial={initial}
+          size={88}
+          style={styles.avatarLg}
+          textStyle={styles.avatarText}
+        />
         <Text style={styles.name}>{name}</Text>
         <Text style={styles.email}>{session.user.email}</Text>
       </View>
