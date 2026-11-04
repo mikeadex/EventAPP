@@ -1,5 +1,5 @@
 import { requireOptionalNativeModule } from 'expo-modules-core';
-import { api } from './api';
+import { api, ApiError } from './api';
 
 /**
  * Picking a photo and putting it in object storage.
@@ -29,7 +29,17 @@ export type PickedImage = { uri: string; mimeType: string; fileName: string; fil
 
 export type UploadResult =
   | { ok: true; url: string }
-  | { ok: false; reason: 'unsupported' | 'denied' | 'cancelled' | 'failed'; message?: string };
+  | {
+      ok: false;
+      /**
+       * `unavailable` means object storage is not configured server-side — the
+       * presign answers 503. It is worth separating from `failed` because
+       * nothing the person does will help, so the only honest thing to say is
+       * "not right now, add one later" rather than inviting them to retry.
+       */
+      reason: 'unsupported' | 'denied' | 'cancelled' | 'failed' | 'unavailable';
+      message?: string;
+    };
 
 /** Content types the API accepts; anything else is rejected before uploading. */
 const ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
@@ -104,10 +114,20 @@ export async function uploadImage(
     // quality re-encode on others. The blob is the only reliable source.
     const blob = await (await fetch(image.uri)).blob();
 
-    const sign = await api<{ uploadUrl: string; publicUrl: string }>('/v1/uploads/sign', {
-      method: 'POST',
-      body: { purpose, contentType: image.mimeType, byteSize: blob.size },
-    });
+    let sign: { uploadUrl: string; publicUrl: string };
+    try {
+      sign = await api<{ uploadUrl: string; publicUrl: string }>('/v1/uploads/sign', {
+        method: 'POST',
+        body: { purpose, contentType: image.mimeType, byteSize: blob.size },
+      });
+    } catch (e) {
+      // 503 is the API saying the S3_* vars are not set. That is an operator
+      // problem, not something a retry or a different photo fixes.
+      if (e instanceof ApiError && e.status === 503) {
+        return { ok: false, reason: 'unavailable' };
+      }
+      throw e;
+    }
 
     const put = await fetch(sign.uploadUrl, {
       method: 'PUT',

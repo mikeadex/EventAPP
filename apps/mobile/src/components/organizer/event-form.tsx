@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { DateField, TimeField } from './date-time-fields';
+import { CoverPhotoField } from './cover-photo-field';
 import type { LocationMode } from '@/lib/event-location';
 
 const LOCATION_MODES = [
@@ -46,6 +47,8 @@ export interface EventFormValues {
   city: string;
   postalCode: string;
   capacity: string;
+  /** Public URL of an already-uploaded image, or null for no cover. */
+  coverImageUrl: string | null;
 }
 
 export function emptyEventForm(): EventFormValues {
@@ -64,6 +67,7 @@ export function emptyEventForm(): EventFormValues {
     city: '',
     postalCode: '',
     capacity: '',
+    coverImageUrl: null,
   };
 }
 
@@ -165,6 +169,9 @@ export function toEventBody(v: EventFormValues, mode: 'create' | 'update') {
     onlineUrl: v.locationMode === 'in_person' ? absent : v.onlineUrl.trim(),
     capacity,
     venue: v.locationMode === 'online' ? absent : venue,
+    // On create the schema takes a URL or nothing; on update, null is how a
+    // cover is cleared, so `absent` carries the right meaning for each.
+    coverImageUrl: v.coverImageUrl ?? absent,
   };
 }
 
@@ -182,6 +189,15 @@ export function EventForm({
 
   return (
     <View style={{ gap: spacing[4] }}>
+      {/* First, not last. The picture is the thing the feed is built around,
+          and asking for it after the venue and the times reads as an
+          afterthought — which is how it has been treated so far. */}
+      <CoverPhotoField
+        value={value.coverImageUrl}
+        onChange={(url) => set('coverImageUrl', url)}
+        disabled={disabled}
+      />
+
       <Field label="Title">
         <TextInput
           value={value.title}

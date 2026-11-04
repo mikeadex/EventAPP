@@ -49,6 +49,7 @@ interface EventDetail {
   isOnline: boolean;
   onlineUrl: string | null;
   capacity: number | null;
+  coverImageUrl: string | null;
   attendeeCount: number;
   venue: { name: string; addressLine1: string; city: string; postalCode: string } | null;
   ticketTypes: TicketType[];
@@ -96,6 +97,10 @@ export default function OrganizerEventScreen() {
       city: e.venue?.city ?? '',
       postalCode: e.venue?.postalCode ?? '',
       capacity: e.capacity === null ? '' : String(e.capacity),
+      // Must be hydrated, not defaulted: the form sends every field back on
+      // save, so an empty value here would clear a cover the organiser set
+      // from the gallery screen simply by opening the editor and saving.
+      coverImageUrl: e.coverImageUrl ?? null,
     });
   }, []);
 
