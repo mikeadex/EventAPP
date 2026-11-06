@@ -24,6 +24,37 @@ interface OrgEvent {
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
+/**
+ * What a host is told about verification, per state.
+ *
+ * This card used to read "Unverified. Public publishing & payouts are gated."
+ * for every state except VERIFIED, and that was not true. Nothing in the API
+ * checks `verificationStatus` before publishing an event — the events module
+ * never reads the column — and no other surface in the product reads it
+ * either: no public badge, no gate, no payout difference. Verification
+ * currently changes nothing but this sentence.
+ *
+ * The sentence is expensive. This is the page a host lands on the moment they
+ * create an organisation, and the claim sat in the card immediately beside the
+ * "Create an event" button. Of the first four real organisations, three
+ * stopped here having never created a single event, and the fourth waited
+ * fifty-one days before starting. One of the three answered the verification
+ * questions, moved to PENDING, and has been waiting since — there is no code
+ * path anywhere that grants VERIFIED, so that wait cannot end.
+ *
+ * So tell them what they can actually do. REJECTED and SUSPENDED are spelled
+ * out separately rather than falling into the same branch: whatever the API
+ * does or does not enforce today, "publishing is open" is not a thing to say
+ * to a suspended organisation.
+ */
+const VERIFICATION_COPY: Record<string, string> = {
+  UNVERIFIED: 'Publishing is open — you can create and publish events now, verified or not.',
+  PENDING: 'Your details are with us for review. Publishing stays open in the meantime.',
+  VERIFIED: 'Verified.',
+  REJECTED: 'We could not verify these details. Get in touch and we will help.',
+  SUSPENDED: 'This organisation is suspended. Get in touch and we will help.',
+};
+
 async function loadDashboard(orgId: string) {
   const cookieHeader = (await headers()).get('cookie') ?? '';
   const init: RequestInit = { headers: { cookie: cookieHeader }, cache: 'no-store' };
@@ -68,9 +99,14 @@ export default async function OrganizationDashboardPage({
           <h1 className="mt-1 font-display text-3xl text-ink-900">{org.name}</h1>
           <p className="mt-1 text-sm text-ink-500">/{org.slug}</p>
         </div>
-        <span className="rounded-full bg-ink-100 px-3 py-1 text-xs uppercase tracking-wider text-ink-600">
-          {org.verificationStatus}
-        </span>
+        {/* A bare "UNVERIFIED" stamp beside a brand-new organisation's name
+            reads as a verdict, and there is nothing behind it to act on. Show
+            the badge only once it says something: in the queue, or through it. */}
+        {org.verificationStatus !== 'UNVERIFIED' && (
+          <span className="rounded-full bg-ink-100 px-3 py-1 text-xs uppercase tracking-wider text-ink-600">
+            {org.verificationStatus}
+          </span>
+        )}
       </div>
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -84,9 +120,7 @@ export default async function OrganizationDashboardPage({
         <div className="rounded-lg border border-ink-100 bg-white p-6">
           <p className="text-xs uppercase tracking-wider text-ink-400">Verification</p>
           <p className="mt-2 text-sm text-ink-700">
-            {org.verificationStatus === 'VERIFIED'
-              ? 'Verified — listings are public.'
-              : 'Unverified. Public publishing & payouts are gated.'}
+            {VERIFICATION_COPY[org.verificationStatus] ?? VERIFICATION_COPY.UNVERIFIED}
           </p>
         </div>
         <div className="rounded-lg border border-ink-100 bg-white p-6">
