@@ -62,6 +62,24 @@ export class EmailService {
     }
   }
 
+  /**
+   * Print the link an unsent email would have carried.
+   *
+   * Without this there is no way to verify an address or follow a reset on a
+   * machine with no mail provider — the token exists only inside a message
+   * that was never sent, so the whole flow is untestable locally and the only
+   * way through is editing the database by hand.
+   *
+   * Guarded twice: only when the client is unconfigured (so never on a
+   * working deployment) and never when NODE_ENV says production, because the
+   * link carries a token that grants the action.
+   */
+  private logDevLink(input: SendEmailInput): void {
+    if (process.env.NODE_ENV === 'production') return;
+    const link = (input.text ?? input.html).match(/https?:\/\/[^\s"'<>)]+/)?.[0];
+    if (link) this.logger.log(`[email:dev-noop] link: ${link}`);
+  }
+
   async send(input: SendEmailInput): Promise<{ id: string | null }> {
     const fail = (reason: string): { id: string | null } => {
       this.logger.error(`Email send failed (${input.subject}): ${reason}`);
@@ -70,13 +88,18 @@ export class EmailService {
     };
 
     if (!this.client) {
-      // Unconfigured is fine for local development, but a `required` send
-      // still has to fail loudly: otherwise a signup against a misconfigured
-      // deployment looks successful and strands the account.
-      if (input.required) return fail('RESEND_API_KEY is not configured');
       this.logger.log(
         `[email:dev-noop] to=${input.to} subject="${input.subject}"`,
       );
+      // Before the `required` check, not after: verification and reset are the
+      // two mails a developer actually needs to follow, and they are exactly
+      // the two that fail here. Logging after the throw would make the link
+      // unreachable for every flow it was added to serve.
+      this.logDevLink(input);
+      // Unconfigured is still a failure for a `required` send: otherwise a
+      // signup against a misconfigured deployment looks successful and
+      // strands the account.
+      if (input.required) return fail('RESEND_API_KEY is not configured');
       return { id: null };
     }
     try {
