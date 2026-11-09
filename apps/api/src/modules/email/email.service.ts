@@ -8,6 +8,28 @@ export interface SendEmailInput {
   text?: string;
   /** Used for transactional grouping in Resend; tags become searchable. */
   tags?: { name: string; value: string }[];
+  /**
+   * Throw instead of swallowing when the send fails.
+   *
+   * Off by default, which is right for mail that accompanies an action the
+   * person has already completed — a ticket confirmation, a moderation
+   * report. Losing those is bad but the action still happened.
+   *
+   * It is wrong for mail that *is* the action. A verification email that
+   * silently fails leaves someone with an account they can never sign in to
+   * (`requireEmailVerification` is on) and no error to tell them so. Those
+   * callers pass `required` and let the failure reach the client, which
+   * already knows how to offer a retry.
+   */
+  required?: boolean;
+}
+
+/** Thrown only for sends marked `required`. */
+export class EmailSendError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmailSendError';
+  }
 }
 
 /**
@@ -23,7 +45,13 @@ export class EmailService {
 
   constructor() {
     const key = process.env.RESEND_API_KEY;
-    this.from = process.env.EMAIL_FROM ?? 'Ekklesia <no-reply@ekklesia.app>';
+    // ekklesiaevents.com is the domain verified in Resend: it carries the
+    // resend._domainkey DKIM record and the send.ekklesiaevents.com MAIL FROM.
+    // The previous default here was no-reply@ekklesia.app — a domain that
+    // belongs to somebody else entirely, has no Resend records, and that every
+    // send would therefore be rejected for. A fallback should be the address
+    // that works, not one that silently cannot.
+    this.from = process.env.EMAIL_FROM ?? 'Ekklesia Events <no-reply@ekklesiaevents.com>';
     if (!key) {
       this.logger.warn(
         'RESEND_API_KEY not set — email send will log instead of dispatching.',
@@ -35,7 +63,17 @@ export class EmailService {
   }
 
   async send(input: SendEmailInput): Promise<{ id: string | null }> {
+    const fail = (reason: string): { id: string | null } => {
+      this.logger.error(`Email send failed (${input.subject}): ${reason}`);
+      if (input.required) throw new EmailSendError(reason);
+      return { id: null };
+    };
+
     if (!this.client) {
+      // Unconfigured is fine for local development, but a `required` send
+      // still has to fail loudly: otherwise a signup against a misconfigured
+      // deployment looks successful and strands the account.
+      if (input.required) return fail('RESEND_API_KEY is not configured');
       this.logger.log(
         `[email:dev-noop] to=${input.to} subject="${input.subject}"`,
       );
@@ -50,16 +88,13 @@ export class EmailService {
         text: input.text,
         tags: input.tags,
       });
-      if (res.error) {
-        this.logger.error(`Resend send failed: ${res.error.message}`);
-        return { id: null };
-      }
+      // Resend reports a rejected send in the body rather than by throwing —
+      // an unverified `from` domain arrives here, not in the catch.
+      if (res.error) return fail(res.error.message);
       return { id: res.data?.id ?? null };
     } catch (err) {
-      // Never let an email failure surface to the caller — they've already
-      // committed the user-facing action (RSVP, etc.). Log and move on.
-      this.logger.error(`Email send threw: ${(err as Error).message}`);
-      return { id: null };
+      if (err instanceof EmailSendError) throw err;
+      return fail((err as Error).message);
     }
   }
 }

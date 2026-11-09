@@ -221,6 +221,10 @@ async function createAuth() {
           html,
           text,
           tags: [{ name: 'type', value: 'verify-email' }],
+          // The email is the whole point of the signup: without it the
+          // account exists and can never be signed in to. Fail loudly so the
+          // client can say so and offer the resend it already implements.
+          required: true,
         });
       },
     },
@@ -245,6 +249,9 @@ async function createAuth() {
           html,
           text,
           tags: [{ name: 'type', value: 'password-reset' }],
+          // Same reasoning: a reset link that is never delivered leaves
+          // someone locked out with nothing on screen to explain it.
+          required: true,
         });
       },
     },
