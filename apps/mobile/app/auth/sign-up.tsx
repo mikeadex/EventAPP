@@ -13,6 +13,7 @@ import { router, Link } from 'expo-router';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { signUp } from '@/lib/auth-client';
 import { SocialSignIn } from '@/components/social-sign-in';
+import { PasswordInput } from '@/components/password-input';
 
 export default function SignUpScreen() {
   const [name, setName] = useState('');
@@ -70,6 +71,8 @@ export default function SignUpScreen() {
 
       <TextInput
         placeholder="Name"
+        textContentType="name"
+        autoComplete="name"
         value={name}
         onChangeText={setName}
         style={styles.input}
@@ -80,18 +83,18 @@ export default function SignUpScreen() {
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
+        textContentType="username"
+        autoComplete="email"
         value={email}
         onChangeText={setEmail}
         style={styles.input}
         placeholderTextColor={color.ink[300]}
       />
-      <TextInput
+      <PasswordInput
         placeholder="Password (12+ chars)"
-        secureTextEntry
+        purpose="new"
         value={password}
         onChangeText={setPassword}
-        style={styles.input}
-        placeholderTextColor={color.ink[300]}
       />
 
       {error && <Text style={styles.error}>{error}</Text>}

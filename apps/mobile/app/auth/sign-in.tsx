@@ -13,6 +13,7 @@ import { router, Link } from 'expo-router';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { signIn, sendVerificationEmail } from '@/lib/auth-client';
 import { SocialSignIn } from '@/components/social-sign-in';
+import { PasswordInput } from '@/components/password-input';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
@@ -77,18 +78,21 @@ export default function SignInScreen() {
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
+        // `username` rather than `emailAddress`: it is the account identifier
+        // half of a credential pair, and it is what makes the device offer to
+        // save the password alongside it and fill both back in next time.
+        textContentType="username"
+        autoComplete="email"
         value={email}
         onChangeText={setEmail}
         style={styles.input}
         placeholderTextColor={color.ink[300]}
       />
-      <TextInput
+      <PasswordInput
         placeholder="Password"
-        secureTextEntry
+        purpose="current"
         value={password}
         onChangeText={setPassword}
-        style={styles.input}
-        placeholderTextColor={color.ink[300]}
       />
 
       {error && <Text style={styles.error}>{error}</Text>}

@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { PasswordInput } from '@/components/password-input';
 import { changePassword } from '@/lib/auth-client';
 
 const MIN_LENGTH = 8;
@@ -78,39 +79,33 @@ export default function ChangePasswordScreen() {
       </View>
 
       <Text style={styles.fieldLabel}>Current password</Text>
-      <TextInput
+      <PasswordInput
         value={current}
         onChangeText={setCurrent}
         placeholder="Current password"
-        placeholderTextColor={color.ink[300]}
-        style={styles.input}
-        secureTextEntry
-        autoCapitalize="none"
+        purpose="current"
+        containerStyle={styles.pwBox}
       />
 
       <Text style={styles.fieldLabel}>New password</Text>
-      <TextInput
+      <PasswordInput
         value={next}
         onChangeText={setNext}
         placeholder={`At least ${MIN_LENGTH} characters`}
-        placeholderTextColor={color.ink[300]}
-        style={styles.input}
-        secureTextEntry
-        autoCapitalize="none"
+        purpose="new"
+        containerStyle={styles.pwBox}
       />
       {tooShort ? (
         <Text style={styles.hintWarn}>Must be at least {MIN_LENGTH} characters.</Text>
       ) : null}
 
       <Text style={styles.fieldLabel}>Confirm new password</Text>
-      <TextInput
+      <PasswordInput
         value={confirm}
         onChangeText={setConfirm}
         placeholder="Repeat new password"
-        placeholderTextColor={color.ink[300]}
-        style={styles.input}
-        secureTextEntry
-        autoCapitalize="none"
+        purpose="new"
+        containerStyle={styles.pwBox}
       />
       {mismatch ? <Text style={styles.hintWarn}>Passwords don&apos;t match.</Text> : null}
 
@@ -132,6 +127,7 @@ export default function ChangePasswordScreen() {
 }
 
 const styles = StyleSheet.create({
+  pwBox: { marginBottom: 0 },
   c: { flex: 1, backgroundColor: color.ink[0], paddingHorizontal: spacing[4] },
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing[3], padding: spacing[6] },
   header: {

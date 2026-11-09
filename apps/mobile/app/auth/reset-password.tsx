@@ -12,6 +12,7 @@ import {
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { PasswordInput } from '@/components/password-input';
 import { resetPassword } from '@/lib/auth-client';
 
 const MIN_PASSWORD = 12;
@@ -76,21 +77,17 @@ export default function ResetPasswordScreen() {
       <Text style={styles.h}>Set a new password</Text>
       <Text style={styles.m}>Choose a strong password you don&apos;t use elsewhere.</Text>
 
-      <TextInput
+      <PasswordInput
         placeholder={`New password (${MIN_PASSWORD}+ chars)`}
-        secureTextEntry
+        purpose="new"
         value={password}
         onChangeText={setPassword}
-        style={styles.input}
-        placeholderTextColor={color.ink[300]}
       />
-      <TextInput
+      <PasswordInput
         placeholder="Confirm new password"
-        secureTextEntry
+        purpose="new"
         value={confirm}
         onChangeText={setConfirm}
-        style={styles.input}
-        placeholderTextColor={color.ink[300]}
       />
 
       {error && <Text style={styles.error}>{error}</Text>}
