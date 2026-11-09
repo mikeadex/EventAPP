@@ -23,19 +23,29 @@ export default function SignInScreen() {
   // when it is the thing standing in the way.
   const [unverified, setUnverified] = useState(false);
   const [resent, setResent] = useState(false);
+  // An account created through Google or Apple has no password at all, so a
+  // password attempt on one fails exactly like a wrong password and the
+  // person is left with nothing to act on — the social buttons are already on
+  // this screen, but no reason to think they are the answer. The hint below
+  // names that possibility without confirming the address exists or which
+  // method it uses, which would turn this form into an account check.
+  const [maybeSocial, setMaybeSocial] = useState(false);
 
   async function submit() {
     setPending(true);
     setError(null);
     setUnverified(false);
     setResent(false);
+    setMaybeSocial(false);
     const res = await signIn.email({ email, password });
     setPending(false);
     if (res.error) {
       const code = (res.error as { code?: string }).code;
-      setUnverified(code === 'EMAIL_NOT_VERIFIED');
+      const notVerified = code === 'EMAIL_NOT_VERIFIED';
+      setUnverified(notVerified);
+      setMaybeSocial(!notVerified);
       setError(
-        code === 'EMAIL_NOT_VERIFIED'
+        notVerified
           ? 'Confirm your email before signing in. Check your inbox for the link.'
           : (res.error.message ?? 'Sign-in failed'),
       );
@@ -82,6 +92,12 @@ export default function SignInScreen() {
       />
 
       {error && <Text style={styles.error}>{error}</Text>}
+      {maybeSocial && (
+        <Text style={styles.hint}>
+          If you created this account with one of the buttons below, sign in that way —
+          those accounts don&rsquo;t have a password.
+        </Text>
+      )}
       {unverified && !resent && (
         <Pressable onPress={() => void resend()} disabled={pending} style={styles.resend}>
           <Text style={styles.link}>Resend confirmation email</Text>
@@ -129,6 +145,7 @@ const styles = StyleSheet.create({
     color: color.ink[900],
   },
   error: { color: color.danger, marginBottom: spacing[3], fontSize: fontSize.sm },
+  hint: { color: color.ink[500], marginBottom: spacing[3], fontSize: fontSize.sm, lineHeight: 19 },
   resend: { marginBottom: spacing[3] },
   sent: { color: color.ink[500], marginBottom: spacing[3], fontSize: fontSize.sm },
   forgot: { alignSelf: 'flex-end', marginBottom: spacing[4] },

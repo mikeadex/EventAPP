@@ -16,6 +16,11 @@ export default function SignInPage() {
   // when it is the thing standing in the way.
   const [unverified, setUnverified] = useState(false);
   const [resent, setResent] = useState(false);
+  // See the note in the mobile sign-in screen: an account made through Google
+  // or Apple has no password, so a password attempt on one fails exactly like
+  // a wrong password. The hint names that possibility without confirming the
+  // address exists or which method it uses.
+  const [maybeSocial, setMaybeSocial] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -23,13 +28,16 @@ export default function SignInPage() {
     setError(null);
     setUnverified(false);
     setResent(false);
+    setMaybeSocial(false);
     const res = await signIn.email({ email, password });
     setPending(false);
     if (res.error) {
       const code = (res.error as { code?: string }).code;
-      setUnverified(code === 'EMAIL_NOT_VERIFIED');
+      const notVerified = code === 'EMAIL_NOT_VERIFIED';
+      setUnverified(notVerified);
+      setMaybeSocial(!notVerified);
       setError(
-        code === 'EMAIL_NOT_VERIFIED'
+        notVerified
           ? 'Confirm your email before signing in. Check your inbox for the link.'
           : (res.error.message ?? 'Sign-in failed'),
       );
@@ -82,6 +90,12 @@ export default function SignInPage() {
         {error && (
           <p role="alert" className="text-sm text-danger">
             {error}
+          </p>
+        )}
+        {maybeSocial && (
+          <p className="text-sm leading-relaxed text-ink-500">
+            If you created this account with one of the buttons below, sign in that way —
+            those accounts don&rsquo;t have a password.
           </p>
         )}
         {unverified && !resent && (
