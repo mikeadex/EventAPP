@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signUp } from '@/lib/auth-client';
 import { SocialSignIn } from '@/components/social-sign-in';
+import { PasswordField } from '@/components/password-field';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -83,21 +84,19 @@ export default function SignUpPage() {
             className="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
         </label>
-        <label className="block">
-          <span className="text-sm font-medium text-ink-700">Password</span>
-          <input
-            type="password"
+        <div>
+          <PasswordField
+            label="Password"
             autoComplete="new-password"
             required
             minLength={12}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
           />
           <span className="mt-1 block text-xs text-ink-400">
             At least 12 characters.
           </span>
-        </label>
+        </div>
         {error && (
           <p role="alert" className="text-sm text-danger">
             {error}
