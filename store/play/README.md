@@ -8,7 +8,7 @@ than redrawn from memory.
 |---|---|---|---|
 | `icon-512.png` | App icon | 512 × 512 PNG/JPEG, ≤ 1 MB | ✅ 512 × 512, 161 KB |
 | `feature-graphic.png` | Feature graphic | 1024 × 500 PNG/JPEG, ≤ 15 MB | ✅ 1024 × 500, 435 KB |
-| — | Phone screenshots | 2–8, PNG/JPEG, ≤ 8 MB each, 16:9 or 9:16, each side 320–3840 px | ❌ still to capture |
+| `screenshots/*.png` | Phone screenshots | 2–8, PNG/JPEG, ≤ 8 MB each, 16:9 or 9:16, each side 320–3840 px | ✅ 5 × 1080 × 1920, 88–1452 KB |
 | — | Video (optional) | public/unlisted YouTube URL, ads off, not age restricted | not used |
 
 Text for the listing — app name, short description, full description — lives in
@@ -78,3 +78,34 @@ Capture either from a real Android device or from the `Pixel_10_Pro` emulator
 (see the dev stack runbook). The Pixel_10_Pro panel is 1280 × 2856, which is
 taller than 9:16; crop to 1080 × 1920 rather than padding, so the result is a
 real screenshot rather than a letterboxed one.
+
+## Phone screenshots
+
+Five, in upload order:
+
+| File | Screen | What it backs in the description |
+|---|---|---|
+| `01-discover.png` | Discover feed | "find something to go to" |
+| `02-event-detail.png` | Event detail | venue, time and host "before you commit" |
+| `04-ticket.png` | QR ticket | "RSVP and get a ticket with a QR code" |
+| `05-organiser.png` | Your events | "running events? publish them here" |
+| `03-hosts.png` | Hosts list | "see who is running it" |
+
+Captured from a local **release** build on the Pixel_10_Pro emulator, with the
+display forced to `wm size 1080x1920` — the AVD is natively 1280 × 2856, about
+1:2.23, which is taller than the 9:16 Play states, so raw captures risk
+rejection. The status bar is in SystemUI demo mode (9:30, full battery, full
+wifi, notifications hidden) so no stray icons appear.
+
+The content is the seeded demo data, not production. Production currently has
+four events, none with a cover image, all from one host — accurate but a poor
+showing. The seed set is varied and photographed and demonstrates the same
+functionality. `refresh-demo-dates` has to run first or the feed is empty: the
+seed dates are in the past and the feed asks for upcoming events only.
+
+A local release build cannot reach a plain-HTTP dev server — `targetSdk 36`
+blocks cleartext and the manifest sets no exemption, which only debug variants
+get automatically. Capturing needs a temporary
+`android/app/src/release/AndroidManifest.xml` setting
+`android:usesCleartextTraffic="true"`. It is deliberately not committed; create
+it, build, capture, delete.
