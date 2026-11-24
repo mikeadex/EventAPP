@@ -38,6 +38,8 @@ type User = {
   emailVerified?: boolean;
 };
 type Session = { id: string; userId: string };
+/** A row in one of the per-user tables a takeover must clear (Device, Profile, …). */
+type Owned = { model: string; userId: string };
 type Account = { userId: string; providerId: string; accountId: string; password: string | null };
 type Membership = { userId: string; organizationId: string; role: string; acceptedAt: Date | null };
 type Event = {
@@ -62,6 +64,7 @@ type State = {
   users: User[];
   sessions: Session[];
   accounts: Account[];
+  owned: Owned[];
   memberships: Membership[];
   events: Event[];
   audits: Audit[];
@@ -158,6 +161,18 @@ function fakeDb(initial: State) {
         return { count: before - s.sessions.length };
       },
     },
+    ...Object.fromEntries(
+      ['device', 'savedEvent', 'consent', 'notificationPreference', 'profile'].map((model) => [
+        model,
+        {
+          deleteMany: async ({ where }: { where: { userId: string } }) => {
+            const before = s.owned.length;
+            s.owned = s.owned.filter((x) => !(x.model === model && x.userId === where.userId));
+            return { count: before - s.owned.length };
+          },
+        },
+      ]),
+    ),
     account: {
       deleteMany: async ({ where }: { where: { userId: string } }) => {
         const before = s.accounts.length;
@@ -294,6 +309,7 @@ async function setup(
     users?: User[];
     sessions?: Session[];
     accounts?: Account[];
+    owned?: Owned[];
     orgs?: Org[];
     events?: Event[];
   } = {},
@@ -304,6 +320,7 @@ async function setup(
     users: opts.users ?? [],
     sessions: opts.sessions ?? [],
     accounts: opts.accounts ?? [],
+    owned: opts.owned ?? [],
     memberships: [],
     events: opts.events ?? [],
     audits: [],
@@ -392,6 +409,13 @@ const squatter: User = {
   emailVerified: false,
 };
 const squatterSession: Session = { id: 's1', userId: 'u_squat' };
+const squatterOwned: Owned[] = [
+  'device',
+  'savedEvent',
+  'consent',
+  'notificationPreference',
+  'profile',
+].map((model) => ({ model, userId: 'u_squat' }));
 const squatterAccount: Account = {
   userId: 'u_squat',
   providerId: 'credential',
@@ -492,6 +516,11 @@ describe('ClaimsService', () => {
           { ...squatterAccount },
           { userId: 'u_squat', providerId: 'google', accountId: 'g-1', password: null },
         ],
+        owned: [
+          ...squatterOwned,
+          { model: 'device', userId: 'u_other' },
+          { model: 'savedEvent', userId: 'u_other' },
+        ],
       });
       const raw = await issue('CLAIM');
 
@@ -502,6 +531,12 @@ describe('ClaimsService', () => {
       expect(accounts.createPasswordUser).not.toHaveBeenCalled();
       expect(db.state.users).toEqual([{ ...squatter, name: 'Ruth Ade', emailVerified: true }]);
       expect(db.state.sessions).toEqual([{ id: 'other', userId: 'u_other' }]);
+      // Push tokens, saved events, consents, preferences and profile all go;
+      // other people's rows stay.
+      expect(db.state.owned).toEqual([
+        { model: 'device', userId: 'u_other' },
+        { model: 'savedEvent', userId: 'u_other' },
+      ]);
       expect(db.state.accounts).toEqual([
         {
           userId: 'u_squat',
@@ -528,6 +563,7 @@ describe('ClaimsService', () => {
         users: [{ ...squatter }],
         sessions: [{ ...squatterSession }],
         accounts: [{ ...squatterAccount }],
+        owned: [...squatterOwned],
         orgs: [org({ claimStatus: 'DISPUTED' })],
       });
       const raw = await issue('CLAIM');
@@ -537,6 +573,7 @@ describe('ClaimsService', () => {
       expect(db.state.users).toEqual([squatter]);
       expect(db.state.sessions).toEqual([squatterSession]);
       expect(db.state.accounts).toEqual([squatterAccount]);
+      expect(db.state.owned).toEqual(squatterOwned);
     });
 
     it('never takes over an unverified staff-role account', async () => {
@@ -632,6 +669,31 @@ describe('ClaimsService', () => {
       ).toEqual({
         status: 403,
         body: { code: 'EMAIL_NOT_VERIFIED' },
+      });
+      expect(db.state.memberships).toEqual([]);
+      expect(db.state.orgs[0]!.claimStatus).toBe('UNCLAIMED');
+    });
+
+    it('attach refuses a staff account', async () => {
+      const { db, svc, issue } = await setup({
+        users: [
+          {
+            id: 'u_existing',
+            email: 'pastor@grace.org',
+            name: 'Ada',
+            platformRole: 'PLATFORM_MODERATOR',
+          },
+        ],
+      });
+      const raw = await issue('CLAIM');
+      const user = {
+        id: 'u_existing',
+        email: 'pastor@grace.org',
+        platformRole: 'PLATFORM_MODERATOR',
+      };
+      expect(await refusal(svc.attach(raw, user, undefined))).toEqual({
+        status: 403,
+        body: { code: 'STAFF_ACCOUNT' },
       });
       expect(db.state.memberships).toEqual([]);
       expect(db.state.orgs[0]!.claimStatus).toBe('UNCLAIMED');
@@ -1004,9 +1066,17 @@ describe('ClaimsService', () => {
       expect(warn).not.toHaveBeenCalled();
     });
 
-    it('refuses a church that is not unclaimed', async () => {
-      const { svc } = await setup({ orgs: [org({ claimStatus: 'CLAIMED' })] });
-      expect((await refusal(svc.sendInvite('org1', 'staff1'))).status).toBe(409);
+    it('refuses a church that is not unclaimed, or has no contact address', async () => {
+      const claimed = await setup({ orgs: [org({ claimStatus: 'CLAIMED' })] });
+      expect(await refusal(claimed.svc.sendInvite('org1', 'staff1'))).toEqual({
+        status: 409,
+        body: { code: 'NOT_UNCLAIMED' },
+      });
+      const noContact = await setup({ orgs: [org({ contactEmail: null })] });
+      expect(await refusal(noContact.svc.sendInvite('org1', 'staff1'))).toEqual({
+        status: 409,
+        body: { code: 'NO_CONTACT_EMAIL' },
+      });
     });
   });
 });

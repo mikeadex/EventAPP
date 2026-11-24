@@ -166,9 +166,11 @@ export class ClaimsService {
     }
     const account = await this.prisma.user.findUnique({
       where: { id: user.id },
-      select: { emailVerified: true },
+      select: { emailVerified: true, platformRole: true },
     });
     if (!account?.emailVerified) throw new ForbiddenException({ code: 'EMAIL_NOT_VERIFIED' });
+    // Staff accounts are for the console, not for owning a church.
+    if (account.platformRole !== 'USER') throw new ForbiddenException({ code: 'STAFF_ACCOUNT' });
     await this.complete(raw, organization.id, user.id, 'attach', req);
     return {
       organization: { id: organization.id, slug: organization.slug, name: organization.name },
@@ -229,6 +231,15 @@ export class ClaimsService {
     await tx.account.create({
       data: { userId, providerId: 'credential', accountId: userId, password: t.passwordHash },
     });
+    // Nothing of the previous holder's may carry over: their push tokens
+    // would receive the claimer's notices, and the rest is their choices,
+    // not the claimer's. Profile is only ever read by the API, so absent is
+    // its normal state for a new account.
+    await tx.device.deleteMany({ where: { userId } });
+    await tx.savedEvent.deleteMany({ where: { userId } });
+    await tx.consent.deleteMany({ where: { userId } });
+    await tx.notificationPreference.deleteMany({ where: { userId } });
+    await tx.profile.deleteMany({ where: { userId } });
   }
 
   // ─── Take down ───────────────────────────────────────────────────────────
@@ -312,9 +323,9 @@ export class ClaimsService {
   async sendInvite(organizationId: string, actorUserId: string) {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) throw new NotFoundException('Organization not found');
-    if (org.claimStatus !== 'UNCLAIMED') throw new ConflictException('NOT_UNCLAIMED');
+    if (org.claimStatus !== 'UNCLAIMED') throw new ConflictException({ code: 'NOT_UNCLAIMED' });
     const email = org.contactEmail?.trim().toLowerCase();
-    if (!email) throw new ConflictException('NO_CONTACT_EMAIL');
+    if (!email) throw new ConflictException({ code: 'NO_CONTACT_EMAIL' });
 
     const issued = await this.prisma.$transaction(async (tx) => {
       const issue = (kind: 'CLAIM' | 'TAKEDOWN') =>
