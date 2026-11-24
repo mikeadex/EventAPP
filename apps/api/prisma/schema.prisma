@@ -35,6 +35,12 @@ model User {
   // credentials sees a populated app, while everyone else sees only real
   // listings. Not a role: it grants visibility of seed data, nothing else.
   seesDemoContent Boolean @default(false)
+  // Better Auth `twoFactor` plugin flag. Required of staff before the admin
+  // surface opens to them.
+  twoFactorEnabled Boolean @default(false)
+  // Consecutive failed sign-ins and the time until which sign-in is refused.
+  failedSignIns    Int       @default(0)
+  lockedUntil      DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
@@ -54,6 +60,8 @@ model User {
   notificationPrefs NotificationPreference?
   consents         Consent[]
   auditLogs        AuditLog[]
+  twoFactors       TwoFactor[]
+  orgsAdded        Organization[] @relation("OrganizationAddedBy")
 
   @@index([deletedAt])
 }
@@ -63,6 +71,7 @@ enum PlatformRole {
   PLATFORM_SUPPORT
   PLATFORM_MODERATOR
   PLATFORM_ADMIN
+  PLATFORM_FINANCE
 }
 
 model Profile {
@@ -114,6 +123,20 @@ model Session {
   @@index([expiresAt])
 }
 
+// Better Auth `twoFactor` plugin table (secret and backup codes are stored
+// encrypted by the plugin).
+model TwoFactor {
+  id          String   @id @default(cuid())
+  secret      String
+  backupCodes String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified    Boolean  @default(true)
+
+  @@index([secret])
+  @@index([userId])
+}
+
 model Verification {
   id         String   @id @default(cuid())
   identifier String
@@ -150,6 +173,13 @@ model Organization {
   // already hold tickets to some of them and a ticket must still open.
   isDemo            Boolean  @default(false)
 
+  // Whether the organisation's own contact has taken control of the page.
+  // Staff-added organisations start UNCLAIMED. Existing rows default CLAIMED.
+  claimStatus   ClaimStatus @default(CLAIMED)
+  claimedAt     DateTime?
+  addedByUserId String?
+  addedBy       User?       @relation("OrganizationAddedBy", fields: [addedByUserId], references: [id], onDelete: SetNull)
+
   verificationStatus VerificationStatus @default(UNVERIFIED)
   verifiedAt         DateTime?
   verificationSubmittedAt DateTime?
@@ -179,10 +209,41 @@ model Organization {
   featureFlags   OrganizationFeatureFlag[]
   reports        Report[]                 @relation("ReportsAgainstOrg")
   auditLogs      AuditLog[]
+  claimTokens    OrganizationClaimToken[]
 
   @@index([country])
+  @@index([claimStatus])
   @@index([verificationStatus])
   @@index([deletedAt])
+}
+
+enum ClaimStatus {
+  CLAIMED
+  UNCLAIMED
+  DISPUTED
+}
+
+enum ClaimTokenKind {
+  CLAIM
+  TAKEDOWN
+}
+
+/// A single-use link emailed to an organisation's contact, to claim the page or
+/// to take it down. Only the hash of the token is stored.
+model OrganizationClaimToken {
+  id              String         @id @default(cuid())
+  organizationId  String
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  kind            ClaimTokenKind
+  email           String
+  tokenHash       String         @unique
+  expiresAt       DateTime?
+  usedAt          DateTime?
+  revokedAt       DateTime?
+  createdByUserId String?
+  createdAt       DateTime       @default(now())
+
+  @@index([organizationId, kind])
 }
 
 enum OrgKind {
