@@ -20,25 +20,36 @@
  * signup flow has no password, no verified email and no audit trail.
  *
  * Pass --dry-run to see what would change without writing.
+ * Pass --list-offdomain to list staff-role accounts outside @ekklesiaevents.com
+ * (changes nothing).
+ * Any non-USER role is refused for an address outside @ekklesiaevents.com.
  */
 
 import { PrismaClient } from '@prisma/client';
 
-const ROLES = ['USER', 'PLATFORM_SUPPORT', 'PLATFORM_MODERATOR', 'PLATFORM_ADMIN'];
+const ROLES = ['USER', 'PLATFORM_SUPPORT', 'PLATFORM_MODERATOR', 'PLATFORM_ADMIN', 'PLATFORM_FINANCE'];
+const STAFF_DOMAIN = 'ekklesiaevents.com';
+const isStaffEmail = (e) => e.trim().toLowerCase().endsWith(`@${STAFF_DOMAIN}`);
 
 const argv = process.argv.slice(2);
 const dryRun = argv.includes('--dry-run');
+const listOffDomain = argv.includes('--list-offdomain');
 // Anything dash-prefixed is a flag, never a positional. `pnpm run x -- foo`
 // forwards the bare `--` too, which would otherwise be read as the email.
 const [email, role = 'PLATFORM_ADMIN'] = argv.filter((a) => !a.startsWith('-'));
 
-if (!email) {
+if (!email && !listOffDomain) {
   console.error('Usage: pnpm --filter @ekklesia/api grant-role -- <email> [role]');
   console.error(`Roles: ${ROLES.join(', ')}  (default PLATFORM_ADMIN)`);
   process.exit(1);
 }
-if (!ROLES.includes(role)) {
+if (email && !ROLES.includes(role)) {
   console.error(`Unknown role "${role}". One of: ${ROLES.join(', ')}`);
+  process.exit(1);
+}
+
+if (email && role !== 'USER' && !isStaffEmail(email)) {
+  console.error(`Staff roles are only for @${STAFF_DOMAIN} addresses.`);
   process.exit(1);
 }
 
@@ -59,12 +70,23 @@ try {
 }
 const looksLocal = /localhost|127\.0\.0\.1/.test(host);
 console.log(`Database: ${host}${looksLocal ? '  (LOCAL — not production)' : ''}`);
-console.log(`Account:  ${email}`);
-console.log(`Role:     ${role}${dryRun ? '  (dry run)' : ''}\n`);
+if (email) {
+  console.log(`Account:  ${email}`);
+  console.log(`Role:     ${role}${dryRun ? '  (dry run)' : ''}\n`);
+}
 
 const prisma = new PrismaClient();
 
 try {
+  if (listOffDomain) {
+    const rows = await prisma.user.findMany({
+      where: { platformRole: { not: 'USER' } },
+      select: { email: true, platformRole: true },
+    });
+    const off = rows.filter((r) => !isStaffEmail(r.email));
+    console.log(off.length ? 'Staff-role accounts outside the staff domain:' : 'None outside the staff domain.');
+    for (const r of off) console.log(`  ${r.email}  ${r.platformRole}`);
+  } else {
   const user = await prisma.user.findUnique({
     where: { email },
     select: { id: true, email: true, name: true, platformRole: true, emailVerified: true },
@@ -96,6 +118,7 @@ try {
     if (!user.emailVerified) {
       console.log(`Note: this account's email is not verified.`);
     }
+  }
   }
 } finally {
   await prisma.$disconnect();

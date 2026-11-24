@@ -10,6 +10,7 @@ import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CurrentUserService, type AuthedUser } from '../modules/auth/current-user.service.js';
 import { PLATFORM_ROLE_KEY } from './decorators.js';
+import { staffBlockReason } from './staff.js';
 
 export interface PlatformRequest extends Request {
   user: AuthedUser;
@@ -23,6 +24,8 @@ export interface PlatformRequest extends Request {
  */
 const RANK: Record<string, number> = {
   USER: 0,
+  // Finance passes no "at least" gate until a screen explicitly lists it.
+  PLATFORM_FINANCE: 0,
   PLATFORM_SUPPORT: 1,
   PLATFORM_MODERATOR: 2,
   PLATFORM_ADMIN: 3,
@@ -70,9 +73,12 @@ export class PlatformRoleGuard implements CanActivate {
     // query costs nothing that matters.
     const row = await this.prisma.user.findUnique({
       where: { id: user.id },
-      select: { platformRole: true, deletedAt: true },
+      select: { email: true, platformRole: true, twoFactorEnabled: true, deletedAt: true },
     });
     if (!row || row.deletedAt) throw new UnauthorizedException();
+
+    const blocked = staffBlockReason(row);
+    if (blocked) throw new ForbiddenException({ code: blocked });
 
     const held = RANK[row.platformRole] ?? 0;
     const needed = RANK[required] ?? Number.MAX_SAFE_INTEGER;
