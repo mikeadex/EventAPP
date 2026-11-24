@@ -14,7 +14,7 @@ import { useFonts } from 'expo-font';
 import { Alata_400Regular } from '@expo-google-fonts/alata/400Regular';
 import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono/400Regular';
 import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono/500Medium';
-import { color, spacing, radius, fontSize, fontWeight, theme } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 import { ToastHost } from '@/components/toast';
 import { PushHost } from '@/components/push-host';
 
@@ -26,7 +26,7 @@ import { PushHost } from '@/components/push-host';
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return (
     <View style={styles.errC}>
-      <Ionicons name="alert-circle-outline" size={56} color={color.danger} />
+      <Ionicons name="alert-circle-outline" size={56} color={palette.coral[500]} />
       <Text style={styles.errTitle}>This screen hit a snag</Text>
       <Text style={styles.errMsg}>
         An unexpected error occurred. You can try again, and if it keeps
@@ -36,7 +36,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
         <Text style={styles.errDetailText}>{error.message}</Text>
       </ScrollView>
       <Pressable style={styles.errBtn} onPress={retry}>
-        <Ionicons name="refresh" size={16} color={color.ink[0]} />
+        <Ionicons name="refresh" size={16} color={theme.dark.accent} />
         <Text style={styles.errBtnText}>Try again</Text>
       </Pressable>
     </View>
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   boot: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   errC: {
     flex: 1,
-    backgroundColor: color.ink[50],
+    backgroundColor: theme.dark.backgroundDeep,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing[6],
@@ -122,12 +122,12 @@ const styles = StyleSheet.create({
   },
   errTitle: {
     fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: color.ink[900],
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
     marginTop: spacing[2],
   },
   errMsg: {
-    color: color.ink[500],
+    color: theme.dark.textSecondary,
     fontSize: fontSize.sm,
     textAlign: 'center',
     maxWidth: 300,
@@ -135,24 +135,26 @@ const styles = StyleSheet.create({
   errDetail: {
     maxHeight: 140,
     alignSelf: 'stretch',
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surface,
     borderRadius: radius.md,
     marginTop: spacing[4],
   },
   errDetailText: {
     fontFamily: 'Courier',
     fontSize: fontSize.xs,
-    color: color.ink[600],
+    color: theme.dark.textSecondary,
   },
   errBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
     marginTop: spacing[4],
-    backgroundColor: color.brand[600],
+    backgroundColor: 'rgba(249,142,128,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.55)',
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[6],
     borderRadius: radius.md,
   },
-  errBtnText: { color: color.ink[0], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
+  errBtnText: { color: palette.coral[200], fontSize: fontSize.base },
 });

@@ -5,14 +5,16 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
+  
   TextInput,
   View,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
+import { Text } from '@/components/text';
+import { CARD_BORDER, CONTROL_BORDER, ACTIVE_FILL, ACTIVE_BORDER } from '@/components/ui';
 import { api } from '@/lib/api';
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states';
 
@@ -144,15 +146,15 @@ export default function SearchScreen() {
       {/* Search bar */}
       <View style={styles.searchRow}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={22} color={theme.dark.textPrimary} />
         </Pressable>
         <View style={styles.inputWrap}>
-          <Ionicons name="search" size={18} color={color.ink[400]} />
+          <Ionicons name="search" size={18} color={theme.dark.textMuted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Search events or hosts"
-            placeholderTextColor={color.ink[400]}
+            placeholderTextColor={theme.dark.textMuted}
             style={styles.input}
             autoCapitalize="none"
             autoCorrect={false}
@@ -161,7 +163,7 @@ export default function SearchScreen() {
           />
           {query.length > 0 ? (
             <Pressable onPress={() => setQuery('')} hitSlop={8}>
-              <Ionicons name="close-circle" size={18} color={color.ink[300]} />
+              <Ionicons name="close-circle" size={18} color={theme.dark.textMuted} />
             </Pressable>
           ) : null}
         </View>
@@ -181,7 +183,7 @@ export default function SearchScreen() {
           <Ionicons
             name={freeOnly ? 'checkmark' : 'pricetag-outline'}
             size={13}
-            color={freeOnly ? color.ink[0] : color.ink[600]}
+            color={freeOnly ? theme.dark.accent : theme.dark.textSecondary}
           />
           <Text style={[styles.chipText, freeOnly && styles.chipTextActive]}>Free</Text>
         </Pressable>
@@ -262,7 +264,7 @@ export default function SearchScreen() {
                     {item.coverImageUrl ? (
                       <Image source={{ uri: item.coverImageUrl }} style={styles.thumbImg} />
                     ) : (
-                      <Ionicons name="calendar-outline" size={22} color={color.ink[300]} />
+                      <Ionicons name="calendar-outline" size={22} color={theme.dark.textMuted} />
                     )}
                   </View>
                   <View style={{ flex: 1 }}>
@@ -274,7 +276,7 @@ export default function SearchScreen() {
                       {item.title}
                     </Text>
                     <View style={styles.rowMeta}>
-                      <Ionicons name="calendar-outline" size={12} color={color.ink[400]} />
+                      <Ionicons name="calendar-outline" size={12} color={palette.warm[300]} />
                       <Text style={styles.rowMetaText}>
                         {d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} ·{' '}
                         {d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
@@ -282,7 +284,7 @@ export default function SearchScreen() {
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={color.ink[300]} />
+                  <Ionicons name="chevron-forward" size={18} color={theme.dark.textMuted} />
                 </Pressable>
               </Link>
             );
@@ -294,7 +296,7 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -308,32 +310,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: color.ink[50],
+    backgroundColor: theme.dark.surface,
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: CONTROL_BORDER,
     borderRadius: radius.full,
     paddingHorizontal: spacing[4],
     height: 50,
   },
-  input: { flex: 1, fontSize: fontSize.base, color: color.ink[900] },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
+  },
 
   chipsScroll: { flexGrow: 0, marginBottom: spacing[3] },
   chips: { paddingHorizontal: spacing[5], gap: spacing[2], alignItems: 'center' },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 36,
     gap: spacing[1],
-    paddingVertical: spacing[2],
+    paddingVertical: 9,
     paddingHorizontal: spacing[4],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: color.ink[200],
-    backgroundColor: color.ink[0],
+    borderColor: CONTROL_BORDER,
+    backgroundColor: theme.dark.surface,
   },
-  chipActive: { backgroundColor: color.ink[900], borderColor: color.ink[900] },
-  chipText: { fontSize: fontSize.sm, color: color.ink[600], fontWeight: fontWeight.medium },
-  chipTextActive: { color: color.ink[0] },
-  chipDivider: { width: 1, height: 20, backgroundColor: color.ink[200] },
+  chipActive: { backgroundColor: ACTIVE_FILL, borderColor: ACTIVE_BORDER },
+  // Explicit lineHeight, and a minHeight on the chip to match. Alata's line
+  // box is taller than the system face these were measured against, so the
+  // labels were clipped at the baseline — "Today" read as "Todav".
+  chipText: { fontSize: 13, lineHeight: 17, color: theme.dark.textSecondary },
+  chipTextActive: { color: palette.coral[200] },
+  chipDivider: { width: 1, height: 20, backgroundColor: theme.dark.border },
 
   row: {
     flexDirection: 'row',
@@ -345,7 +357,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: radius.lg,
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -353,13 +365,13 @@ const styles = StyleSheet.create({
   thumbImg: { width: '100%', height: '100%' },
   rowCat: {
     fontSize: 11,
-    color: color.ink[400],
+    color: theme.dark.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    fontWeight: fontWeight.semibold,
+    fontFamily: 'Alata_400Regular',
     marginBottom: 2,
   },
-  rowTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  rowTitle: { fontSize: 16, color: theme.dark.textPrimary },
   rowMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], marginTop: spacing[1] },
-  rowMetaText: { fontSize: fontSize.xs, color: color.ink[500] },
+  rowMetaText: { fontSize: 12, color: palette.warm[300] },
 });

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { requireOptionalNativeModule } from 'expo-modules-core';
-import { color, spacing, radius, fontSize } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 
 export interface GalleryItem {
   id: string;
@@ -98,7 +98,7 @@ export function EventGallery({ items }: { items: GalleryItem[] }) {
                   <View style={[StyleSheet.absoluteFill, styles.videoFallback]} />
                 )}
                 <View style={styles.playButton}>
-                  <Ionicons name="play" size={26} color={color.ink[900]} />
+                  <Ionicons name="play" size={26} color={theme.dark.backgroundDeep} />
                 </View>
               </Pressable>
             )}
@@ -141,8 +141,8 @@ function VideoPlayer({ embedUrl }: { embedUrl: string }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing[2] },
-  media: { width: '100%', height: '100%', backgroundColor: color.ink[100] },
-  videoFallback: { backgroundColor: color.ink[200] },
+  media: { width: '100%', height: '100%', backgroundColor: theme.dark.surface },
+  videoFallback: { backgroundColor: theme.dark.surfaceRaised },
   playButton: {
     position: 'absolute',
     alignSelf: 'center',
@@ -156,11 +156,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: spacing[1], marginTop: spacing[2] },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.ink[300] },
-  dotOn: { backgroundColor: color.ink[900], width: 18 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.dark.border },
+  dotOn: { backgroundColor: palette.coral[400], width: 18 },
   caption: {
     fontSize: fontSize.sm,
-    color: color.ink[500],
+    color: theme.dark.textSecondary,
     textAlign: 'center',
     paddingHorizontal: spacing[5],
   },

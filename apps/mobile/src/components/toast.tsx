@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -69,7 +69,7 @@ export function ToastHost() {
       pointerEvents="none"
       style={[styles.pill, { opacity, transform: [{ translateY: rise }] }]}
     >
-      {msg.icon ? <Ionicons name={msg.icon} size={15} color={color.ink[0]} /> : null}
+      {msg.icon ? <Ionicons name={msg.icon} size={15} color={theme.dark.accent} /> : null}
       <Text style={styles.text}>{msg.text}</Text>
     </Animated.View>
   );
@@ -83,7 +83,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: color.ink[900],
+    backgroundColor: theme.dark.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.22)',
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[5],
     borderRadius: radius.full,
@@ -93,5 +95,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
-  text: { color: color.ink[0], fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+  text: { color: theme.dark.textPrimary, fontSize: fontSize.sm, fontFamily: 'Alata_400Regular' },
 });

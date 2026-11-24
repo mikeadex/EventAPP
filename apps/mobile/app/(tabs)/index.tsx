@@ -13,7 +13,7 @@ import { router, Link, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, theme, palette, radiusExtra, fontFamily } from '@ekklesia/ui/tokens';
+import { spacing, radius, theme, palette, radiusExtra, fontFamily } from '@ekklesia/ui/tokens';
 import { Scrim as GradientScrim, scrimPreset } from '@/components/gradient';
 import { Text } from '@/components/text';
 import { useSession } from '@/lib/auth-client';
@@ -404,7 +404,7 @@ export default function DiscoverScreen() {
               initial={session?.user ? initial : null}
               size={42}
               textStyle={styles.heroAvatarText}
-              signedOutColor={color.ink[0]}
+              signedOutColor={palette.coral[400]}
               style={styles.avatarFill}
             />
           </Pressable>

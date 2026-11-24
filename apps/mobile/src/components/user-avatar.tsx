@@ -1,7 +1,7 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
-import { color } from '@ekklesia/ui/tokens';
+import { theme } from '@ekklesia/ui/tokens';
 
 /**
  * A person's picture, their initial, or the signed-out glyph — in that order.
@@ -22,7 +22,7 @@ export function UserAvatar({
   size,
   style,
   textStyle,
-  signedOutColor = color.ink[500],
+  signedOutColor = theme.dark.textMuted,
 }: {
   /** `session.user.image`. Null or absent falls through to the initial. */
   uri?: string | null;
