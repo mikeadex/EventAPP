@@ -58,20 +58,35 @@ export function canUseBiometricLock(): boolean {
 }
 
 /**
- * The first native build carrying the `expo-secure-store` config plugin, and
- * therefore the permission string. Bumped in app.json in the same commit.
+ * The first release carrying the `expo-secure-store` config plugin, and
+ * therefore the permission string.
  *
- * Read from `expo-application`, which reports the Info.plist's own
- * CFBundleVersion. Deliberately not `Constants.expoConfig`: that comes from
- * the manifest, an update ships its own manifest, and a value an update can
- * change is worthless for describing the binary underneath it.
+ * Compared against the MARKETING version, not the build number, and that
+ * distinction is the whole correctness of this gate. eas.json sets
+ * `appVersionSource: "remote"`, which means EAS owns `ios.buildNumber` and
+ * `android.versionCode` and ignores whatever app.json says — the shipped
+ * binaries are already at iOS 13 and Android 21 while app.json read "1". A
+ * gate on the build number would therefore have passed on every existing
+ * install the moment this JS reached one over the air, shown the switch on a
+ * binary with no `NSFaceIDUsageDescription`, and terminated the app at the
+ * next launch. `version` is still read from app config, so it is the one
+ * number here that both describes the binary and answers to this repo.
+ *
+ * Read through `expo-application`, which reports what the native bundle says.
+ * Deliberately not `Constants.expoConfig`: that comes from the manifest, an
+ * update ships its own manifest, and a value an update can change says
+ * nothing about the binary underneath it.
  */
-const FACE_ID_READY_BUILD = 2;
+const FACE_ID_READY_VERSION = [1, 1] as const;
 
 function hasFaceIdPermission(): boolean {
   try {
-    const build = Number(Application.nativeBuildVersion);
-    return Number.isFinite(build) && build >= FACE_ID_READY_BUILD;
+    const [major, minor] = String(Application.nativeApplicationVersion ?? '')
+      .split('.')
+      .map((part) => Number.parseInt(part, 10));
+    if (!Number.isFinite(major) || !Number.isFinite(minor)) return false;
+    const [readyMajor, readyMinor] = FACE_ID_READY_VERSION;
+    return major > readyMajor || (major === readyMajor && minor >= readyMinor);
   } catch {
     return false;
   }

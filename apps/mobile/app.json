@@ -3,7 +3,7 @@
     "name": "Ekklesia",
     "slug": "ekklesia",
     "scheme": "ekklesia",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ekklesia",
-      "buildNumber": "2",
+      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -30,7 +30,7 @@
       },
       "package": "com.ekklesia",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 2,
+      "versionCode": 1,
       "permissions": [
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
