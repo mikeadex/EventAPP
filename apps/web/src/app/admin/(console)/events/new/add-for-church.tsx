@@ -3,7 +3,7 @@
 import type { AdminChurchInput } from '@ekklesia/shared';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAdminMe } from '@/components/admin/admin-me';
 import { Field } from '@/components/controls';
 import {
@@ -39,6 +39,32 @@ const KINDS = [
   { value: 'community', label: 'Community' },
 ] as const satisfies readonly { value: AdminChurchInput['kind']; label: string }[];
 
+/**
+ * Event times are entered in the church's own timezone (ruling O). GB and IE
+ * have one zone each; a US church picks one of these.
+ */
+const ZONE_FOR_COUNTRY = { GB: 'Europe/London', IE: 'Europe/Dublin' } as const;
+const US_ZONES = [
+  { value: 'America/New_York', label: 'Eastern (New York)' },
+  { value: 'America/Chicago', label: 'Central (Chicago)' },
+  { value: 'America/Denver', label: 'Mountain (Denver)' },
+  { value: 'America/Phoenix', label: 'Arizona (Phoenix)' },
+  { value: 'America/Los_Angeles', label: 'Pacific (Los Angeles)' },
+  { value: 'America/Anchorage', label: 'Alaska (Anchorage)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii (Honolulu)' },
+] as const;
+type UsZone = (typeof US_ZONES)[number]['value'];
+
+/** "UK", "Eastern (New York)", or the zone name for anything else. */
+function zoneLabel(tz: string) {
+  if (tz === 'Europe/London') return 'UK';
+  if (tz === 'Europe/Dublin') return 'Irish';
+  return US_ZONES.find((z) => z.value === tz)?.label ?? tz.replace(/_/g, ' ');
+}
+
+/** Host ids are cuids; anything else in `?hostId=` is ignored. */
+const HOST_ID = /^[a-z0-9]+$/i;
+
 type Country = AdminChurchInput['country'];
 type Kind = AdminChurchInput['kind'];
 
@@ -52,6 +78,8 @@ interface ChurchDraft {
   country: Country;
   contactName: string;
   contactEmail: string;
+  /** Only used when the country is US. */
+  usZone: UsZone;
 }
 type ChurchErrors = Partial<Record<keyof ChurchDraft, string>>;
 
@@ -62,7 +90,10 @@ const emptyChurch = (): ChurchDraft => ({
   country: 'GB',
   contactName: '',
   contactEmail: '',
+  usZone: 'America/New_York',
 });
+
+const churchZone = (c: ChurchDraft) => (c.country === 'US' ? c.usZone : ZONE_FOR_COUNTRY[c.country]);
 
 function validateChurch(c: ChurchDraft): ChurchErrors {
   const errs: ChurchErrors = {};
@@ -81,6 +112,7 @@ interface PickedHost {
   slug: string;
   city: string | null;
   country: string | null;
+  timezone: string;
   claimStatus: ClaimStatus;
   contactEmail: string | null;
 }
@@ -173,7 +205,8 @@ function Header() {
 function AddForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const hostId = search.get('hostId');
+  const rawHostId = search.get('hostId');
+  const hostId = rawHostId && HOST_ID.test(rawHostId) ? rawHostId : null;
 
   const [step, setStep] = useState(hostId ? 1 : 0);
   const [mode, setMode] = useState<'new' | 'existing'>('new');
@@ -187,10 +220,14 @@ function AddForm() {
   const [created, setCreated] = useState<Created | null>(null);
   const [hostLoad, setHostLoad] = useState<HostLoad>(hostId ? { state: 'loading' } : { state: 'none' });
 
+  // Only the latest lookup may land (the church can change while one is in flight).
+  const hostReq = useRef(0);
   const loadHost = useCallback(async (id: string) => {
+    const req = ++hostReq.current;
     setHostLoad({ state: 'loading' });
     try {
-      const host = await adminApi<PickedHost>(`/hosts/${id}`);
+      const host = await adminApi<PickedHost>(`/hosts/${encodeURIComponent(id)}`);
+      if (req !== hostReq.current) return;
       setHostLoad({ state: 'ok', host });
       // Venue defaults follow the church.
       setD((p) => ({
@@ -199,6 +236,7 @@ function AddForm() {
         city: p.city || host.city || '',
       }));
     } catch (e) {
+      if (req !== hostReq.current) return;
       setHostLoad({ state: 'error', missing: e instanceof ApiError && e.status === 404 });
     }
   }, []);
@@ -208,6 +246,7 @@ function AddForm() {
       void loadHost(hostId);
       setStep(1);
     } else {
+      hostReq.current++;
       setHostLoad({ state: 'none' });
       setStep(0);
     }
@@ -234,6 +273,8 @@ function AddForm() {
   const host = hostLoad.state === 'ok' ? hostLoad.host : null;
   const hostBlocked = existing && (!host || host.claimStatus !== 'UNCLAIMED');
   const churchReady = existing ? !hostBlocked : Object.keys(churchErrors).length === 0;
+  /** The zone the event's times are entered in: the church's. */
+  const eventZone = existing ? (host?.timezone ?? null) : churchZone(church);
 
   function go(i: number) {
     setStep(i);
@@ -298,7 +339,8 @@ function AddForm() {
     setEventServerErrors({});
     // No ticket types: the event is free (an unclaimed church may only have
     // free events; the API refuses anything priced with FREE_ONLY).
-    const event = { ...draftToPayload(d, false), visibility: 'public' as const, ticketTypes: [] };
+    if (!eventZone) return;
+    const event = { ...draftToPayload(d, false, eventZone), visibility: 'public' as const, ticketTypes: [] };
     try {
       if (existing && host) {
         const r = await adminApi<{ event: { id: string; slug: string } }>(`/hosts/${host.id}/events`, {
@@ -323,6 +365,7 @@ function AddForm() {
             country: church.country,
             contactName: church.contactName.trim(),
             contactEmail: church.contactEmail.trim().toLowerCase(),
+            timezone: churchZone(church),
           } satisfies AdminChurchInput,
           event,
         };
@@ -398,12 +441,37 @@ function AddForm() {
       <Header />
 
       <div className="adm-steps">
-        <StepTabs steps={['Church', 'Event']} current={hostBlocked ? 0 : step} onSelect={(i) => (i === 1 ? toEventStep() : go(0))} />
+        <StepTabs
+          steps={['Church', 'Event']}
+          current={hostBlocked ? 0 : step}
+          onSelect={(i) => (i === 1 ? toEventStep() : go(0))}
+          disabledSteps={hostBlocked ? [1] : undefined}
+        />
       </div>
 
       {step === 0 || hostBlocked ? (
         existing ? (
-          <ExistingHostCard load={hostLoad} onChange={() => pickHost(null)} onRetry={() => hostId && void loadHost(hostId)} />
+          <div className="card flex flex-col gap-6 p-6 sm:p-8">
+            <ExistingHostCard
+              load={hostLoad}
+              compact
+              onChange={() => pickHost(null)}
+              onRetry={() => hostId && void loadHost(hostId)}
+            />
+            {!hostBlocked ? (
+              <>
+                <div className="rule-x" />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <Link href={`/admin/hosts/${hostId}` as never} className="btn btn-lg text-ink-2 hover:text-ink">
+                    Cancel
+                  </Link>
+                  <button type="button" className="btn btn-primary btn-lg" onClick={() => toEventStep()}>
+                    Continue to event
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
         ) : (
           <form onSubmit={toEventStep} className="card flex min-w-0 flex-col gap-6 p-6 sm:p-8" noValidate>
             <PressedChips
@@ -451,7 +519,12 @@ function AddForm() {
               </p>
             )}
             <BasicsFields d={d} set={set} errors={visibleEventErrors} />
-            <WhenWhereFields d={d} set={set} errors={visibleEventErrors} />
+            <WhenWhereFields
+              d={d}
+              set={set}
+              errors={visibleEventErrors}
+              timeNote={eventZone ? `Times are in ${zoneLabel(eventZone)} time.` : undefined}
+            />
             <TicketKind freeOnly />
             <CapacityField d={d} set={set} errors={visibleEventErrors} />
 
@@ -483,7 +556,7 @@ function AddForm() {
             </div>
           </form>
           <aside className="xl:sticky xl:top-24">
-            <EventPreview d={d} host={previewHost} />
+            <EventPreview d={d} host={previewHost} timeZone={eventZone ?? undefined} />
           </aside>
         </div>
       )}
@@ -546,6 +619,25 @@ function NewChurchFields({
         options={[...COUNTRIES]}
         hint="Sets the church’s currency. Ekklesia is open in these three for now."
       />
+      {c.country === 'US' ? (
+        <Field label="Timezone" hint="The church’s local time. Event times are entered in it.">
+          {(p) => (
+            <select
+              {...p}
+              className="input"
+              required
+              value={c.usZone}
+              onChange={(e) => set('usZone', e.target.value as UsZone)}
+            >
+              {US_ZONES.map((z) => (
+                <option key={z.value} value={z.value}>
+                  {z.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+      ) : null}
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Contact name" error={errors.contactName}>
           {(p) => (
@@ -715,7 +807,17 @@ function ExistingHostCard({
   onRetry: () => void;
 }) {
   const box = compact ? 'flex flex-wrap items-center gap-3' : 'card flex flex-wrap items-center gap-3 p-6';
-  if (load.state === 'loading' || load.state === 'none') {
+  if (load.state === 'none') {
+    return (
+      <div className={box}>
+        <p className="flex-1 text-[14px] text-body">Choose a church to add the event to.</p>
+        <button type="button" className="btn btn-outline btn-sm" onClick={onChange}>
+          Choose a church
+        </button>
+      </div>
+    );
+  }
+  if (load.state === 'loading') {
     return (
       <p className={`${box} text-[14px] text-muted`} role="status">
         Loading church…

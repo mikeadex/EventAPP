@@ -142,6 +142,7 @@ export class AdminHostsService {
         ...HOST_ROW_SELECT,
         country: true,
         currency: true,
+        timezone: true,
         claimedAt: true,
         contactName: true,
         addedBy: { select: { id: true, name: true, email: true } },
@@ -221,6 +222,8 @@ export class AdminHostsService {
             city: church.city,
             contactName: church.contactName,
             contactEmail: church.contactEmail,
+            // Left out → the column default (Europe/London), as at sign-up.
+            ...(church.timezone && { timezone: church.timezone }),
             claimStatus: 'UNCLAIMED',
             verificationStatus: 'UNVERIFIED',
             addedByUserId: staffId,

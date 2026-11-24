@@ -6,6 +6,7 @@ import { ImageUpload } from '@/components/image-upload';
 import { LocationModePicker, modeOf, type LocationMode } from '@/components/location-mode-picker';
 import { CATEGORIES, categoryOf, type CategoryValue } from '@/lib/categories';
 import { fmtDay, fmtTime } from '@/lib/format';
+import type { ReactNode } from 'react';
 import { PressedChips } from './steps';
 
 /** The editable shape of an event, in the units the form works in. */
@@ -86,9 +87,50 @@ export function draftFromEvent(e: {
   };
 }
 
-/** Start and end as Dates; an end time at or before the start rolls to the next day. */
-export function draftTimes(d: EventDraft) {
+/** Offset of `timeZone` from UTC, in ms, at instant `t`. */
+function zoneOffset(t: number, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(new Date(t));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second')) - t;
+}
+
+/** The instant at which the wall clock in `timeZone` reads `date` (YYYY-MM-DD) `time` (HH:mm). */
+export function zonedInstant(date: string, time: string, timeZone: string): Date {
+  const [y, m, day] = date.split('-').map(Number);
+  const [hh, mm] = time.split(':').map(Number);
+  const wall = Date.UTC(y!, m! - 1, day!, hh!, mm!);
+  // Two passes so a time near a clock change lands on the right side of it.
+  const first = wall - zoneOffset(wall, timeZone);
+  return new Date(wall - zoneOffset(first, timeZone));
+}
+
+const nextDay = (date: string) => {
+  const [y, m, day] = date.split('-').map(Number);
+  return new Date(Date.UTC(y!, m! - 1, day! + 1)).toISOString().slice(0, 10);
+};
+
+/**
+ * Start and end as Dates; an end time at or before the start rolls to the next day.
+ * Times are read in the browser's timezone, or in `timeZone` when given (staff
+ * entering a church's event in the church's own time).
+ */
+export function draftTimes(d: EventDraft, timeZone?: string) {
   if (!d.date || !d.start || !d.end) return null;
+  if (timeZone) {
+    const startsAt = zonedInstant(d.date, d.start, timeZone);
+    const endsAt = zonedInstant(d.end <= d.start ? nextDay(d.date) : d.date, d.end, timeZone);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) return null;
+    return { startsAt, endsAt };
+  }
   const startsAt = new Date(`${d.date}T${d.start}`);
   const endsAt = new Date(`${d.date}T${d.end}`);
   if (endsAt <= startsAt) endsAt.setDate(endsAt.getDate() + 1);
@@ -111,9 +153,13 @@ export function validateDraft(d: EventDraft): Partial<Record<keyof EventDraft, s
   return errs;
 }
 
-/** The fields the API's create and update schemas share. */
-export function draftToPayload(d: EventDraft, forUpdate: boolean) {
-  const t = draftTimes(d)!;
+/**
+ * The fields the API's create and update schemas share. `timeZone` (optional)
+ * reads the times in that zone and sends it as the event's timezone; without
+ * it, the browser's.
+ */
+export function draftToPayload(d: EventDraft, forUpdate: boolean, timeZone?: string) {
+  const t = draftTimes(d, timeZone)!;
   const blank = forUpdate ? null : undefined;
   const opt = (v: string) => (v.trim() ? v.trim() : forUpdate ? '' : undefined);
   return {
@@ -123,7 +169,7 @@ export function draftToPayload(d: EventDraft, forUpdate: boolean) {
     category: d.category,
     startsAt: t.startsAt.toISOString(),
     endsAt: t.endsAt.toISOString(),
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
     isOnline: d.mode !== 'in_person',
     onlineUrl: d.mode === 'in_person' ? blank : d.onlineUrl.trim(),
     capacity: d.capacity ? Number(d.capacity) : blank,
@@ -206,11 +252,14 @@ export function WhenWhereFields({
   set,
   errors = {},
   disabled,
+  timeNote,
 }: {
   d: EventDraft;
   set: Setter;
   errors?: Errors;
   disabled?: boolean;
+  /** A line under the date and times, e.g. which timezone they're in. */
+  timeNote?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -227,6 +276,7 @@ export function WhenWhereFields({
           {(p) => <input {...p} type="time" required className="input" value={d.end} onChange={(e) => set('end', e.target.value)} />}
         </Field>
       </div>
+      {timeNote ? <p className="hint -mt-3">{timeNote}</p> : null}
 
       <LocationModePicker value={d.mode} onChange={(m) => set('mode', m)} disabled={disabled} />
 
@@ -307,8 +357,8 @@ export function CapacityField({ d, set, errors = {} }: { d: EventDraft; set: Set
 }
 
 /** Live preview: what the event card will look like on Discover. */
-export function EventPreview({ d, host }: { d: EventDraft; host: string }) {
-  const t = draftTimes(d);
+export function EventPreview({ d, host, timeZone }: { d: EventDraft; host: string; timeZone?: string }) {
+  const t = draftTimes(d, timeZone);
   const cat = categoryOf(d.category);
   return (
     <div className="flex flex-col gap-3">
@@ -320,7 +370,9 @@ export function EventPreview({ d, host }: { d: EventDraft; host: string }) {
         </div>
         <div className="flex flex-col gap-2 p-5">
           <span className="eyebrow text-ink-2">
-            {t ? `${fmtDay(t.startsAt.toISOString())} at ${fmtTime(t.startsAt.toISOString())}` : 'Date to be set'}
+            {t
+              ? `${fmtDay(t.startsAt.toISOString(), timeZone)} at ${fmtTime(t.startsAt.toISOString(), timeZone)}`
+              : 'Date to be set'}
           </span>
           <span className="text-[20px] leading-tight text-strong">{d.title || 'Your event title'}</span>
           <span className="text-[14px] text-muted">{host}</span>

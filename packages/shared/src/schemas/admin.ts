@@ -12,6 +12,16 @@ export const ADMIN_HOST_COUNTRIES = ['GB', 'IE', 'US'] as const;
 export const CURRENCY_FOR_COUNTRY = { GB: 'GBP', IE: 'EUR', US: 'USD' } as const;
 
 const contactName = z.string().trim().min(1).max(120);
+
+/** True for an IANA zone name this runtime knows (e.g. `America/New_York`). */
+function isIanaZone(tz: string) {
+  try {
+    new Intl.DateTimeFormat('en-GB', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 const contactEmail = z.string().trim().toLowerCase().email().max(254);
 
 /** A church staff add on its behalf. It starts unclaimed and unverified. */
@@ -22,6 +32,14 @@ export const AdminChurchSchema = z.object({
   country: z.enum(ADMIN_HOST_COUNTRIES),
   contactName,
   contactEmail,
+  /** The church's timezone; event times are entered in it. Omitted → the DB default (Europe/London). */
+  timezone: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .refine(isIanaZone, { message: 'Unknown timezone' })
+    .optional(),
 });
 export type AdminChurchInput = z.infer<typeof AdminChurchSchema>;
 

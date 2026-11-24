@@ -467,6 +467,26 @@ describe('AdminHostsService', () => {
       expect(db.state.orgs[0]).toMatchObject({ country: 'IE', currency: 'EUR' });
     });
 
+    it('stores the church timezone when given, and defaults to Europe/London', async () => {
+      const { db, hosts } = setup();
+      await hosts.create(
+        'staff1',
+        { church: church({ country: 'US', timezone: 'America/New_York' }), event: eventInput() },
+        undefined,
+      );
+      await hosts.create('staff1', { church: church({ name: 'Second Church' }), event: eventInput() }, undefined);
+      expect(db.state.orgs[0]).toMatchObject({ country: 'US', currency: 'USD', timezone: 'America/New_York' });
+      expect(db.state.orgs[1]).toMatchObject({ timezone: 'Europe/London' });
+    });
+
+    it('refuses an unknown timezone (400) before creating anything', async () => {
+      const { db, hosts } = setup();
+      await expect(
+        hosts.create('staff1', { church: church({ timezone: 'Mars/Olympus' }), event: eventInput() }, undefined),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+      expect(db.state.orgs).toHaveLength(0);
+    });
+
     it('gives a taken or reserved name a different slug', async () => {
       const { db, hosts } = setup({ orgs: [org({ slug: 'new-hope-church' })] });
       const first = await hosts.create(
