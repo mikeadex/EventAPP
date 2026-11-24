@@ -6,7 +6,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -14,18 +13,9 @@ import { router, Link, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  color,
-  spacing,
-  radius,
-  fontSize,
-  fontWeight,
-  theme,
-  palette,
-  fontFamily,
-  radiusExtra,
-} from '@ekklesia/ui/tokens';
+import { color, spacing, radius, theme, palette, radiusExtra, fontFamily } from '@ekklesia/ui/tokens';
 import { Scrim as GradientScrim, scrimPreset } from '@/components/scrim';
+import { Text } from '@/components/text';
 import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
 import { useForegroundRefresh } from '@/lib/use-foreground-refresh';
@@ -140,30 +130,32 @@ function SpotlightCard({
           <Image source={{ uri: item.coverImageUrl }} style={StyleSheet.absoluteFill} />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.fallback]}>
-            <Ionicons name="calendar-outline" size={36} color={color.ink[600]} />
+            <Ionicons name="calendar-outline" size={36} color={theme.dark.textMuted} />
           </View>
         )}
         <Scrim />
         <HeartButton saved={saved} onPress={onToggleSave} style={styles.cardHeart} />
         <View style={styles.spotlightTag}>
-          <Text style={styles.spotlightTagText}>{prettyCategory(item.category)}</Text>
+          <Text variant="overline" style={styles.spotlightTagText}>
+            {prettyCategory(item.category)}
+          </Text>
         </View>
         <View style={styles.spotlightBody}>
-          <Text style={styles.spotlightTitle} numberOfLines={2}>
+          <Text variant="title" tone="onPhoto" numberOfLines={2}>
             {item.title}
           </Text>
           <View style={styles.spotlightMeta}>
-            <Ionicons name="calendar-outline" size={13} color={color.ink[200]} />
-            <Text style={styles.spotlightMetaText}>
+            <Ionicons name="calendar-outline" size={13} color={palette.warm[300]} />
+            <Text variant="label" tone="onPhotoMuted">
               {d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
             </Text>
             <Ionicons
               name="time-outline"
               size={13}
-              color={color.ink[200]}
+              color={palette.warm[300]}
               style={{ marginLeft: spacing[2] }}
             />
-            <Text style={styles.spotlightMetaText}>
+            <Text variant="label" tone="onPhotoMuted">
               {d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
             </Text>
           </View>
@@ -191,18 +183,18 @@ function FeaturedCard({
           <Image source={{ uri: item.coverImageUrl }} style={StyleSheet.absoluteFill} />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.fallback]}>
-            <Ionicons name="calendar-outline" size={32} color={color.ink[600]} />
+            <Ionicons name="calendar-outline" size={32} color={theme.dark.textMuted} />
           </View>
         )}
         <Scrim />
         <HeartButton saved={saved} onPress={onToggleSave} style={styles.cardHeartSm} />
         <View style={styles.featuredCardBody}>
-          <Text style={styles.featuredCardTitle} numberOfLines={2}>
+          <Text variant="bodyLg" tone="onPhoto" numberOfLines={2}>
             {item.title}
           </Text>
           <View style={styles.featuredCardMeta}>
-            <Ionicons name="calendar-outline" size={12} color={color.ink[200]} />
-            <Text style={styles.featuredCardMetaText}>
+            <Ionicons name="calendar-outline" size={12} color={palette.warm[300]} />
+            <Text variant="caption" tone="onPhotoMuted">
               {d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} ·{' '}
               {d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
             </Text>
@@ -330,9 +322,11 @@ export default function DiscoverScreen() {
 
   const locationPill = (
     <Pressable style={styles.locationPill} onPress={() => setCityPickerOpen(true)} hitSlop={6}>
-      <Ionicons name="location" size={15} color={color.ink[0]} />
-      <Text style={styles.locationText}>{city ?? 'All locations'}</Text>
-      <Ionicons name="chevron-down" size={14} color={color.ink[300]} />
+      <Ionicons name="location" size={15} color={palette.coral[300]} />
+      <Text variant="footnote" tone="onPhoto">
+        {city ?? 'All locations'}
+      </Text>
+      <Ionicons name="chevron-down" size={14} color={palette.warm[300]} />
     </Pressable>
   );
 
@@ -346,7 +340,9 @@ export default function DiscoverScreen() {
       <Pressable style={styles.sheetOverlay} onPress={() => setCityPickerOpen(false)} />
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[4] }]}>
         <View style={styles.sheetHandle} />
-        <Text style={styles.sheetTitle}>Location</Text>
+        <Text variant="heading" style={styles.sheetTitle}>
+          Location
+        </Text>
         <Pressable
           style={styles.sheetRow}
           onPress={() => {
@@ -354,10 +350,12 @@ export default function DiscoverScreen() {
             setCityPickerOpen(false);
           }}
         >
-          <Ionicons name="globe-outline" size={20} color={color.ink[700]} />
-          <Text style={styles.sheetRowText}>All locations</Text>
+          <Ionicons name="globe-outline" size={20} color={theme.dark.textSecondary} />
+          <Text variant="bodyLg" style={styles.sheetRowText}>
+            All locations
+          </Text>
           {city === null ? (
-            <Ionicons name="checkmark" size={20} color={color.ink[900]} />
+            <Ionicons name="checkmark" size={20} color={theme.dark.accent} />
           ) : null}
         </Pressable>
         {cities.map((c) => {
@@ -371,12 +369,15 @@ export default function DiscoverScreen() {
                 setCityPickerOpen(false);
               }}
             >
-              <Ionicons name="location-outline" size={20} color={color.ink[700]} />
-              <Text style={styles.sheetRowText}>
+              <Ionicons name="location-outline" size={20} color={theme.dark.textSecondary} />
+              <Text variant="bodyLg" style={styles.sheetRowText}>
                 {c.city}
-                <Text style={styles.sheetRowSub}>  {c.country}</Text>
+                <Text variant="caption" tone="muted">
+                  {'  '}
+                  {c.country}
+                </Text>
               </Text>
-              {active ? <Ionicons name="checkmark" size={20} color={color.ink[900]} /> : null}
+              {active ? <Ionicons name="checkmark" size={20} color={theme.dark.accent} /> : null}
             </Pressable>
           );
         })}
@@ -391,7 +392,7 @@ export default function DiscoverScreen() {
           <Image source={{ uri: heroEvent.coverImageUrl }} style={StyleSheet.absoluteFill} />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.fallback]}>
-            <Ionicons name="calendar-outline" size={44} color={color.ink[600]} />
+            <Ionicons name="calendar-outline" size={44} color={theme.dark.textMuted} />
           </View>
         )}
         <Scrim />
@@ -410,20 +411,24 @@ export default function DiscoverScreen() {
         </View>
         <View style={styles.heroBody}>
           <View style={styles.heroTag}>
-            <Text style={styles.heroTagText}>{prettyCategory(heroEvent.category)}</Text>
+            <Text variant="overline" tone="accent">
+              {prettyCategory(heroEvent.category)}
+            </Text>
           </View>
-          <Text style={styles.heroTitle} numberOfLines={2}>
+          <Text variant="hero" tone="onPhoto" numberOfLines={2}>
             {heroEvent.title}
           </Text>
           <View style={styles.heroMeta}>
-            <Ionicons name="business" size={13} color={color.ink[200]} />
-            <Text style={styles.heroMetaText} numberOfLines={1}>
+            <Ionicons name="business" size={13} color={palette.warm[300]} />
+            <Text variant="footnote" tone="onPhotoMuted" numberOfLines={1}>
               {heroEvent.organization.name}
             </Text>
             {heroEvent.attendeeCount > 0 ? (
               <>
                 <View style={styles.heroDot} />
-                <Text style={styles.heroMetaText}>{heroEvent.attendeeCount} going</Text>
+                <Text variant="footnote" tone="onPhotoMuted">
+                  {heroEvent.attendeeCount} going
+                </Text>
               </>
             ) : null}
           </View>
@@ -483,8 +488,8 @@ export default function DiscoverScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => load('refresh')}
-              tintColor={color.ink[900]}
-              colors={[color.ink[900]]}
+              tintColor={theme.dark.accent}
+              colors={[theme.dark.accent]}
               progressViewOffset={insets.top}
             />
           }
@@ -494,17 +499,19 @@ export default function DiscoverScreen() {
           <View style={styles.content}>
             {/* Tapping opens the full-screen search (with filters). */}
             <Pressable style={styles.searchTrigger} onPress={() => router.push('/search')}>
-              <Ionicons name="search" size={18} color={color.ink[400]} />
-              <Text style={styles.searchTriggerText}>Search for events…</Text>
-              <Ionicons name="options-outline" size={18} color={color.ink[400]} />
+              <Ionicons name="search" size={18} color={theme.dark.textMuted} />
+              <Text variant="body" tone="muted" style={styles.searchTriggerText}>
+                Search for events…
+              </Text>
+              <Ionicons name="options-outline" size={18} color={theme.dark.textMuted} />
             </Pressable>
 
             {happeningSoon.length > 0 ? (
               <>
                 <View style={styles.sectionRow}>
-                  <Text style={styles.sectionLabel}>Happening soon</Text>
+                  <Text variant="heading">Happening soon</Text>
                   <Pressable onPress={() => router.push('/search')} hitSlop={6}>
-                    <Text style={styles.seeAll}>See all</Text>
+                    <Text variant="footnote" tone="accent">See all</Text>
                   </Pressable>
                 </View>
                 <ScrollView
@@ -531,9 +538,9 @@ export default function DiscoverScreen() {
             {featuredList.length > 0 ? (
               <>
                 <View style={styles.sectionRow}>
-                  <Text style={styles.sectionLabel}>Featured</Text>
+                  <Text variant="heading">Featured</Text>
                   <Pressable onPress={() => router.push('/search')} hitSlop={6}>
-                    <Text style={styles.seeAll}>See all</Text>
+                    <Text variant="footnote" tone="accent">See all</Text>
                   </Pressable>
                 </View>
                 <ScrollView
@@ -589,7 +596,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
-  cardPressed: { opacity: 0.92, transform: [{ scale: 0.985 }] },
   heart: {
     width: 34,
     height: 34,
@@ -603,25 +609,24 @@ const styles = StyleSheet.create({
   cardHeartSm: { position: 'absolute', top: spacing[2], right: spacing[2], width: 30, height: 30, borderRadius: 15 },
   heroHeart: { position: 'absolute', right: PAD, bottom: PAD, width: 44, height: 44, borderRadius: 22 },
   // Loading skeleton (matches the hero + carousel layout)
-  skelHero: { width: '100%', height: HERO_H, backgroundColor: color.ink[100], borderRadius: 0 },
-  skelSearch: { height: 52, borderRadius: radius.full, backgroundColor: color.ink[100] },
+  skelHero: { width: '100%', height: HERO_H, backgroundColor: theme.dark.surface, borderRadius: 0 },
+  skelSearch: { height: 52, borderRadius: radius.full, backgroundColor: theme.dark.surface },
   skelSectionRow: {
     height: 22,
     width: 150,
     borderRadius: radius.sm,
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surface,
     marginTop: spacing[6],
     marginBottom: spacing[3],
   },
   skelRow: { flexDirection: 'row', gap: GAP },
   skelCardL: {
     width: SPOT_W,
-    height: 210,
-    borderRadius: radius['2xl'],
-    backgroundColor: color.ink[100],
+    height: 178,
+    borderRadius: 20,
+    backgroundColor: theme.dark.surface,
   },
-  fallback: { alignItems: 'center', justifyContent: 'center' },
-  scrimBand: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  fallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: theme.dark.surfaceRaised },
   heroTopBar: {
     position: 'absolute',
     top: 0,
@@ -639,7 +644,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroAvatarText: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: color.ink[0] },
+  heroAvatarText: { fontFamily: fontFamily.body, fontSize: 16, color: palette.warm[0] },
   heroBody: { padding: PAD, paddingRight: 64 },
   // Outlined, not filled: the refresh states actions and tags are a 1px
   // accent line on transparent rather than a flood of colour.
@@ -653,21 +658,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     marginBottom: spacing[3],
   },
-  heroTagText: {
-    color: palette.coral[400],
-    fontFamily: fontFamily.body,
-    fontSize: 11,
-    letterSpacing: 2.2,
-    textTransform: 'uppercase',
-  },
-  heroTitle: {
-    color: '#F7F5F4',
-    fontFamily: fontFamily.body,
-    fontSize: 34,
-    lineHeight: 36,
-  },
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: spacing[2] },
-  heroMetaText: { color: palette.warm[300], fontFamily: fontFamily.body, fontSize: fontSize.sm },
   // A coral dot replaces the old middot character — the handoff uses a 3px
   // round separator, which a glyph cannot match across platforms.
   heroDot: {
@@ -695,14 +686,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: radius.full,
   },
-  locationText: { color: color.ink[0], fontSize: fontSize.sm, fontWeight: fontWeight.medium },
 
   // Location picker bottom sheet
-  sheetOverlay: { flex: 1, backgroundColor: 'rgba(10,9,7,0.5)' },
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(13,10,11,0.62)' },
   sheet: {
-    backgroundColor: color.ink[0],
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
+    backgroundColor: theme.dark.surface,
+    borderTopLeftRadius: radiusExtra.hero,
+    borderTopRightRadius: radiusExtra.hero,
     paddingHorizontal: PAD,
     paddingTop: spacing[3],
   },
@@ -711,39 +701,28 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: color.ink[200],
+    backgroundColor: theme.dark.border,
     marginBottom: spacing[4],
   },
-  sheetTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: color.ink[900],
-    marginBottom: spacing[2],
-  },
+  sheetTitle: { marginBottom: spacing[2] },
   sheetRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     paddingVertical: spacing[4],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: color.ink[100],
+    borderBottomColor: theme.dark.borderSubtle,
   },
-  sheetRowText: {
-    flex: 1,
-    fontSize: fontSize.base,
-    color: color.ink[900],
-    fontWeight: fontWeight.medium,
-  },
-  sheetRowSub: { color: color.ink[400], fontSize: fontSize.xs, fontWeight: fontWeight.regular },
+  sheetRowText: { flex: 1 },
   avatar: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: color.ink[900] },
+  avatarText: { fontFamily: fontFamily.body, fontSize: 16, color: theme.dark.textPrimary },
   avatarFill: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
 
   searchTrigger: {
@@ -757,75 +736,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     height: 52,
   },
-  searchTriggerText: {
-    flex: 1,
-    color: theme.dark.textMuted,
-    fontFamily: fontFamily.body,
-    fontSize: 15,
-  },
-  seeAll: { color: palette.coral[400], fontFamily: fontFamily.body, fontSize: fontSize.sm },
-  sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  searchCollapsed: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    backgroundColor: color.ink[50],
-    borderWidth: 1,
-    borderColor: color.ink[100],
-    borderRadius: radius.full,
-    paddingHorizontal: spacing[4],
-    height: 50,
-  },
-  searchOpen: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    backgroundColor: color.ink[50],
-    borderWidth: 1,
-    borderColor: color.ink[200],
-    borderRadius: radius.full,
-    paddingHorizontal: spacing[4],
-    height: 50,
-  },
-  searchPlaceholder: { color: color.ink[500], fontSize: fontSize.base },
-  searchInput: { flex: 1, fontSize: fontSize.base, color: color.ink[900] },
-  filterBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: color.ink[200],
-    backgroundColor: color.ink[0],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterBtnActive: { backgroundColor: color.ink[900], borderColor: color.ink[900] },
-  filterDot: {
-    position: 'absolute',
-    top: 11,
-    right: 13,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: color.ink[0],
-  },
+  searchTriggerText: { flex: 1 },
 
-  chipsScroll: { marginTop: spacing[4], marginHorizontal: -PAD },
-  chips: { paddingHorizontal: PAD, gap: spacing[2] },
-  chip: {
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[4],
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: color.ink[200],
-    backgroundColor: color.ink[0],
-  },
-  chipActive: { backgroundColor: color.ink[900], borderColor: color.ink[900] },
-  chipText: { fontSize: fontSize.sm, color: color.ink[600], fontWeight: fontWeight.medium },
-  chipTextActive: { color: color.ink[0] },
 
   sectionRow: {
     flexDirection: 'row',
@@ -833,23 +745,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: spacing[6],
     marginBottom: spacing[3],
-  },
-  sectionLabel: {
-    fontFamily: fontFamily.body,
-    fontSize: 20,
-    color: theme.dark.textPrimary,
-  },
-  sectionCount: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-    color: color.ink[400],
-    backgroundColor: color.ink[100],
-    borderRadius: radius.full,
-    minWidth: 24,
-    textAlign: 'center',
-    paddingHorizontal: spacing[2],
-    paddingVertical: 1,
-    overflow: 'hidden',
   },
 
   carouselScroll: { marginHorizontal: -PAD },
@@ -873,22 +768,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: radius.full,
   },
-  spotlightTagText: {
-    color: '#FFE3DE',
-    fontFamily: fontFamily.body,
-    fontSize: 11,
-    letterSpacing: 1.98,
-    textTransform: 'uppercase',
-  },
+  spotlightTagText: { color: '#FFE3DE', letterSpacing: 1.98 },
   spotlightBody: { padding: spacing[4] },
-  spotlightTitle: {
-    color: '#F7F5F4',
-    fontFamily: fontFamily.body,
-    fontSize: 21,
-    lineHeight: 26,
-  },
   spotlightMeta: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 7 },
-  spotlightMetaText: { color: palette.warm[300], fontFamily: fontFamily.body, fontSize: 13 },
 
   // Portrait "Featured" card
   featuredCard: {
@@ -896,50 +778,15 @@ const styles = StyleSheet.create({
     height: 224,
     borderRadius: radius['2xl'],
     overflow: 'hidden',
-    backgroundColor: color.ink[800],
+    backgroundColor: theme.dark.surface,
     justifyContent: 'flex-end',
   },
   featuredCardBody: { padding: spacing[3] },
-  featuredCardTitle: {
-    color: color.ink[0],
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
-    lineHeight: 20,
-  },
   featuredCardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[1],
     marginTop: spacing[1],
   },
-  featuredCardMetaText: { color: color.ink[200], fontSize: 11, fontWeight: fontWeight.medium },
 
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingVertical: spacing[3],
-    paddingHorizontal: PAD,
-  },
-  thumb: {
-    width: 72,
-    height: 72,
-    borderRadius: radius.lg,
-    backgroundColor: color.ink[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  thumbImg: { width: '100%', height: '100%' },
-  rowCat: {
-    fontSize: 11,
-    color: color.ink[400],
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    fontWeight: fontWeight.semibold,
-    marginBottom: 2,
-  },
-  rowTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  rowMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], marginTop: spacing[1] },
-  rowMetaText: { fontSize: fontSize.xs, color: color.ink[500] },
 });

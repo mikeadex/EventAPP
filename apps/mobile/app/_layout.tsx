@@ -84,9 +84,19 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  // Held for the frame or two the bundled fonts take to register. Uses the
-  // refresh's light ground so the hold reads as the app starting, not a stall.
-  boot: { flex: 1, backgroundColor: theme.light.background },
+  // Held for the frame or two the bundled fonts take to register.
+  //
+  // The dark ground, matching the screen that follows — NOT the light one. The
+  // native splash behind this is cream (#FBF6EE, set in app.json) and is baked
+  // into both shipped binaries, so it cannot be darkened over the air. A light
+  // hold here would put a second, slightly different cream (#FFFAF9) between
+  // that splash and a near-black Discover: two transitions where one will do.
+  // Using the deep ground makes the cream-to-dark jump happen once, at JS
+  // boot, and the hold continuous with what renders next.
+  //
+  // Darkening the splash itself is a store release — worth folding into the
+  // next one rather than shipping a build for on its own.
+  boot: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   errC: {
     flex: 1,
     backgroundColor: color.ink[50],
