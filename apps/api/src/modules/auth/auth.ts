@@ -3,6 +3,7 @@ import { useDeadConnectionRetry } from '../../prisma/db-retry.js';
 import { EmailService } from '../email/email.service.js';
 import { passwordResetEmail } from '../email/templates/password-reset.js';
 import { verifyEmailTemplate } from '../email/templates/verify-email.js';
+import { signInCodeTemplate } from '../email/templates/sign-in-code.js';
 import { buildSocialProviders } from './social-providers.js';
 
 /**
@@ -44,6 +45,20 @@ const emailService = new EmailService();
 
 const RESET_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
 const VERIFY_TOKEN_TTL_SECONDS = 60 * 60 * 24; // 1 day — signing up is not always finished at a desk
+
+/**
+ * Sign-in codes are short-lived on purpose: they are six digits sitting in an
+ * inbox, and the window in which one is useful to anyone else is the window in
+ * which it is useful at all. Ten minutes is long enough to switch apps, find
+ * the mail and type it.
+ *
+ * The label is written out because it appears in the email and on the screen,
+ * and "10 minutes" reads like a countdown where "ten minutes" reads like a
+ * reassurance.
+ */
+const OTP_LENGTH = 6;
+const OTP_TTL_SECONDS = 60 * 10;
+const OTP_TTL_LABEL = 'ten minutes';
 
 // Origins the API will accept auth requests from. Includes the mobile deep-link
 // scheme so the native app's bearer-token flow is trusted.
@@ -172,11 +187,9 @@ export function getAuth(): Promise<AuthInstance> {
 }
 
 async function createAuth() {
-  const [{ betterAuth }, { prismaAdapter }, { bearer, oneTimeToken }] = await Promise.all([
-    loadBetterAuth(),
-    loadBetterAuthPrismaAdapter(),
-    loadBetterAuthPlugins(),
-  ]);
+  const [{ betterAuth }, { prismaAdapter }, { bearer, oneTimeToken, emailOTP }] = await Promise.all(
+    [loadBetterAuth(), loadBetterAuthPrismaAdapter(), loadBetterAuthPlugins()],
+  );
 
   return betterAuth({
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -194,6 +207,59 @@ async function createAuth() {
       // Used only to hand a web-view session to the native app after social
       // sign-in; see native-handoff.controller.ts. Short-lived and single-use.
       oneTimeToken({ expiresIn: 3 }),
+      /**
+       * Six-digit sign-in codes (design 12), as an alternative to typing a
+       * password on a phone.
+       *
+       * `disableSignUp` is the important one. Left on, this endpoint creates
+       * an account for any address that asks for a code — no name, no
+       * password, and no deliberate act of signing up. That is a different
+       * product decision from the one the sign-up screen makes, and it would
+       * let anyone mint accounts against addresses they do not own. This is a
+       * way into an account that already exists, nothing more.
+       *
+       * `allowedAttempts` is what keeps six digits from being guessable: a
+       * million combinations is only meaningful if you cannot try them, so
+       * the code dies after three wrong answers rather than living out its
+       * ten minutes as a target.
+       */
+      emailOTP({
+        otpLength: OTP_LENGTH,
+        expiresIn: OTP_TTL_SECONDS,
+        allowedAttempts: 3,
+        disableSignUp: true,
+        sendVerificationOTP: async ({ email, otp, type }) => {
+          // The plugin shares one sender across sign-in, verification and
+          // password reset. Only sign-in is wired up here; the other two have
+          // their own flows already and should not start sending codes just
+          // because this plugin is installed.
+          if (type !== 'sign-in') return;
+
+          // Addressed by name where we have one, which is also the cheapest
+          // signal that the message is genuinely from a service they use.
+          const user = await prisma.user.findUnique({
+            where: { email },
+            select: { name: true },
+          });
+
+          const { subject, html, text } = signInCodeTemplate({
+            code: otp,
+            name: user?.name,
+            expiresInLabel: OTP_TTL_LABEL,
+          });
+          await emailService.send({
+            to: email,
+            subject,
+            html,
+            text,
+            tags: [{ name: 'type', value: 'sign-in-code' }],
+            // Without the email there is no way to finish, and the screen is
+            // already sitting there waiting for six digits that will never
+            // arrive. Fail loudly so it can say so.
+            required: true,
+          });
+        },
+      }),
     ],
     // Only providers whose credentials are present; see social-providers.ts.
     socialProviders: buildSocialProviders(),

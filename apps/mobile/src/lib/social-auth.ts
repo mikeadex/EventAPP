@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { api } from './api';
-import { authClient } from './auth-client';
+import { authClient, refreshSession } from './auth-client';
 
 /**
  * Social sign-in for the native app. Two routes, for one awkward reason.
@@ -59,30 +59,6 @@ type AppleAuthModule = {
     fullName?: { givenName?: string | null; familyName?: string | null } | null;
   }>;
 };
-
-/**
- * Tell the client's session store to refetch.
- *
- * `onSuccess` in auth-client.ts persists the bearer token, but that is a fetch
- * hook and says nothing to the reactive session atom. Better Auth refetches
- * that atom only for a fixed list of paths — /sign-in/email, /sign-up/email,
- * /sign-out and a few others — and neither /sign-in/social nor
- * /one-time-token/verify is on it. So a social sign-in genuinely succeeded, the
- * token was stored, and `useSession()` still returned null: signed in, yet every
- * gated screen still asking you to sign in.
- *
- * Nudging the signal directly is what the client's own sign-in actions do.
- */
-function refreshSession(): void {
-  try {
-    (authClient as unknown as { $store: { notify: (signal: string) => void } }).$store.notify(
-      '$sessionSignal',
-    );
-  } catch {
-    // Never fail a completed sign-in over a refresh nudge; the session is real
-    // either way and the next app launch reads it from SecureStore.
-  }
-}
 
 /**
  * Sign in through Apple's native sheet.
@@ -178,10 +154,7 @@ export async function signInWithProvider(provider: string): Promise<SocialResult
   try {
     // Required lazily so the module is only touched on a build that has it.
     const WebBrowser = require('expo-web-browser') as {
-      openAuthSessionAsync(
-        url: string,
-        returnUrl: string,
-      ): Promise<{ type: string; url?: string }>;
+      openAuthSessionAsync(url: string, returnUrl: string): Promise<{ type: string; url?: string }>;
     };
     result = await WebBrowser.openAuthSessionAsync(authUrl, RETURN_URL);
   } catch {

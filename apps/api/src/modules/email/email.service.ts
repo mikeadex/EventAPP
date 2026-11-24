@@ -63,21 +63,32 @@ export class EmailService {
   }
 
   /**
-   * Print the link an unsent email would have carried.
+   * Print whatever an unsent email would have carried that the recipient has
+   * to act on — a link, or a sign-in code.
    *
-   * Without this there is no way to verify an address or follow a reset on a
-   * machine with no mail provider — the token exists only inside a message
-   * that was never sent, so the whole flow is untestable locally and the only
-   * way through is editing the database by hand.
+   * Without this there is no way to verify an address, follow a reset or sign
+   * in with a code on a machine with no mail provider — the secret exists only
+   * inside a message that was never sent, so the whole flow is untestable
+   * locally and the only way through is editing the database by hand.
    *
    * Guarded twice: only when the client is unconfigured (so never on a
-   * working deployment) and never when NODE_ENV says production, because the
-   * link carries a token that grants the action.
+   * working deployment) and never when NODE_ENV says production, because what
+   * is printed is exactly the thing that grants the action.
    */
-  private logDevLink(input: SendEmailInput): void {
+  private logDevSecret(input: SendEmailInput): void {
     if (process.env.NODE_ENV === 'production') return;
-    const link = (input.text ?? input.html).match(/https?:\/\/[^\s"'<>)]+/)?.[0];
+    const body = input.text ?? input.html;
+
+    const link = body.match(/https?:\/\/[^\s"'<>)]+/)?.[0];
     if (link) this.logger.log(`[email:dev-noop] link: ${link}`);
+
+    // Keyed off the tag rather than a bare digit match. Scanning every
+    // outgoing email for six digits would eventually print something from a
+    // message that merely contained a number — an order total, a date — and
+    // call it a code.
+    const isCode = input.tags?.some((t) => t.name === 'type' && t.value === 'sign-in-code');
+    const code = isCode ? body.match(/\b\d{4,8}\b/)?.[0] : undefined;
+    if (code) this.logger.log(`[email:dev-noop] sign-in code: ${code}`);
   }
 
   async send(input: SendEmailInput): Promise<{ id: string | null }> {
@@ -95,7 +106,7 @@ export class EmailService {
       // two mails a developer actually needs to follow, and they are exactly
       // the two that fail here. Logging after the throw would make the link
       // unreachable for every flow it was added to serve.
-      this.logDevLink(input);
+      this.logDevSecret(input);
       // Unconfigured is still a failure for a `required` send: otherwise a
       // signup against a misconfigured deployment looks successful and
       // strands the account.

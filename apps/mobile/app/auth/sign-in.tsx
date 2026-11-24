@@ -5,14 +5,16 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   TextInput,
   View,
 } from 'react-native';
 import { router, Link } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { spacing, theme } from '@ekklesia/ui/tokens';
 import { Text } from '@/components/text';
 import { authStyles } from '@/components/auth-styles';
-import { signIn, sendVerificationEmail } from '@/lib/auth-client';
+import { signIn, sendVerificationEmail, emailOtp } from '@/lib/auth-client';
 import { SocialSignIn } from '@/components/social-sign-in';
 import { PasswordInput } from '@/components/password-input';
 import { Logo } from '@/components/logo';
@@ -33,6 +35,35 @@ export default function SignInScreen() {
   // names that possibility without confirming the address exists or which
   // method it uses, which would turn this form into an account check.
   const [maybeSocial, setMaybeSocial] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+
+  /**
+   * "Email me a sign-in code instead" (design 10).
+   *
+   * Navigates on success *and* on failure, and that is deliberate. Reporting
+   * "no account for that address" here would make this a free account-lookup
+   * for anyone who cared to try addresses; the code screen says the same
+   * nothing whether or not a code was ever sent. Only a send that failed on
+   * our side — mail provider down, network gone — is worth saying out loud,
+   * because that one is ours to fix and not a hint about anybody's account.
+   */
+  async function sendCode() {
+    const address = email.trim();
+    if (!address) {
+      setError('Enter your email address first, then we’ll send you a code.');
+      return;
+    }
+    setSendingCode(true);
+    setError(null);
+    const res = await emailOtp.sendVerificationOtp({ email: address, type: 'sign-in' });
+    setSendingCode(false);
+
+    if (res.error && res.error.status !== 400) {
+      setError('Could not send a code just now. Try again, or use your password.');
+      return;
+    }
+    router.push({ pathname: '/auth/email-code', params: { email: address } });
+  }
 
   async function submit() {
     setPending(true);
@@ -151,6 +182,25 @@ export default function SignInScreen() {
           )}
         </Pressable>
 
+        {/* Design 10's alternative to typing a password on a phone. */}
+        <Pressable
+          onPress={() => void sendCode()}
+          disabled={sendingCode || pending}
+          hitSlop={8}
+          style={({ pressed }) => [styles.codeLink, pressed && { opacity: 0.7 }]}
+        >
+          {sendingCode ? (
+            <ActivityIndicator color={theme.dark.accent} size="small" />
+          ) : (
+            <>
+              <Ionicons name="mail-outline" size={15} color={theme.dark.accent} />
+              <Text variant="footnote" tone="accent">
+                Email me a sign-in code instead
+              </Text>
+            </>
+          )}
+        </Pressable>
+
         <View style={{ marginTop: spacing[6], flexDirection: 'row' }}>
           <Text variant="label" style={authStyles.muted}>
             New here?{' '}
@@ -165,3 +215,13 @@ export default function SignInScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  codeLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+  },
+});

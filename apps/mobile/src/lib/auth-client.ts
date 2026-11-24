@@ -1,4 +1,5 @@
 import { createAuthClient } from 'better-auth/react';
+import { emailOTPClient } from 'better-auth/client/plugins';
 import * as SecureStore from 'expo-secure-store';
 import { fetchWithRetry } from './fetch-retry';
 
@@ -46,6 +47,10 @@ export function clearStoredToken(): void {
 export const authClient = createAuthClient({
   baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000',
   basePath: '/auth',
+  // Six-digit sign-in codes. Must mirror the API's `emailOTP()` plugin — the
+  // client plugin is what adds `emailOtp.*` to this object, and without it the
+  // calls simply do not exist.
+  plugins: [emailOTPClient()],
   fetchOptions: {
     // Same timeout/retry treatment as the API client: signing in right after
     // the phone wakes used to fail outright when the first request hit a stale
@@ -79,7 +84,31 @@ export const {
   updateUser,
   changePassword,
   sendVerificationEmail,
+  emailOtp,
 } = authClient;
+
+/**
+ * Tell the session store to refetch.
+ *
+ * Better Auth refetches its session atom only for a fixed list of paths —
+ * `/sign-in/email`, `/sign-up/email`, `/sign-out` and a few more. Anything
+ * else leaves `useSession()` returning null after a sign-in that genuinely
+ * worked: the token is stored, every gated screen still asks you to sign in.
+ *
+ * Social sign-in hit this first and worked around it locally. Sign-in codes
+ * go through `/sign-in/email-otp`, which is not on the list either, so the
+ * nudge lives here now rather than in one caller's file.
+ */
+export function refreshSession(): void {
+  try {
+    (authClient as unknown as { $store: { notify: (signal: string) => void } }).$store.notify(
+      '$sessionSignal',
+    );
+  } catch {
+    // Never fail a completed sign-in over a refresh nudge; the session is real
+    // either way and the next app launch reads it from SecureStore.
+  }
+}
 
 /**
  * Sign out: clear the server session AND the locally stored token.
