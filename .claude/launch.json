@@ -4,14 +4,34 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@ekklesia/web", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@ekklesia/web",
+        "dev"
+      ],
       "port": 3000
     },
     {
       "name": "api",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@ekklesia/api", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@ekklesia/api",
+        "dev"
+      ],
       "port": 4000
+    },
+    {
+      "name": "web-pnpm11",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "-y",
+        "pnpm@11.3.0",
+        "--filter",
+        "@ekklesia/web",
+        "dev"
+      ],
+      "port": 3000
     }
   ]
 }
