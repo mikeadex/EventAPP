@@ -291,6 +291,11 @@
 .tbl tr.on td {
   background: var(--soft);
 }
+/* --muted on the selected row's tint is under 4.5:1 in dark; step it up. */
+.tbl tr.on .text-muted,
+.tbl tr.on .text-faint {
+  color: var(--ink-2);
+}
 .tbl tr[data-clickable] {
   cursor: pointer;
 }
@@ -494,4 +499,76 @@ textarea.note:focus {
   .only-sm {
     display: none !important;
   }
+}
+
+/* 44px tap targets in the console: the global small button and chip are 36px. */
+.adm .btn-sm,
+.adm .chip {
+  height: 44px;
+}
+
+/* ---- List + side panel (Hosts, Users). The panel stacks under the table below 1180px. ---- */
+.hsplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.hsplit.has {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+@media (max-width: 1180px) {
+  .hsplit.has {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* The name cell's button: avatar + name, picks the row. */
+.rowbtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  text-align: left;
+}
+.rowbtn:hover .nm {
+  color: var(--accent);
+}
+/* Pill select beside the filter chips */
+select.sel {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+}
+/* Skeleton rows while a table loads */
+.skel {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--softer);
+}
+
+/* ---- Profile pages: main column + details column; stacks below 1100px ---- */
+.two {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Tables on profile tabs use the roomier 20px cell padding from the design */
+.tbl-roomy {
+  min-width: 600px;
+}
+.tbl-roomy th,
+.tbl-roomy td {
+  padding-left: 20px;
+  padding-right: 20px;
 }

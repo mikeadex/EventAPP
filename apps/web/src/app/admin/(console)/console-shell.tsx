@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { AdminNav, type AdminSection } from '@/components/admin/admin-nav';
+import { AdminMeProvider } from '@/components/admin/admin-me';
 import { AdminTop } from '@/components/admin/admin-top';
 import { adminApi, type AdminMe } from '@/lib/admin-api';
 import { ApiError } from '@/lib/api-client';
@@ -122,7 +123,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
       <div className="adm-main">
         <AdminTop onSignOut={() => void onSignOut()} />
         <main id="main" className="adm-body">
-          {children}
+          <AdminMeProvider value={gate.me}>{children}</AdminMeProvider>
         </main>
       </div>
     </div>
