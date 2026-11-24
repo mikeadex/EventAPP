@@ -3,6 +3,7 @@ import type { ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { useFonts } from 'expo-font';
 // Imported by weight subpath, not from the package root. Each root `index.js`
 // `require()`s every weight at module scope and Metro does not tree-shake, so
@@ -69,17 +70,31 @@ export default function RootLayout() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <StatusBar style="auto" />
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* Full-screen search slides up as a modal. */}
-        <Stack.Screen name="search" options={{ presentation: 'modal' }} />
-      </Stack>
-      {/* Single host for showToast() — overlays every screen. */}
-      <ToastHost />
-      {/* Renders nothing; keeps the push token fresh and routes taps. */}
-      <PushHost />
-    </View>
+    /**
+     * The publishable key is read from the build-time env, which is where
+     * Expo inlines it. It is safe to ship — that is what "publishable" means —
+     * and the API refuses to serve anything that does not start `pk_`.
+     *
+     * An empty string is tolerated rather than fatal: the app is mostly free
+     * events, and a missing key should cost paid checkout, not the whole
+     * application. Checkout surfaces the failure where it happens.
+     */
+    <StripeProvider
+      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}
+      merchantIdentifier={process.env.EXPO_PUBLIC_APPLE_MERCHANT_ID}
+    >
+      <View style={{ flex: 1 }}>
+        <StatusBar style="auto" />
+        <Stack screenOptions={{ headerShown: false }}>
+          {/* Full-screen search slides up as a modal. */}
+          <Stack.Screen name="search" options={{ presentation: 'modal' }} />
+        </Stack>
+        {/* Single host for showToast() — overlays every screen. */}
+        <ToastHost />
+        {/* Renders nothing; keeps the push token fresh and routes taps. */}
+        <PushHost />
+      </View>
+    </StripeProvider>
   );
 }
 

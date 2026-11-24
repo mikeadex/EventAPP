@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
 import { useSession } from '@/lib/auth-client';
 import { api, ApiError } from '@/lib/api';
+import { formatMoney } from '@/lib/payments';
 import { FadeIn, Skeleton } from '@/components/states';
 import { showToast } from '@/components/toast';
 import { EventGallery, type GalleryItem } from '@/components/event-gallery';
@@ -59,7 +60,7 @@ interface EventDetail {
   coverImageUrl: string | null;
   organization: { slug: string; name: string };
   venue: { name: string; city: string; postalCode: string } | null;
-  ticketTypes: { priceMinor: number }[];
+  ticketTypes: { priceMinor: number; currency: string; sold: number; quantity: number }[];
 }
 
 /** Translucent circular control overlaid on the hero. */
@@ -424,13 +425,32 @@ export default function EventDetailScreen() {
   const timeStr = start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const locStr = locationLabel(event);
   const mode = locationMode(event);
-  const rsvpDisabled = rsvpState !== 'idle' || soldOut || !isFree;
-  const priceLabel = isFree ? 'Free' : 'Paid';
+  // Paid events used to disable this button outright, which left the only
+  // way to buy a ticket as "you cannot". They now go to the checkout flow.
+  const rsvpDisabled = rsvpState !== 'idle' || soldOut;
+  // The cheapest tier someone can actually buy. Quoting a sold-out tier —
+  // which is usually the cheapest, that being why it sold out — advertises a
+  // price that is not available to anybody.
+  const cheapest = isFree
+    ? null
+    : event.ticketTypes
+        .filter((t) => t.priceMinor > 0 && t.sold < t.quantity)
+        .reduce<{ priceMinor: number; currency: string } | null>(
+          (lo, t) => (lo === null || t.priceMinor < lo.priceMinor ? t : lo),
+          null,
+        );
+  const priceLabel = isFree
+    ? 'Free'
+    : cheapest
+      ? `from ${formatMoney(cheapest.priceMinor, cheapest.currency)}`
+      : 'Paid';
   const ctaText =
     rsvpState === 'done'
       ? "You're going ✓"
       : soldOut
       ? 'Sold out'
+      : isFree
+      ? 'Get a Ticket · Free'
       : `Get a Ticket · ${priceLabel}`;
 
   return (
@@ -591,7 +611,18 @@ export default function EventDetailScreen() {
         <Pressable
           style={[styles.ctaPill, rsvpDisabled && rsvpState !== 'done' && styles.ctaPillDisabled]}
           disabled={rsvpDisabled}
-          onPress={rsvp}
+          onPress={
+            isFree
+              ? rsvp
+              : () =>
+                  router.push({
+                    pathname: '/checkout/tickets',
+                    params: {
+                      orgSlug: event.organization.slug,
+                      eventSlug: event.slug,
+                    },
+                  })
+          }
         >
           <View style={styles.ctaIcon}>
             {rsvpState === 'pending' ? (

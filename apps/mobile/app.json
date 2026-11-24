@@ -78,6 +78,13 @@
         {
           "photosPermission": "Ekklesia uses your photos so you can add pictures to your events."
         }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "",
+          "enableGooglePay": false
+        }
       ]
     ],
     "experiments": {
