@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,7 +17,8 @@ import { radius, theme, palette } from '@ekklesia/ui/tokens';
 import { Text } from '@/components/text';
 import { Logo } from '@/components/logo';
 import { SocialSignIn } from '@/components/social-sign-in';
-import { emailOtp } from '@/lib/auth-client';
+import { emailOtp, getStoredToken, restoreLockedSession } from '@/lib/auth-client';
+import { canUseBiometricLock, isBiometricLockOn } from '@/lib/biometric-lock';
 
 /**
  * Design 10 — sign in, step one.
@@ -42,6 +43,47 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sendingCode, setSendingCode] = useState(false);
+  /**
+   * A locked session that is still on the device.
+   *
+   * Someone who cancels the prompt at launch lands here, and without this the
+   * only way back in would be the password they turned Face ID on to avoid
+   * typing. Checked on mount rather than assumed, because the lock may have
+   * been cleared since — by a sign-out, or by the key being invalidated when
+   * the device's biometrics changed.
+   */
+  const [lockedSession, setLockedSession] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void isBiometricLockOn().then((on) => {
+      if (!cancelled) setLockedSession(on && canUseBiometricLock());
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function unlock() {
+    setUnlocking(true);
+    setError(null);
+    await restoreLockedSession();
+    setUnlocking(false);
+
+    if (getStoredToken()) {
+      router.replace('/(tabs)');
+      return;
+    }
+    // Still nothing: either they cancelled again, or the lock is gone for
+    // good. Re-reading the flag covers the second case so the offer does not
+    // sit there failing forever.
+    const stillLocked = await isBiometricLockOn();
+    setLockedSession(stillLocked);
+    if (!stillLocked) {
+      setError('Face ID is no longer set up for this device. Sign in to turn it on again.');
+    }
+  }
 
   function continueWithEmail() {
     const address = email.trim();
@@ -107,6 +149,27 @@ export default function SignInScreen() {
         </View>
 
         <View style={styles.form}>
+          {/* Above everything else, because for the person who sees it this
+              is one touch and every other route is a form. */}
+          {lockedSession ? (
+            <Pressable
+              onPress={() => void unlock()}
+              disabled={unlocking}
+              style={({ pressed }) => [styles.unlock, (unlocking || pressed) && { opacity: 0.8 }]}
+            >
+              {unlocking ? (
+                <ActivityIndicator color={theme.dark.accent} />
+              ) : (
+                <>
+                  <Ionicons name="lock-open-outline" size={18} color={theme.dark.accent} />
+                  <Text variant="bodyLg" tone="accent">
+                    Unlock with Face ID
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          ) : null}
+
           <SocialSignIn onSignedIn={() => router.replace('/(tabs)')} />
 
           <View style={styles.field}>
@@ -230,6 +293,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 10,
+  },
+  unlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: radius.full,
+    backgroundColor: theme.dark.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.5)',
+    marginBottom: 4,
   },
   legal: { paddingHorizontal: 32 },
   legalText: { textAlign: 'center', lineHeight: 19 },

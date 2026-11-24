@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import type { ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +18,7 @@ import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono/500Me
 import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 import { ToastHost } from '@/components/toast';
 import { PushHost } from '@/components/push-host';
+import { restoreLockedSession } from '@/lib/auth-client';
 
 /**
  * Root error boundary — expo-router renders this (instead of a redbox/blank
@@ -29,8 +31,8 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
       <Ionicons name="alert-circle-outline" size={56} color={palette.coral[500]} />
       <Text style={styles.errTitle}>This screen hit a snag</Text>
       <Text style={styles.errMsg}>
-        An unexpected error occurred. You can try again, and if it keeps
-        happening please let us know.
+        An unexpected error occurred. You can try again, and if it keeps happening please let us
+        know.
       </Text>
       <ScrollView style={styles.errDetail} contentContainerStyle={{ padding: spacing[3] }}>
         <Text style={styles.errDetailText}>{error.message}</Text>
@@ -63,9 +65,32 @@ export default function RootLayout() {
     JetBrainsMono_500Medium,
   });
 
+  /**
+   * Face ID, for anyone who asked for it on design 11's switch.
+   *
+   * Runs once, before the first screen draws. Doing it later would mean the
+   * app renders itself signed out and then produces a prompt, which reads as
+   * having been forgotten rather than guarded.
+   *
+   * A refusal is not fatal and must not be: the app is browsable without an
+   * account, so a cancelled prompt opens it signed out rather than holding
+   * anyone on a wall. `restoreLockedSession` returns immediately — and
+   * silently — for everyone who never turned this on.
+   */
+  const [unlockSettled, setUnlockSettled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void restoreLockedSession().finally(() => {
+      if (!cancelled) setUnlockSettled(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // On error, fall through to the system face rather than stranding the app on
   // a blank screen — wrong type is recoverable, no app is not.
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || !unlockSettled) {
     return <View style={styles.boot} />;
   }
 

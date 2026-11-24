@@ -2,6 +2,12 @@ import { createAuthClient } from 'better-auth/react';
 import { emailOTPClient } from 'better-auth/client/plugins';
 import * as SecureStore from 'expo-secure-store';
 import { fetchWithRetry } from './fetch-retry';
+import {
+  disableBiometricLock,
+  enableBiometricLock,
+  isBiometricLockOn,
+  unlockSessionToken,
+} from './biometric-lock';
 
 /**
  * Mobile auth client — bearer-token persistence without the @better-auth/expo
@@ -34,6 +40,58 @@ function setStoredToken(token: string | null): void {
   } else {
     void SecureStore.deleteItemAsync(TOKEN_KEY);
   }
+}
+
+/**
+ * Put the session behind Face ID (design 11's toggle).
+ *
+ * The protected copy is only half of it: the plain entry has to go, or the
+ * lock is decoration — the app would carry on reading the unprotected token
+ * at every launch and never prompt for anything.
+ *
+ * The in-memory cache is deliberately left alone. Someone who has just signed
+ * in and asked for this should not be made to authenticate again two seconds
+ * later; the lock is a promise about next time, which is what the switch says.
+ */
+export async function protectSessionWithBiometrics(): Promise<boolean> {
+  const token = getStoredToken();
+  if (!token) return false;
+
+  const ok = await enableBiometricLock(token);
+  if (!ok) return false;
+
+  try {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+  } catch {
+    // The protected copy exists and the flag is set, so the next launch will
+    // ask. A plain copy left behind would mean it never had to, so undo the
+    // whole thing rather than ship a lock that does nothing.
+    await disableBiometricLock();
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Restore a biometrically-locked session at startup.
+ *
+ * Returns quickly and without prompting in every case except the one that
+ * needs it: no lock set, or a plain token already in hand, and nothing
+ * happens. Called once from the root layout before the first screen renders,
+ * because a prompt that arrives after the app has drawn itself signed out
+ * reads as the app having forgotten you.
+ */
+export async function restoreLockedSession(): Promise<void> {
+  if (getStoredToken()) return;
+  if (!(await isBiometricLockOn())) return;
+
+  const token = await unlockSessionToken();
+  if (!token) return; // cancelled, failed, or the key was invalidated
+
+  // Straight into the cache. Writing it back to the plain entry would undo
+  // the lock on the very launch it was supposed to guard.
+  cachedToken = token;
+  refreshSession();
 }
 
 /**
@@ -123,5 +181,9 @@ export async function signOut(): Promise<void> {
     await authClient.signOut();
   } finally {
     setStoredToken(null);
+    // The biometric copy is a second place the session lives, and signing out
+    // has to empty both. Leaving it would have the next launch offer Face ID
+    // for a session that was deliberately ended — and succeed.
+    await disableBiometricLock();
   }
 }

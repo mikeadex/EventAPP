@@ -15,7 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { radius, theme, palette } from '@ekklesia/ui/tokens';
 import { Text } from '@/components/text';
 import { PasswordInput } from '@/components/password-input';
-import { signIn, sendVerificationEmail } from '@/lib/auth-client';
+import { signIn, sendVerificationEmail, protectSessionWithBiometrics } from '@/lib/auth-client';
+import { canUseBiometricLock } from '@/lib/biometric-lock';
+import { showToast } from '@/components/toast';
 
 /**
  * Design 11 — sign in, step two.
@@ -45,6 +47,14 @@ export default function PasswordScreen() {
   // confirming the address exists or which method it uses, which would turn
   // this form into an account check.
   const [maybeSocial, setMaybeSocial] = useState(false);
+  /**
+   * Offered only where it can actually work — a device with biometrics
+   * enrolled, running a binary whose Info.plist carries the Face ID string.
+   * Resolved once, not per render: it reads native state and cannot change
+   * while this screen is open.
+   */
+  const [biometricsOffered] = useState(canUseBiometricLock);
+  const [useBiometrics, setUseBiometrics] = useState(false);
 
   async function submit() {
     if (!email) return;
@@ -69,6 +79,16 @@ export default function PasswordScreen() {
       );
       return;
     }
+
+    // After the session exists, never before — there is nothing to protect
+    // until there is a token. A refusal here is not worth blocking on: they
+    // are signed in, and the switch not sticking is a smaller problem than
+    // being held on a sign-in screen that already succeeded.
+    if (useBiometrics) {
+      const locked = await protectSessionWithBiometrics();
+      if (!locked) showToast('Signed in, but Face ID could not be set up');
+    }
+
     router.replace('/(tabs)');
   }
 
@@ -187,6 +207,27 @@ export default function PasswordScreen() {
             </Text>
           )}
         </Pressable>
+
+        {/* Hidden rather than disabled where it cannot work: a greyed switch
+            invites "why not?", and the answer — which build you are on — is
+            not something anyone can act on. */}
+        {biometricsOffered ? (
+          <Pressable
+            onPress={() => setUseBiometrics((v) => !v)}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: useBiometrics }}
+            accessibilityLabel="Use Face ID next time"
+            style={styles.bioRow}
+          >
+            <Ionicons name="lock-closed" size={19} color={theme.dark.accent} />
+            <Text variant="footnote" tone="onPhotoMuted" style={styles.bioLabel}>
+              Use Face ID next time
+            </Text>
+            <View style={[styles.switch, useBiometrics && styles.switchOn]}>
+              <View style={[styles.knob, useBiometrics && styles.knobOn]} />
+            </View>
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <View style={[styles.foot, { paddingBottom: insets.bottom + 30 }]}>
@@ -248,6 +289,42 @@ const styles = StyleSheet.create({
   },
   ctaDisabled: { backgroundColor: 'transparent', borderColor: theme.dark.border },
   ctaText: { color: palette.coral[200] },
+
+  bioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    borderRadius: 14,
+    backgroundColor: theme.dark.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.14)',
+  },
+  bioLabel: { flex: 1, lineHeight: 21 },
+  /** Hand-drawn rather than RN's Switch, which cannot take these colours. */
+  switch: {
+    width: 48,
+    height: 28,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.25)',
+    backgroundColor: 'rgba(249,142,128,0.08)',
+    padding: 3,
+    justifyContent: 'center',
+  },
+  switchOn: {
+    borderColor: 'rgba(249,142,128,0.5)',
+    backgroundColor: 'rgba(249,142,128,0.2)',
+  },
+  knob: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: palette.warm[550],
+    alignSelf: 'flex-start',
+  },
+  knobOn: { backgroundColor: theme.dark.accent, alignSelf: 'flex-end' },
 
   foot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
 });
