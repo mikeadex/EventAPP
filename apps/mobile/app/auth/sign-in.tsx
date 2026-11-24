@@ -4,8 +4,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StyleSheet,
-  
+  ScrollView,
   TextInput,
   View,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { authStyles } from '@/components/auth-styles';
 import { signIn, sendVerificationEmail } from '@/lib/auth-client';
 import { SocialSignIn } from '@/components/social-sign-in';
 import { PasswordInput } from '@/components/password-input';
+import { Logo } from '@/components/logo';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
@@ -69,69 +69,99 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={authStyles.c}
+      style={authStyles.page}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text variant="display" tone="onPhoto" style={authStyles.h}>Welcome back</Text>
-      <Text variant="bodyLg" tone="secondary" style={authStyles.m}>Sign in to RSVP and save events.</Text>
-
-      <TextInput
-        placeholder="Email"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        // `username` rather than `emailAddress`: it is the account identifier
-        // half of a credential pair, and it is what makes the device offer to
-        // save the password alongside it and fill both back in next time.
-        textContentType="username"
-        autoComplete="email"
-        value={email}
-        onChangeText={setEmail}
-        style={authStyles.input}
-        placeholderTextColor={theme.dark.textMuted}
-      />
-      <PasswordInput
-        placeholder="Password"
-        purpose="current"
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      {error && <Text variant="label" style={authStyles.error}>{error}</Text>}
-      {maybeSocial && (
-        <Text variant="label" style={authStyles.hint}>
-          If you created this account with one of the buttons below, sign in that way —
-          those accounts don&rsquo;t have a password.
+      <ScrollView
+        contentContainerStyle={authStyles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Logo size={44} style={authStyles.logo} />
+        <Text variant="display" tone="onPhoto" style={authStyles.h}>
+          Welcome back
         </Text>
-      )}
-      {unverified && !resent && (
-        <Pressable onPress={() => void resend()} disabled={pending} style={authStyles.resend}>
-          <Text variant="label" style={authStyles.link}>Resend confirmation email</Text>
-        </Pressable>
-      )}
-      {resent && <Text variant="label" style={authStyles.sent}>Confirmation email sent — check your inbox.</Text>}
+        <Text variant="bodyLg" tone="secondary" style={authStyles.m}>
+          Sign in to see your tickets and saved events.
+        </Text>
 
-      <Link href="/auth/forgot-password" style={authStyles.forgot}>
-        <Text variant="label" style={authStyles.link}>Forgot password?</Text>
-      </Link>
+        {/* Above the form, per the handoff: most people here have a Google or
+          Apple account and no password with us. */}
+        <SocialSignIn onSignedIn={() => router.replace('/(tabs)')} />
 
-      <Pressable style={authStyles.btn} onPress={submit} disabled={pending}>
-        {pending ? (
-          <ActivityIndicator color={theme.dark.accent} />
-        ) : (
-          <Text variant="bodyLg" style={authStyles.btnText}>Sign in</Text>
+        <TextInput
+          placeholder="Email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          // `username` rather than `emailAddress`: it is the account identifier
+          // half of a credential pair, and it is what makes the device offer to
+          // save the password alongside it and fill both back in next time.
+          textContentType="username"
+          autoComplete="email"
+          value={email}
+          onChangeText={setEmail}
+          style={authStyles.input}
+          placeholderTextColor={theme.dark.textMuted}
+        />
+        <PasswordInput
+          placeholder="Password"
+          purpose="current"
+          value={password}
+          onChangeText={setPassword}
+        />
+
+        {error && (
+          <Text variant="label" style={authStyles.error}>
+            {error}
+          </Text>
         )}
-      </Pressable>
+        {maybeSocial && (
+          <Text variant="label" style={authStyles.hint}>
+            If you created this account with one of the buttons above, sign in that way — those
+            accounts don&rsquo;t have a password.
+          </Text>
+        )}
+        {unverified && !resent && (
+          <Pressable onPress={() => void resend()} disabled={pending} style={authStyles.resend}>
+            <Text variant="label" style={authStyles.link}>
+              Resend confirmation email
+            </Text>
+          </Pressable>
+        )}
+        {resent && (
+          <Text variant="label" style={authStyles.sent}>
+            Confirmation email sent — check your inbox.
+          </Text>
+        )}
 
-      <SocialSignIn onSignedIn={() => router.replace('/(tabs)')} />
-
-      <View style={{ marginTop: spacing[6], flexDirection: 'row' }}>
-        <Text variant="label" style={authStyles.muted}>New here? </Text>
-        <Link href={'/auth/sign-up' as never}>
-          <Text variant="label" style={authStyles.link}>Create an account</Text>
+        <Link href="/auth/forgot-password" style={authStyles.forgot}>
+          <Text variant="label" style={authStyles.link}>
+            Forgot password?
+          </Text>
         </Link>
-      </View>
+
+        <Pressable style={authStyles.btn} onPress={submit} disabled={pending}>
+          {pending ? (
+            <ActivityIndicator color={theme.dark.accent} />
+          ) : (
+            <Text variant="bodyLg" style={authStyles.btnText}>
+              Sign in
+            </Text>
+          )}
+        </Pressable>
+
+        <View style={{ marginTop: spacing[6], flexDirection: 'row' }}>
+          <Text variant="label" style={authStyles.muted}>
+            New here?{' '}
+          </Text>
+          <Link href={'/auth/sign-up' as never}>
+            <Text variant="label" style={authStyles.link}>
+              Create an account
+            </Text>
+          </Link>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-

@@ -19,6 +19,20 @@ export const authStyles = StyleSheet.create({
   },
   center: { alignItems: 'center' },
 
+  /**
+   * Sign-in and sign-up scroll; forgot and reset still fit and use `c`.
+   *
+   * Lifting the social buttons above the form added about 150pt to screens
+   * that were already full, and a keyboard takes another 300. `flexGrow` with
+   * `justifyContent: center` keeps the centred composition on a large phone
+   * and lets a small one scroll instead of clipping the footer links.
+   */
+  page: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+
+  /** The monogram, centred over the headline as the handoff draws it. */
+  logo: { alignSelf: 'center', marginBottom: spacing[8] },
+
   /** The headline. 30px per the design, not the old 30px-bold. */
   h: { marginBottom: spacing[2] },
   m: { marginBottom: spacing[6] },

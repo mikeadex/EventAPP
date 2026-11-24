@@ -4,8 +4,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StyleSheet,
-  
   TextInput,
   View,
 } from 'react-native';
@@ -16,6 +14,7 @@ import { Text } from '@/components/text';
 import { authStyles } from '@/components/auth-styles';
 import { PasswordInput } from '@/components/password-input';
 import { resetPassword } from '@/lib/auth-client';
+import { Logo } from '@/components/logo';
 
 const MIN_PASSWORD = 12;
 
@@ -76,6 +75,7 @@ export default function ResetPasswordScreen() {
       style={authStyles.c}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Logo size={44} style={authStyles.logo} />
       <Text variant="display" tone="onPhoto" style={authStyles.h}>Set a new password</Text>
       <Text variant="bodyLg" tone="secondary" style={authStyles.m}>Choose a strong password you don&apos;t use elsewhere.</Text>
 

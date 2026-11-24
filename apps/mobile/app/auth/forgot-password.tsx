@@ -4,8 +4,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StyleSheet,
-  
   TextInput,
   View,
 } from 'react-native';
@@ -15,6 +13,7 @@ import { spacing, theme } from '@ekklesia/ui/tokens';
 import { Text } from '@/components/text';
 import { authStyles } from '@/components/auth-styles';
 import { requestPasswordReset } from '@/lib/auth-client';
+import { Logo } from '@/components/logo';
 
 // Deep link the reset email returns to. Better Auth verifies the token at its
 // own endpoint, then redirects here (`ekklesia://auth/reset-password?token=…`),
@@ -65,6 +64,7 @@ export default function ForgotPasswordScreen() {
       style={authStyles.c}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Logo size={44} style={authStyles.logo} />
       <Text variant="display" tone="onPhoto" style={authStyles.h}>Reset password</Text>
       <Text variant="bodyLg" tone="secondary" style={authStyles.m}>
         Enter your account email and we&apos;ll send you a link to set a new
