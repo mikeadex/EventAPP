@@ -181,11 +181,11 @@ function EventRow({ e, orgId, orgSlug, past }: { e: OrgEvent; orgId: string; org
           <Cover image={e.coverImageUrl} category="OTHER" title={e.title} />
         </div>
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="flex items-center gap-2">
-            <Link href={`${base}/edit` as never} className="truncate text-[17px] text-strong hover:text-accent">
+          <span className="flex items-start gap-2">
+            <Link href={`${base}/edit` as never} className="line-clamp-2 text-[17px] text-strong hover:text-accent">
               {e.title}
             </Link>
-            <span className={e.status === 'PUBLISHED' && !past ? 'tag' : 'tag-muted'}>{STATUS_LABEL[e.status]}</span>
+            <span className={`flex-none ${e.status === 'PUBLISHED' && !past ? 'tag' : 'tag-muted'}`}>{STATUS_LABEL[e.status]}</span>
           </span>
           <span className="text-[13px] text-muted">
             {fmtDay(e.startsAt)} · {fmtTime(e.startsAt)}

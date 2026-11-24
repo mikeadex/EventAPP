@@ -5,6 +5,7 @@ import { useParams, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { Icon, type IconName } from '@/components/icons';
 import { Skeleton } from '@/components/ui';
+import { useActiveInView } from '@/lib/use-active-in-view';
 import { useMe, useRequireSession } from '@/lib/use-api';
 
 /**
@@ -18,6 +19,8 @@ export function HostShell({ children }: { children: ReactNode }) {
   const me = useMe(ready);
   const params = useParams<{ orgId?: string; eventId?: string }>();
   const pathname = usePathname();
+  // The nav only mounts once the session has loaded, so that's part of the key.
+  const navRef = useActiveInView<HTMLElement>(`${pathname}|${me.data ? 1 : 0}`);
   const org = params.orgId ? me.data?.memberships.find((m) => m.organizationId === params.orgId) : undefined;
 
   const base = params.orgId ? `/organizer/organizations/${params.orgId}` : null;
@@ -47,7 +50,7 @@ export function HostShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="wrap grid items-start gap-8 py-8 md:grid-cols-[220px_minmax(0,1fr)] md:py-10">
+    <div className="wrap grid grid-cols-[minmax(0,1fr)] items-start gap-8 py-8 md:grid-cols-[220px_minmax(0,1fr)] md:py-10">
       <aside className="flex flex-col gap-4 md:sticky md:top-24">
         {org && (
           <div className="hidden flex-col gap-1 md:flex">
@@ -57,7 +60,7 @@ export function HostShell({ children }: { children: ReactNode }) {
             </Link>
           </div>
         )}
-        <nav aria-label="Host" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 md:flex-col md:overflow-visible">
+        <nav ref={navRef} aria-label="Host" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 md:flex-col md:overflow-visible">
           {items.map((i) => (
             <Link
               key={i.href}

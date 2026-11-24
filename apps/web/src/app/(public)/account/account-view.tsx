@@ -10,6 +10,7 @@ import { Avatar, ErrorCard, PageIntro, Skeleton } from '@/components/ui';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { changePassword, signOut, updateUser } from '@/lib/auth-client';
 import { HOST_ROLES, ROLE_LABEL } from '@/lib/host';
+import { useActiveInView } from '@/lib/use-active-in-view';
 import type { Me } from '@/lib/types';
 import { useMe, useRequireSession } from '@/lib/use-api';
 
@@ -28,12 +29,13 @@ export function AccountView() {
   const router = useRouter();
   const raw = params.get('section');
   const section: Section = SECTIONS.some((s) => s.id === raw) ? (raw as Section) : 'profile';
+  const navRef = useActiveInView<HTMLElement>(section);
 
   return (
     <>
       <PageIntro eyebrow="Account" title={user?.name ? `Hello, ${user.name.split(' ')[0]}` : 'Your account'} />
-      <div className="grid items-start gap-8 md:grid-cols-[220px_minmax(0,1fr)]">
-        <nav aria-label="Account sections" className="flex gap-2 overflow-x-auto md:flex-col">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 md:grid-cols-[220px_minmax(0,1fr)]">
+        <nav ref={navRef} aria-label="Account sections" className="flex gap-2 overflow-x-auto md:flex-col">
           {SECTIONS.map((s) => (
             <Link
               key={s.id}
@@ -101,8 +103,8 @@ function Profile({ me, name: initial, image }: { me: Me; name: string; image: st
         <Avatar name={name} src={image ?? me.profile?.avatarUrl} size={64} />
         <div className="flex min-w-0 flex-col gap-1">
           <span className="truncate text-[20px] text-strong">{name || 'Your name'}</span>
-          <span className="flex items-center gap-2 truncate text-[14px] text-muted">
-            {me.email}
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] text-muted">
+            <span className="min-w-0 truncate">{me.email}</span>
             {me.emailVerified && <span className="tag">Verified</span>}
           </span>
         </div>

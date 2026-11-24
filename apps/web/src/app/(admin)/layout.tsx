@@ -18,7 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-[100dvh] flex-col">
       <SiteHeader />
-      <main id="main" className="wrap grid flex-1 items-start gap-8 py-10 md:grid-cols-[200px_minmax(0,1fr)]">
+      <main id="main" className="wrap grid flex-1 grid-cols-[minmax(0,1fr)] items-start gap-8 py-10 md:grid-cols-[200px_minmax(0,1fr)]">
         <nav aria-label="Admin" className="flex gap-2 md:flex-col">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href as never} className="chip gap-2 md:justify-start">

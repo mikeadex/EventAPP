@@ -248,7 +248,7 @@ function Hero({ next }: { next?: EventCardData }) {
             seconds and keep every ticket in one place.
           </p>
           <form action="/events" method="get" role="search" className="flex flex-col gap-3 sm:flex-row">
-            <label className="field flex-1 !border-line-2">
+            <label className="field !border-line-2 sm:flex-1">
               <Icon name="search" className="text-accent" />
               <span className="sr-only">Search events</span>
               <input type="search" name="q" placeholder="Search for events, churches or topics" />
