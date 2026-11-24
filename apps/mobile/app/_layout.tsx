@@ -3,7 +3,17 @@ import type { ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { useFonts } from 'expo-font';
+// Imported by weight subpath, not from the package root. Each root `index.js`
+// `require()`s every weight at module scope and Metro does not tree-shake, so
+// importing from the root would bundle all sixteen JetBrains Mono faces
+// (1.78 MB of .ttf) to use two of them — 1.6 MB of dead weight in every OTA
+// download. Verified with `expo export`: the bundle carries 22 .ttf, which is
+// @expo/vector-icons' 19 plus exactly these three.
+import { Alata_400Regular } from '@expo-google-fonts/alata/400Regular';
+import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono/400Regular';
+import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono/500Medium';
+import { color, spacing, radius, fontSize, fontWeight, theme } from '@ekklesia/ui/tokens';
 import { ToastHost } from '@/components/toast';
 import { PushHost } from '@/components/push-host';
 
@@ -33,6 +43,31 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 export default function RootLayout() {
+  /**
+   * The app has always rendered in the system face; the refresh moves it onto
+   * Alata, with JetBrains Mono for ticket codes and numerics.
+   *
+   * These are bundled assets, not a network fetch, so the wait is a frame or
+   * two. We hold on a plain themed ground rather than rendering the tree in
+   * the system font and swapping — a visible reflow on every cold start is
+   * worse than a brief flat colour.
+   *
+   * Deliberately no `expo-splash-screen`: it carries native code that is not
+   * in the shipped iOS or Android binaries, so depending on it would turn this
+   * whole refresh into a store release. `expo-font` is already in both.
+   */
+  const [fontsLoaded, fontError] = useFonts({
+    Alata_400Regular,
+    JetBrainsMono_400Regular,
+    JetBrainsMono_500Medium,
+  });
+
+  // On error, fall through to the system face rather than stranding the app on
+  // a blank screen — wrong type is recoverable, no app is not.
+  if (!fontsLoaded && !fontError) {
+    return <View style={styles.boot} />;
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <StatusBar style="auto" />
@@ -49,6 +84,9 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
+  // Held for the frame or two the bundled fonts take to register. Uses the
+  // refresh's light ground so the hold reads as the app starting, not a stall.
+  boot: { flex: 1, backgroundColor: theme.light.background },
   errC: {
     flex: 1,
     backgroundColor: color.ink[50],

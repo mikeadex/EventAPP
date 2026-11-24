@@ -14,7 +14,18 @@ import { router, Link, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import {
+  color,
+  spacing,
+  radius,
+  fontSize,
+  fontWeight,
+  theme,
+  palette,
+  fontFamily,
+  radiusExtra,
+} from '@ekklesia/ui/tokens';
+import { Scrim as GradientScrim, scrimPreset } from '@/components/scrim';
 import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
 import { useForegroundRefresh } from '@/lib/use-foreground-refresh';
@@ -102,15 +113,13 @@ function prettyCategory(c: string) {
 }
 
 /** Stacked translucent bands → smooth fade without a gradient lib. */
+/**
+ * The hero's scrim. The old four bands only darkened the foot; the refresh
+ * darkens the head too, so the status bar and location pill stay legible on a
+ * bright photo, and clears through the middle so the image is not muddied.
+ */
 function Scrim() {
-  return (
-    <>
-      <View style={[styles.scrimBand, { height: 220, backgroundColor: 'rgba(10,9,7,0.08)' }]} />
-      <View style={[styles.scrimBand, { height: 165, backgroundColor: 'rgba(10,9,7,0.16)' }]} />
-      <View style={[styles.scrimBand, { height: 115, backgroundColor: 'rgba(10,9,7,0.28)' }]} />
-      <View style={[styles.scrimBand, { height: 70, backgroundColor: 'rgba(10,9,7,0.42)' }]} />
-    </>
-  );
+  return <GradientScrim stops={scrimPreset.hero} />;
 }
 
 /** Large landscape card for the "Happening soon" carousel. */
@@ -413,7 +422,7 @@ export default function DiscoverScreen() {
             </Text>
             {heroEvent.attendeeCount > 0 ? (
               <>
-                <Text style={styles.heroDot}>·</Text>
+                <View style={styles.heroDot} />
                 <Text style={styles.heroMetaText}>{heroEvent.attendeeCount} going</Text>
               </>
             ) : null}
@@ -568,7 +577,7 @@ export default function DiscoverScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: color.ink[0] },
+  container: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   content: { paddingHorizontal: PAD, paddingTop: spacing[5] },
 
   // Full-bleed hero — height in the StyleSheet (inline height is dropped by
@@ -576,7 +585,7 @@ const styles = StyleSheet.create({
   hero: {
     width: '100%',
     height: HERO_H,
-    backgroundColor: color.ink[800],
+    backgroundColor: theme.dark.surface,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
@@ -632,30 +641,41 @@ const styles = StyleSheet.create({
   },
   heroAvatarText: { fontSize: fontSize.base, fontWeight: fontWeight.bold, color: color.ink[0] },
   heroBody: { padding: PAD, paddingRight: 64 },
+  // Outlined, not filled: the refresh states actions and tags are a 1px
+  // accent line on transparent rather than a flood of colour.
   heroTag: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingVertical: spacing[1],
-    paddingHorizontal: spacing[3],
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.45)',
+    paddingVertical: 5,
+    paddingHorizontal: 11,
     borderRadius: radius.full,
     marginBottom: spacing[3],
   },
   heroTagText: {
-    color: color.ink[0],
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    letterSpacing: 0.5,
+    color: palette.coral[400],
+    fontFamily: fontFamily.body,
+    fontSize: 11,
+    letterSpacing: 2.2,
+    textTransform: 'uppercase',
   },
   heroTitle: {
-    color: color.ink[0],
-    fontSize: fontSize['3xl'],
-    fontWeight: fontWeight.bold,
-    letterSpacing: -0.5,
-    lineHeight: 34,
+    color: '#F7F5F4',
+    fontFamily: fontFamily.body,
+    fontSize: 34,
+    lineHeight: 36,
   },
-  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
-  heroMetaText: { color: color.ink[200], fontSize: fontSize.sm, fontWeight: fontWeight.medium },
-  heroDot: { color: color.ink[300] },
+  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: spacing[2] },
+  heroMetaText: { color: palette.warm[300], fontFamily: fontFamily.body, fontSize: fontSize.sm },
+  // A coral dot replaces the old middot character — the handoff uses a 3px
+  // round separator, which a glyph cannot match across platforms.
+  heroDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: palette.coral[400],
+  },
 
   plainTop: {
     flexDirection: 'row',
@@ -668,9 +688,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: color.ink[900],
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[3],
+    backgroundColor: 'rgba(13,10,11,0.62)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.28)',
+    paddingVertical: 9,
+    paddingHorizontal: 15,
     borderRadius: radius.full,
   },
   locationText: { color: color.ink[0], fontSize: fontSize.sm, fontWeight: fontWeight.medium },
@@ -727,16 +749,21 @@ const styles = StyleSheet.create({
   searchTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[2],
-    backgroundColor: color.ink[50],
+    gap: spacing[3],
+    backgroundColor: theme.dark.surface,
     borderWidth: 1,
-    borderColor: color.ink[100],
+    borderColor: 'rgba(249,142,128,0.16)',
     borderRadius: radius.full,
-    paddingHorizontal: spacing[4],
+    paddingHorizontal: 18,
     height: 52,
   },
-  searchTriggerText: { flex: 1, color: color.ink[400], fontSize: fontSize.base },
-  seeAll: { color: color.ink[500], fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+  searchTriggerText: {
+    flex: 1,
+    color: theme.dark.textMuted,
+    fontFamily: fontFamily.body,
+    fontSize: 15,
+  },
+  seeAll: { color: palette.coral[400], fontFamily: fontFamily.body, fontSize: fontSize.sm },
   sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   searchCollapsed: {
@@ -808,10 +835,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
   },
   sectionLabel: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: color.ink[900],
-    letterSpacing: -0.3,
+    fontFamily: fontFamily.body,
+    fontSize: 20,
+    color: theme.dark.textPrimary,
   },
   sectionCount: {
     fontSize: fontSize.sm,
@@ -830,37 +856,39 @@ const styles = StyleSheet.create({
   carousel: { paddingHorizontal: PAD, gap: spacing[4] },
   spotlight: {
     width: 290,
-    height: 210,
-    borderRadius: radius['2xl'],
+    height: 178,
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: color.ink[800],
+    backgroundColor: theme.dark.surface,
     justifyContent: 'flex-end',
   },
   spotlightTag: {
     position: 'absolute',
     top: spacing[3],
     left: spacing[3],
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingVertical: spacing[1],
-    paddingHorizontal: spacing[3],
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255,227,222,0.4)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     borderRadius: radius.full,
   },
   spotlightTagText: {
-    color: color.ink[0],
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    letterSpacing: 0.5,
+    color: '#FFE3DE',
+    fontFamily: fontFamily.body,
+    fontSize: 11,
+    letterSpacing: 1.98,
+    textTransform: 'uppercase',
   },
   spotlightBody: { padding: spacing[4] },
   spotlightTitle: {
-    color: color.ink[0],
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    letterSpacing: -0.3,
+    color: '#F7F5F4',
+    fontFamily: fontFamily.body,
+    fontSize: 21,
     lineHeight: 26,
   },
-  spotlightMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], marginTop: spacing[2] },
-  spotlightMetaText: { color: color.ink[200], fontSize: fontSize.xs, fontWeight: fontWeight.medium },
+  spotlightMeta: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 7 },
+  spotlightMetaText: { color: palette.warm[300], fontFamily: fontFamily.body, fontSize: 13 },
 
   // Portrait "Featured" card
   featuredCard: {
