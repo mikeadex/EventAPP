@@ -5,3 +5,4 @@ export * from './ticket.js';
 export * from './payment.js';
 export * from './moderation.js';
 export * from './url.js';
+export * from './admin.js';
