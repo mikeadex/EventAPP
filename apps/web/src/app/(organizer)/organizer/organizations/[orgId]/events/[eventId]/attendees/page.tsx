@@ -16,11 +16,13 @@ type Filter = 'all' | 'in' | 'out';
 const ANNOUNCE_MAX = 500;
 
 function csvCell(v: string | null | undefined) {
-  let s = v ?? '';
-  // Attendee names are typed by the public. A leading = + - @ makes a
-  // spreadsheet treat the cell as a formula, so neutralise it.
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  // Attendee names are typed by the public. Line breaks and other control
+  // characters become spaces, so a value can't start a new row (a bare \r
+  // would, unquoted) and smuggle a formula past the check below.
+  let s = (v ?? '').replace(/[\x00-\x1f\x7f]+/g, ' ');
+  // A leading = + - @ makes a spreadsheet run the cell as a formula.
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  return /[",]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export default function AttendeesPage() {
