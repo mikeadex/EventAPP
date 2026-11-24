@@ -142,7 +142,7 @@ export default function EditEventPage() {
             <span className={live && !ended ? 'tag' : 'tag-muted'}>{ended && !cancelled ? 'Ended' : STATUS_LABEL[event.status]}</span>
             <span className="text-[13px] text-muted">{event.attendeeCount} going</span>
           </span>
-          <h1 className="h1 truncate !text-[40px]">{event.title}</h1>
+          <h1 className="h1 !text-[40px] [overflow-wrap:anywhere]">{event.title}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           {live && orgSlug && (

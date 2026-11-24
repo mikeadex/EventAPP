@@ -107,8 +107,11 @@ export function RsvpForm({
           confirmation too.
         </p>
         <div className="flex flex-wrap justify-center gap-3 pt-2">
-          <Link href={`/me/tickets/${done.ticketId}` as never} className="btn btn-primary btn-lg">
-            <Icon name="ticket" /> Show my ticket
+          <Link
+            href={(done.count === 1 ? `/me/tickets/${done.ticketId}` : '/me/tickets') as never}
+            className="btn btn-primary btn-lg"
+          >
+            <Icon name="ticket" /> {done.count === 1 ? 'Show my ticket' : 'Show my tickets'}
           </Link>
           <Link href="/events" className="btn btn-outline btn-lg">
             Discover more

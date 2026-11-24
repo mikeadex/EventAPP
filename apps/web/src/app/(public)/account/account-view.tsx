@@ -39,7 +39,7 @@ export function AccountView() {
               key={s.id}
               href={`${pathname}?section=${s.id}` as never}
               aria-current={section === s.id ? 'page' : undefined}
-              className="chip flex-none md:justify-start"
+              className="chip flex-none gap-2 md:justify-start"
               scroll={false}
             >
               <Icon name={s.icon} size={16} /> {s.label}
@@ -47,7 +47,7 @@ export function AccountView() {
           ))}
           <button
             type="button"
-            className="chip flex-none md:justify-start"
+            className="chip flex-none gap-2 md:justify-start"
             onClick={async () => {
               await signOut();
               router.replace('/');

@@ -32,6 +32,17 @@
         "dev"
       ],
       "port": 3000
+    },
+    {
+      "name": "api-pnpm11",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--env-file=.env",
+        "-e",
+        "require('child_process').spawn('npx',['-y','pnpm@11.3.0','--filter','@ekklesia/api','dev'],{stdio:'inherit'}).on('exit',c=>process.exit(c??1))"
+      ],
+      "port": 4000,
+      "autoPort": false
     }
   ]
 }

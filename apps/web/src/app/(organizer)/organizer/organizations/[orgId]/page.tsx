@@ -175,7 +175,7 @@ function EventRow({ e, orgId, orgSlug, past }: { e: OrgEvent; orgId: string; org
   const base = `/organizer/organizations/${orgId}/events/${e.id}`;
   const pct = e.capacity ? Math.min(100, Math.round((e.attendeeCount / e.capacity) * 100)) : null;
   return (
-    <li className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
+    <li className="flex flex-col gap-4 p-4 sm:p-5 xl:flex-row xl:items-center">
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <div className="relative h-14 w-20 flex-none overflow-hidden rounded-xl bg-surface-2">
           <Cover image={e.coverImageUrl} category="OTHER" title={e.title} />
@@ -192,7 +192,7 @@ function EventRow({ e, orgId, orgSlug, past }: { e: OrgEvent; orgId: string; org
           </span>
         </div>
       </div>
-      <div className="flex w-full flex-col gap-1.5 sm:w-[160px]">
+      <div className="flex w-full flex-none flex-col gap-1.5 sm:max-w-[240px] xl:w-[150px]">
         <span className="text-[13px] text-ink-2">
           {e.capacity ? `${e.attendeeCount} / ${e.capacity} going` : plural(e.attendeeCount, 'person', 'people') + ' going'}
         </span>
@@ -202,7 +202,7 @@ function EventRow({ e, orgId, orgSlug, past }: { e: OrgEvent; orgId: string; org
           </span>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-none flex-wrap gap-2">
         <Link href={`${base}/attendees` as never} className="btn btn-outline btn-sm">
           <Icon name="users" size={15} /> Attendees
         </Link>

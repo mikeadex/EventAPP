@@ -97,10 +97,10 @@ export function ImageUpload({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={value} alt="" className="h-full w-full object-cover" />
             <div className="absolute right-3 top-3 flex gap-2">
-              <button type="button" onClick={() => fileRef.current?.click()} className="btn btn-sm glass border border-line-2">
+              <button type="button" onClick={() => fileRef.current?.click()} aria-label={`Replace ${label.toLowerCase()}`} className="btn btn-sm glass border border-line-2">
                 Replace
               </button>
-              <button type="button" onClick={() => onChange(null)} className="btn btn-sm glass border border-line-2">
+              <button type="button" onClick={() => onChange(null)} aria-label={`Remove ${label.toLowerCase()}`} className="btn btn-sm glass border border-line-2">
                 Remove
               </button>
             </div>
@@ -110,6 +110,7 @@ export function ImageUpload({
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={progress !== 'idle'}
+            aria-label={`${label}: ${progress === 'idle' ? 'choose an image' : 'uploading'}`}
             className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-[14px] text-ink-2 transition-colors hover:bg-softer hover:text-accent disabled:opacity-60"
           >
             <Icon name="image" size={24} />

@@ -116,7 +116,7 @@ export default function AttendeesPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex min-w-0 flex-col gap-2">
           <span className="eyebrow text-accent">Attendees</span>
-          <h1 className="h1 truncate !text-[40px]">{event.data?.title ?? 'Attendees'}</h1>
+          <h1 className="h1 !text-[40px] [overflow-wrap:anywhere]">{event.data?.title ?? 'Attendees'}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={`/organizer/organizations/${orgId}/events/${eventId}/check-in` as never} className="btn btn-primary">
@@ -239,6 +239,7 @@ export default function AttendeesPage() {
                     className="btn btn-outline btn-sm flex-none self-start sm:self-auto"
                     disabled={busy !== null}
                     onClick={() => void admit(a)}
+                    aria-label={`Check in ${a.name}, ticket ${a.code}`}
                   >
                     {busy === a.id ? 'Checking in…' : 'Check in'}
                   </button>

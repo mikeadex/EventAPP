@@ -50,6 +50,7 @@ export default function BecomeHostPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [shortDescription, setShortDescription] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
+  const [websiteChecked, setWebsiteChecked] = useState(false);
 
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -97,10 +98,20 @@ export default function BecomeHostPage() {
           ? 'That address is taken — try another.'
           : null;
 
+  // The browser's type="url" check accepts any scheme (javascript:, ftp:), and
+  // the API refuses anything but http(s) — catch it here, next to the field,
+  // rather than as an error on the last step.
+  const site = websiteUrl.trim();
+  const websiteError = site && !/^https?:\/\/\S/i.test(site) ? 'Enter the full link, starting with https://' : null;
+
   function next(e: FormEvent) {
     e.preventDefault();
     setError(null);
     if (step === 0 && (slugError || slugState === 'checking')) return;
+    if (step === 1 && websiteError) {
+      setWebsiteChecked(true);
+      return;
+    }
     if (step < STEPS.length - 1) setStep(step + 1);
     else void create();
   }
@@ -120,7 +131,7 @@ export default function BecomeHostPage() {
           currency: COUNTRIES.find((c) => c.value === country)!.currency,
           logoUrl: logoUrl ?? undefined,
           shortDescription: opt(shortDescription),
-          websiteUrl: opt(websiteUrl),
+          websiteUrl: site || undefined,
           contactName: opt(contactName),
           contactEmail: opt(contactEmail),
           contactPhone: opt(contactPhone),
@@ -238,7 +249,7 @@ export default function BecomeHostPage() {
                 />
               )}
             </Field>
-            <Field label="Website (optional)">
+            <Field label="Website (optional)" error={websiteChecked ? websiteError : null}>
               {(p) => (
                 <input
                   {...p}
@@ -247,6 +258,7 @@ export default function BecomeHostPage() {
                   placeholder="https://"
                   value={websiteUrl}
                   onChange={(e) => setWebsiteUrl(e.target.value)}
+                  onBlur={() => setWebsiteChecked(true)}
                 />
               )}
             </Field>

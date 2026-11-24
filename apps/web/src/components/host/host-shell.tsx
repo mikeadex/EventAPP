@@ -64,7 +64,7 @@ export function HostShell({ children }: { children: ReactNode }) {
               href={i.href as never}
               target={i.external ? '_blank' : undefined}
               aria-current={isActive(i.href, i.exact) ? 'page' : undefined}
-              className="chip flex-none md:justify-start"
+              className="chip flex-none gap-2 md:justify-start"
             >
               <Icon name={i.icon} size={16} /> {i.label}
             </Link>
