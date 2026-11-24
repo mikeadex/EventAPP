@@ -141,17 +141,24 @@ export const scrimPreset = {
 export function Divider({
   inset = 0.1,
   opacity = 0.22,
+  orientation = 'horizontal',
   style,
 }: {
-  /** Where the colour reaches full strength, as a fraction of the width. */
+  /** Where the colour reaches full strength, as a fraction of the length. */
   inset?: number;
   opacity?: number;
+  /**
+   * Vertical is the same rule turned ninety degrees — the event detail's
+   * Location / Date / Time columns are separated by one.
+   */
+  orientation?: 'horizontal' | 'vertical';
   style?: StyleProp<ViewStyle>;
 }) {
+  const vertical = orientation === 'vertical';
   return (
-    <View style={[{ height: 1 }, style]}>
+    <View style={[vertical ? { width: 1, alignSelf: 'stretch' } : { height: 1 }, style]}>
       <Gradient
-        angle={90}
+        angle={vertical ? 180 : 90}
         color="#F98E80"
         stops={[
           { at: 0, opacity: 0 },

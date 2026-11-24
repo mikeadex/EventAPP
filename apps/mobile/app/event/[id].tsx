@@ -12,7 +12,6 @@ import {
   Share,
   StyleSheet,
   Switch,
-  Text,
   View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -20,7 +19,10 @@ import * as ExpoCalendar from 'expo-calendar';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, fontWeight, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
+import { Text } from '@/components/text';
+import { Divider, Scrim, scrimPreset } from '@/components/gradient';
+import { CARD_BORDER } from '@/components/ui';
 import { useSession } from '@/lib/auth-client';
 import { api, ApiError } from '@/lib/api';
 import { formatMoney } from '@/lib/payments';
@@ -77,7 +79,7 @@ function RoundButton({
 }) {
   return (
     <Pressable onPress={onPress} accessibilityLabel={label} style={styles.roundBtn}>
-      <Ionicons name={icon} size={20} color={filled ? color.ink[0] : color.ink[0]} />
+      <Ionicons name={icon} size={20} color={theme.dark.textPrimary} />
     </Pressable>
   );
 }
@@ -98,15 +100,17 @@ function InfoCol({
 }) {
   const inner = (
     <>
-      <Text style={styles.infoLabel}>{label}</Text>
+      <Text variant="monoLabel" style={styles.infoLabel}>
+        {label}
+      </Text>
       <View style={styles.infoValueRow}>
-        <Text style={styles.infoValue} numberOfLines={1}>
+        <Text variant="subtitle" style={styles.infoValue} numberOfLines={1}>
           {value}
         </Text>
-        {onPress ? <Ionicons name={actionIcon} size={15} color={color.ink[300]} /> : null}
+        {onPress ? <Ionicons name={actionIcon} size={15} color={theme.dark.accent} /> : null}
       </View>
       {sub ? (
-        <Text style={styles.infoSub} numberOfLines={1}>
+        <Text variant="label" tone="secondary" numberOfLines={1}>
           {sub}
         </Text>
       ) : null}
@@ -386,7 +390,7 @@ export default function EventDetailScreen() {
     return (
       <View style={[styles.c, styles.center, { padding: spacing[6] }]}>
         <StatusBar style="light" />
-        <Ionicons name="cloud-offline-outline" size={44} color={color.ink[500]} />
+        <Ionicons name="cloud-offline-outline" size={44} color={palette.coral[500]} />
         <Text style={styles.errorText}>{loadErr}</Text>
         <Pressable onPress={() => router.back()} style={styles.backChip}>
           <Text style={styles.backChipText}>Go back</Text>
@@ -464,16 +468,20 @@ export default function EventDetailScreen() {
             <Image source={{ uri: event.coverImageUrl }} style={StyleSheet.absoluteFill} />
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.heroFallback]}>
-              <Ionicons name="calendar-outline" size={56} color={color.ink[600]} />
+              <Ionicons name="calendar-outline" size={56} color={theme.dark.textMuted} />
             </View>
           )}
-          {/* Scrim so overlaid text stays legible on any photo */}
-          <View style={styles.scrim} />
+          {/* Drawn with SVG, like Discover's — a flat 55% wash over the
+              lower third was what this used before, and it both muddied the
+              photograph and left the top bar sitting on bare image. */}
+          <Scrim stops={scrimPreset.hero} />
 
           {/* Top bar */}
           <View style={[styles.topBar, { top: insets.top + spacing[1] }]}>
             <RoundButton icon="chevron-back" onPress={() => router.back()} label="Go back" />
-            <Text style={styles.topTitle}>Details</Text>
+            <Text variant="monoLabel" tone="secondary" style={styles.topTitle}>
+              Details
+            </Text>
             <View style={styles.topActions}>
               <RoundButton icon="share-outline" onPress={shareEvent} label="Share event" />
               <RoundButton
@@ -487,7 +495,7 @@ export default function EventDetailScreen() {
           {/* Title + social proof overlaid at the bottom of the hero */}
           <View style={styles.heroFooter}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title} numberOfLines={2}>
+              <Text variant="hero" tone="onPhoto" style={styles.title} numberOfLines={2}>
                 {event.title}
               </Text>
               <View style={styles.proofRow}>
@@ -501,7 +509,7 @@ export default function EventDetailScreen() {
                           {a.image ? (
                             <Image source={{ uri: a.image }} style={styles.proofAvatarImg} />
                           ) : (
-                            <Text style={styles.proofAvatarInitial}>
+                            <Text variant="caption" style={styles.proofAvatarInitial}>
                               {a.name.charAt(0).toUpperCase()}
                             </Text>
                           )}
@@ -512,11 +520,11 @@ export default function EventDetailScreen() {
                           key={i}
                           style={[styles.proofAvatar, { marginLeft: i === 0 ? 0 : -10 }]}
                         >
-                          <Ionicons name="person" size={11} color={color.ink[300]} />
+                          <Ionicons name="person" size={11} color={theme.dark.accent} />
                         </View>
                       ))}
                 </View>
-                <Text style={styles.proofText} numberOfLines={1}>
+                <Text variant="footnote" style={styles.proofText} numberOfLines={1}>
                   {attendees.length > 0
                     ? `${attendees[0].name.split(' ')[0]}${
                         event.attendeeCount > 1 ? ` and ${event.attendeeCount - 1} others` : ''
@@ -536,7 +544,7 @@ export default function EventDetailScreen() {
                 <Ionicons
                   name={saved ? 'heart' : 'heart-outline'}
                   size={22}
-                  color={saved ? color.ink[900] : color.ink[0]}
+                  color={saved ? palette.coral[300] : theme.dark.textPrimary}
                 />
               </Animated.View>
             </Pressable>
@@ -550,9 +558,9 @@ export default function EventDetailScreen() {
             value={locStr}
             onPress={event.venue ? openMaps : undefined}
           />
-          <View style={styles.vDivider} />
+          <Divider orientation="vertical" inset={0.3} opacity={0.28} style={styles.vDivider} />
           <InfoCol label="Date" value={dateStr} onPress={addToCalendar} actionIcon="add-circle" />
-          <View style={styles.vDivider} />
+          <Divider orientation="vertical" inset={0.3} opacity={0.28} style={styles.vDivider} />
           <InfoCol label="Time" value={timeStr} onPress={addToCalendar} actionIcon="add-circle" />
         </View>
 
@@ -564,17 +572,17 @@ export default function EventDetailScreen() {
             disabled={!event.onlineUrl}
             onPress={() => event.onlineUrl && Linking.openURL(event.onlineUrl)}
           >
-            <Ionicons name="videocam-outline" size={18} color={color.ink[0]} />
+            <Ionicons name="videocam-outline" size={18} color={theme.dark.accent} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.onlineTitle}>
+              <Text variant="footnote" style={styles.onlineTitle}>
                 {mode === 'hybrid' ? 'Also streaming online' : 'Watch online'}
               </Text>
-              <Text style={styles.onlineSub} numberOfLines={1}>
+              <Text variant="caption" tone="secondary" numberOfLines={1}>
                 {event.onlineUrl ?? 'Link to follow'}
               </Text>
             </View>
             {event.onlineUrl ? (
-              <Ionicons name="open-outline" size={16} color={color.ink[400]} />
+              <Ionicons name="open-outline" size={16} color={theme.dark.textMuted} />
             ) : null}
           </Pressable>
         )}
@@ -584,21 +592,21 @@ export default function EventDetailScreen() {
           <Text style={styles.byLine} onPress={() =>
             router.push({ pathname: '/host/[slug]', params: { slug: event.organization.slug } })
           }>
-            By <Text style={styles.byName}>{event.organization.name}</Text>
+            By <Text variant="footnote" style={styles.byName}>{event.organization.name}</Text>
           </Text>
-          <Text style={styles.sectionTitle}>About this event</Text>
-          <Text style={styles.about}>
+          <Text variant="subtitle" style={styles.sectionTitle}>About this event</Text>
+          <Text variant="body" style={styles.about}>
             {event.description || event.summary || 'Details coming soon.'}
           </Text>
           {seatsLeft !== null ? (
-            <Text style={styles.capacity}>
+            <Text variant="label" tone="accent" style={styles.capacity}>
               {soldOut ? 'At capacity' : `${seatsLeft} spots left`}
             </Text>
           ) : null}
 
           {gallery.length > 0 ? (
             <View style={styles.gallery}>
-              <Text style={styles.sectionTitle}>Photos and video</Text>
+              <Text variant="subtitle" style={styles.sectionTitle}>Photos and video</Text>
               <EventGallery items={gallery} />
             </View>
           ) : null}
@@ -607,7 +615,11 @@ export default function EventDetailScreen() {
 
       {/* Fixed bottom CTA pill */}
       <View style={[styles.bottomWrap, { paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>
-        {rsvpErr ? <Text style={styles.rsvpErr}>{rsvpErr}</Text> : null}
+        {rsvpErr ? (
+          <Text variant="label" style={styles.rsvpErr}>
+            {rsvpErr}
+          </Text>
+        ) : null}
         <Pressable
           style={[styles.ctaPill, rsvpDisabled && rsvpState !== 'done' && styles.ctaPillDisabled]}
           disabled={rsvpDisabled}
@@ -624,23 +636,24 @@ export default function EventDetailScreen() {
                   })
           }
         >
-          <View style={styles.ctaIcon}>
-            {rsvpState === 'pending' ? (
-              <ActivityIndicator color={color.ink[900]} size="small" />
-            ) : (
-              <Ionicons
-                name={rsvpState === 'done' ? 'checkmark' : 'ticket'}
-                size={18}
-                color={color.ink[900]}
-              />
-            )}
-          </View>
-          <Text style={styles.ctaText}>{ctaText}</Text>
-          {rsvpState === 'idle' && !soldOut ? (
-            <Ionicons name="chevron-forward" size={20} color={color.ink[400]} />
+          {rsvpState === 'pending' ? (
+            <ActivityIndicator color={theme.dark.accent} size="small" />
           ) : (
-            <View style={{ width: 20 }} />
+            <Ionicons
+              name={rsvpState === 'done' ? 'checkmark' : 'ticket'}
+              size={18}
+              color={rsvpDisabled && rsvpState !== 'done' ? theme.dark.textMuted : theme.dark.accent}
+            />
           )}
+          <Text
+            variant="bodyLg"
+            style={{
+              color:
+                rsvpDisabled && rsvpState !== 'done' ? theme.dark.textMuted : palette.coral[200],
+            }}
+          >
+            {ctaText}
+          </Text>
         </Pressable>
       </View>
       </FadeIn>
@@ -655,23 +668,25 @@ export default function EventDetailScreen() {
         <Pressable style={styles.sheetOverlay} onPress={() => setCelebrate(false)} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[5] }]}>
           <View style={styles.sheetHandle} />
-          <Ionicons name="checkmark-circle" size={44} color={color.ink[900]} />
-          <Text style={styles.sheetTitle}>You&apos;re going</Text>
-          <Text style={styles.sheetSub} numberOfLines={1}>
+          <Ionicons name="checkmark-circle" size={44} color={theme.dark.accent} />
+          <Text variant="title" tone="onPhoto" style={styles.sheetTitle}>
+            You&apos;re going
+          </Text>
+          <Text variant="label" tone="secondary" numberOfLines={1}>
             {event.title} · {dateStr}
           </Text>
 
           <Pressable style={styles.sheetAction} onPress={addToCalendar}>
-            <Ionicons name="calendar-outline" size={20} color={color.ink[900]} />
-            <Text style={styles.sheetActionText}>Add to calendar</Text>
-            <Ionicons name="chevron-forward" size={18} color={color.ink[300]} />
+            <Ionicons name="calendar-outline" size={20} color={theme.dark.textSecondary} />
+            <Text variant="bodyLg" style={styles.sheetActionText}>Add to calendar</Text>
+            <Ionicons name="chevron-forward" size={18} color={theme.dark.textMuted} />
           </Pressable>
 
           <View style={styles.sheetAction}>
-            <Ionicons name="people-outline" size={20} color={color.ink[900]} />
+            <Ionicons name="people-outline" size={20} color={theme.dark.textSecondary} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.sheetActionText}>Show me as going</Text>
-              <Text style={styles.sheetCaption}>
+              <Text variant="bodyLg" style={styles.sheetActionText}>Show me as going</Text>
+              <Text variant="caption" style={styles.sheetCaption}>
                 Your name appears on this event&apos;s page. Off by default; change it anytime
                 from your ticket.
               </Text>
@@ -680,8 +695,8 @@ export default function EventDetailScreen() {
               value={showMe}
               onValueChange={toggleShowMe}
               disabled={showMePending || !rsvpTicketId}
-              trackColor={{ false: color.ink[200], true: color.ink[900] }}
-              thumbColor={color.ink[0]}
+              trackColor={{ false: theme.dark.border, true: palette.coral[600] }}
+              thumbColor={palette.warm[50]}
             />
           </View>
 
@@ -702,28 +717,21 @@ export default function EventDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[900] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing[3] },
-  errorText: { color: color.ink[300], fontSize: fontSize.base, textAlign: 'center' },
+  errorText: { color: theme.dark.textSecondary, fontSize: fontSize.base, textAlign: 'center' },
   backChip: {
     marginTop: spacing[2],
     borderWidth: 1,
-    borderColor: color.ink[700],
+    borderColor: theme.dark.accent,
     borderRadius: radius.full,
     paddingVertical: spacing[2],
     paddingHorizontal: spacing[5],
   },
-  backChipText: { color: color.ink[0], fontWeight: fontWeight.medium },
+  backChipText: { color: theme.dark.accent, fontWeight: fontWeight.medium },
 
-  hero: { width: '100%', backgroundColor: color.ink[800], position: 'relative' },
+  hero: { width: '100%', backgroundColor: theme.dark.surface, position: 'relative' },
   heroFallback: { alignItems: 'center', justifyContent: 'center' },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    top: undefined,
-    height: 200,
-    bottom: 0,
-    backgroundColor: 'rgba(10,9,7,0.55)',
-  },
   topBar: {
     position: 'absolute',
     left: spacing[4],
@@ -732,12 +740,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  topTitle: { color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  topTitle: { fontSize: 13, letterSpacing: 1.82 },
   roundBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(20,20,20,0.45)',
+    backgroundColor: 'rgba(13,10,11,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.28)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -750,40 +760,29 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: spacing[3],
   },
-  title: {
-    color: color.ink[0],
-    fontSize: fontSize['3xl'],
-    fontWeight: fontWeight.bold,
-    letterSpacing: -0.5,
-    lineHeight: 36,
-  },
+  title: { lineHeight: 36 },
   proofRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
   avatars: { flexDirection: 'row' },
   proofAvatar: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: color.ink[700],
-    borderWidth: 1.5,
-    borderColor: color.ink[900],
+    backgroundColor: '#2A1F21',
+    borderWidth: 1,
+    borderColor: palette.coral[400],
     alignItems: 'center',
     justifyContent: 'center',
   },
-  proofText: {
-    color: color.ink[300],
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    flexShrink: 1,
-  },
+  proofText: { color: palette.warm[300], flexShrink: 1 },
   proofAvatarImg: { width: '100%', height: '100%', borderRadius: 999 },
-  proofAvatarInitial: { color: color.ink[0], fontSize: 11, fontWeight: fontWeight.bold },
+  proofAvatarInitial: { color: palette.coral[400] },
 
   // Post-RSVP celebration sheet
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(10,9,7,0.55)' },
   sheet: {
-    backgroundColor: color.ink[0],
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
+    backgroundColor: theme.dark.surface,
+    borderTopLeftRadius: radiusExtra.hero,
+    borderTopRightRadius: radiusExtra.hero,
     paddingHorizontal: spacing[5],
     paddingTop: spacing[3],
     alignItems: 'center',
@@ -792,16 +791,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: color.ink[200],
+    backgroundColor: theme.dark.border,
     marginBottom: spacing[4],
   },
-  sheetTitle: {
-    fontSize: fontSize['2xl'],
-    fontWeight: fontWeight.bold,
-    color: color.ink[900],
-    marginTop: spacing[2],
-  },
-  sheetSub: { fontSize: fontSize.sm, color: color.ink[500], marginTop: spacing[1] },
+  sheetTitle: { marginTop: spacing[2] },
   sheetAction: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -809,33 +802,33 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     paddingVertical: spacing[4],
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: color.ink[100],
+    borderBottomColor: theme.dark.borderSubtle,
     marginTop: spacing[2],
   },
-  sheetActionText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    color: color.ink[900],
-  },
-  sheetCaption: { fontSize: fontSize.xs, color: color.ink[400], marginTop: 2, maxWidth: 240 },
+  sheetActionText: { color: theme.dark.textPrimary },
+  sheetCaption: { color: theme.dark.textSecondary, marginTop: 2, maxWidth: 240 },
   sheetDone: {
     alignSelf: 'stretch',
-    backgroundColor: color.ink[900],
     borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.55)',
+    backgroundColor: 'rgba(249,142,128,0.14)',
     paddingVertical: spacing[4],
     alignItems: 'center',
     marginTop: spacing[5],
   },
-  sheetDoneText: { color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  sheetDoneText: { color: palette.coral[200], fontSize: fontSize.base },
   heart: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(40,40,40,0.6)',
+    backgroundColor: 'rgba(13,10,11,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heartActive: { backgroundColor: color.ink[0] },
+  heartActive: { backgroundColor: 'rgba(249,142,128,0.2)' },
 
   infoStrip: {
     flexDirection: 'row',
@@ -844,17 +837,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
   },
   infoCol: { flex: 1 },
-  infoLabel: {
-    color: color.ink[500],
-    fontSize: fontSize.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing[1],
-  },
+  // 0.2em at 10px, per the handoff — tighter and smaller than the shared
+  // `monoLabel` default, which is sized for 11px eyebrows.
+  infoLabel: { fontSize: 10, letterSpacing: 2, color: palette.warm[550], marginBottom: spacing[1] },
   infoValueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
-  infoValue: { color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.semibold, flexShrink: 1 },
-  infoSub: { color: color.ink[400], fontSize: fontSize.sm, marginTop: 1 },
-  vDivider: { width: 1, height: 36, backgroundColor: color.ink[700], marginHorizontal: spacing[3] },
+  infoValue: { flexShrink: 1 },
+  vDivider: { height: 42, marginHorizontal: spacing[3] },
 
   onlineRow: {
     flexDirection: 'row',
@@ -863,25 +851,20 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing[5],
     marginTop: spacing[4],
     padding: spacing[4],
-    borderRadius: radius.lg,
+    borderRadius: 14,
+    backgroundColor: theme.dark.surface,
     borderWidth: 1,
-    borderColor: color.ink[700],
+    borderColor: CARD_BORDER,
   },
-  onlineTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: color.ink[0] },
-  onlineSub: { fontSize: fontSize.xs, color: color.ink[400], marginTop: 2 },
+  onlineTitle: { color: theme.dark.textPrimary },
   section: { paddingHorizontal: spacing[5], paddingTop: spacing[2] },
-  byLine: { color: color.ink[400], fontSize: fontSize.sm, marginBottom: spacing[4] },
-  byName: { color: color.ink[0], fontWeight: fontWeight.semibold },
-  sectionTitle: {
-    color: color.ink[0],
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    marginBottom: spacing[2],
-  },
-  about: { color: color.ink[400], fontSize: fontSize.base, lineHeight: 24 },
+  byLine: { color: theme.dark.textSecondary, fontSize: fontSize.sm, marginBottom: spacing[4] },
+  byName: { color: theme.dark.textPrimary },
+  sectionTitle: { marginBottom: spacing[2] },
+  about: { color: palette.warm[400], lineHeight: 24 },
   topActions: { flexDirection: 'row', gap: spacing[2] },
   gallery: { marginTop: spacing[6], gap: spacing[3] },
-  capacity: { color: color.ink[500], fontSize: fontSize.sm, marginTop: spacing[4] },
+  capacity: { marginTop: spacing[4] },
 
   bottomWrap: {
     position: 'absolute',
@@ -891,31 +874,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
   },
-  rsvpErr: {
-    color: color.ink[300],
-    fontSize: fontSize.sm,
-    textAlign: 'center',
-    marginBottom: spacing[2],
-  },
+  rsvpErr: { color: palette.coral[300], textAlign: 'center', marginBottom: spacing[2] },
   ctaPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[3],
-    backgroundColor: color.ink[800],
-    borderRadius: radius.full,
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[2],
-    borderWidth: 1,
-    borderColor: color.ink[700],
-  },
-  ctaPillDisabled: { opacity: 0.5 },
-  ctaIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: color.ink[0],
-    alignItems: 'center',
     justifyContent: 'center',
+    gap: 11,
+    backgroundColor: 'rgba(249,142,128,0.14)',
+    borderRadius: radius.full,
+    paddingVertical: 17,
+    paddingHorizontal: spacing[5],
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.55)',
   },
-  ctaText: { flex: 1, color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  ctaPillDisabled: {
+    backgroundColor: 'transparent',
+    borderColor: theme.dark.border,
+  },
 });
