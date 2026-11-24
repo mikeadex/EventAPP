@@ -1,60 +1,145 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { signOut, useSession } from '@/lib/auth-client';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useSession } from '@/lib/auth-client';
+import { initials } from '@/lib/format';
+import { Logo } from './brand';
+import { ThemeToggle } from './client';
+import { Icon } from './icons';
+
+const NAV = [
+  { href: '/events', label: 'Discover' },
+  { href: '/for-churches', label: 'For churches' },
+];
 
 export function SiteHeader() {
-  const router = useRouter();
+  const pathname = usePathname();
   const { data: session, isPending } = useSession();
+  const [open, setOpen] = useState(false);
+  const user = session?.user;
 
-  async function handleSignOut() {
-    await signOut();
-    router.push('/');
-    router.refresh();
-  }
+  useEffect(() => setOpen(false), [pathname]);
+
+  const active = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const signInHref = `/sign-in?next=${encodeURIComponent(pathname)}`;
+
+  const mobileNav = [
+    ...NAV,
+    ...(user
+      ? [
+          { href: '/me/tickets', label: 'Your tickets' },
+          { href: '/saved', label: 'Saved' },
+          { href: '/organizer', label: 'Host dashboard' },
+          { href: '/account', label: 'Account' },
+        ]
+      : [
+          { href: '/saved', label: 'Saved' },
+          { href: signInHref, label: 'Sign in' },
+        ]),
+  ];
 
   return (
-    <header className="sticky top-0 z-30 border-b border-ink-100 bg-white/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-        <Link href="/" className="font-display text-xl text-ink-900">
-          Ekklesia
-        </Link>
-        <nav className="flex items-center gap-6 text-sm text-ink-700">
-          <Link href="/events" className="hover:text-ink-900">
-            Events
-          </Link>
-          {!isPending && session?.user ? (
-            <>
-              <Link href="/me/tickets" className="hover:text-ink-900">
-                My tickets
-              </Link>
-              <Link href="/organizer" className="hover:text-ink-900">
-                Organizer
-              </Link>
-              <span className="text-ink-400">{session.user.name ?? session.user.email}</span>
-              <button
-                onClick={handleSignOut}
-                className="rounded-md border border-ink-200 px-3 py-1.5 text-sm hover:bg-ink-100"
-              >
-                Sign out
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/sign-in" className="hover:text-ink-900">
-                Sign in
-              </Link>
+    <>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-surface focus:px-4 focus:py-2"
+      >
+        Skip to content
+      </a>
+      <header
+        className="sticky top-0 z-50 border-b border-line"
+        style={{
+          background: 'rgba(var(--scrim), 0.86)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+        }}
+      >
+        <div className="wrap flex h-[72px] items-center justify-between gap-6">
+          <Logo />
+
+          <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
+            {NAV.map((n) => (
               <Link
-                href="/sign-up"
-                className="rounded-md bg-brand-600 px-3 py-1.5 text-white hover:bg-brand-700"
+                key={n.href}
+                href={n.href as never}
+                aria-current={active(n.href) ? 'page' : undefined}
+                className={`rounded-full px-4 py-2 text-[15px] transition-colors ${
+                  active(n.href) ? 'bg-soft text-accent' : 'text-ink-2 hover:text-accent'
+                }`}
               >
-                Sign up
+                {n.label}
               </Link>
-            </>
-          )}
-        </nav>
-      </div>
-    </header>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-2.5">
+            <ThemeToggle />
+            <Link href="/saved" aria-label="Saved events" className="icon-btn hidden sm:inline-flex">
+              <Icon name="heart" />
+            </Link>
+            {isPending ? (
+              <span className="hidden h-9 w-24 sm:block" aria-hidden="true" />
+            ) : user ? (
+              <>
+                <Link href={'/me/tickets' as never} aria-label="Your tickets" className="icon-btn hidden sm:inline-flex">
+                  <Icon name="ticket" />
+                </Link>
+                <Link href={'/organizer' as never} className="btn btn-outline btn-sm hidden md:inline-flex">
+                  Host dashboard
+                </Link>
+                <Link
+                  href={'/account' as never}
+                  aria-label="Your account"
+                  className="hidden h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-line-3 bg-avatar text-[15px] text-accent sm:inline-flex"
+                >
+                  {user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.image} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    initials(user.name || user.email).slice(0, 1)
+                  )}
+                </Link>
+              </>
+            ) : (
+              <Link href={signInHref as never} className="btn btn-primary btn-sm hidden sm:inline-flex">
+                <Icon name="user" size={16} /> Sign in
+              </Link>
+            )}
+            <button
+              type="button"
+              className="icon-btn !text-ink sm:hidden"
+              aria-expanded={open}
+              aria-controls="mobile-nav"
+              aria-label={open ? 'Close menu' : 'Open menu'}
+              onClick={() => setOpen((v) => !v)}
+            >
+              <Icon name={open ? 'close' : 'menu'} />
+            </button>
+          </div>
+        </div>
+
+        {open && (
+          <nav id="mobile-nav" aria-label="Mobile" className="border-t border-line sm:hidden">
+            <ul className="wrap flex flex-col gap-1 py-4">
+              {mobileNav.map((n) => (
+                <li key={n.label}>
+                  <Link
+                    href={n.href as never}
+                    aria-current={active(n.href) ? 'page' : undefined}
+                    className={`flex items-center rounded-2xl px-4 py-3.5 text-[17px] ${
+                      active(n.href) ? 'bg-soft text-accent' : 'text-ink'
+                    }`}
+                  >
+                    {n.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+      </header>
+    </>
   );
 }

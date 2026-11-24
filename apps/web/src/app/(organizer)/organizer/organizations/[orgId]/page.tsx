@@ -1,51 +1,23 @@
+'use client';
+
 import Link from 'next/link';
-import type { Route } from 'next';
-import { headers } from 'next/headers';
-import { notFound } from 'next/navigation';
-
-interface Org {
-  id: string;
-  slug: string;
-  name: string;
-  verificationStatus: string;
-}
-
-interface OrgEvent {
-  id: string;
-  slug: string;
-  title: string;
-  status: 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'CANCELLED' | 'COMPLETED';
-  startsAt: string;
-  endsAt: string;
-  capacity: number | null;
-  attendeeCount: number;
-  coverImageUrl: string | null;
-}
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { Cover } from '@/components/cover';
+import { Icon } from '@/components/icons';
+import { EmptyState, ErrorCard, Skeleton } from '@/components/ui';
+import { fmtDay, fmtTime, plural } from '@/lib/format';
+import type { Organization, OrgEvent } from '@/lib/types';
+import { useApi, useMe } from '@/lib/use-api';
 
 /**
  * What a host is told about verification, per state.
  *
- * This card used to read "Unverified. Public publishing & payouts are gated."
- * for every state except VERIFIED, and that was not true. Nothing in the API
- * checks `verificationStatus` before publishing an event — the events module
- * never reads the column — and no other surface in the product reads it
- * either: no public badge, no gate, no payout difference. Verification
- * currently changes nothing but this sentence.
- *
- * The sentence is expensive. This is the page a host lands on the moment they
- * create an organisation, and the claim sat in the card immediately beside the
- * "Create an event" button. Of the first four real organisations, three
- * stopped here having never created a single event, and the fourth waited
- * fifty-one days before starting. One of the three answered the verification
- * questions, moved to PENDING, and has been waiting since — there is no code
- * path anywhere that grants VERIFIED, so that wait cannot end.
- *
- * So tell them what they can actually do. REJECTED and SUSPENDED are spelled
- * out separately rather than falling into the same branch: whatever the API
- * does or does not enforce today, "publishing is open" is not a thing to say
- * to a suspended organisation.
+ * Nothing in the API reads `verificationStatus` before publishing, so telling
+ * an unverified host that publishing is "gated" is untrue — and it was the
+ * sentence sitting next to "Create an event" on the page every new host lands
+ * on. Say what they can actually do. REJECTED and SUSPENDED are spelled out
+ * separately: "publishing is open" is not a thing to tell a suspended host.
  */
 const VERIFICATION_COPY: Record<string, string> = {
   UNVERIFIED: 'Publishing is open — you can create and publish events now, verified or not.',
@@ -55,184 +27,196 @@ const VERIFICATION_COPY: Record<string, string> = {
   SUSPENDED: 'This organisation is suspended. Get in touch and we will help.',
 };
 
-async function loadDashboard(orgId: string) {
-  const cookieHeader = (await headers()).get('cookie') ?? '';
-  const init: RequestInit = { headers: { cookie: cookieHeader }, cache: 'no-store' };
+const STATUS_LABEL: Record<OrgEvent['status'], string> = {
+  DRAFT: 'Draft',
+  SCHEDULED: 'Scheduled',
+  PUBLISHED: 'Live',
+  CANCELLED: 'Cancelled',
+  COMPLETED: 'Ended',
+};
 
-  const meRes = await fetch(`${API}/v1/me`, init);
-  if (!meRes.ok) return null;
-  const me = (await meRes.json()) as {
-    memberships: { organizationId: string; slug: string; name: string }[];
-  };
-  const m = me.memberships.find((x) => x.organizationId === orgId);
-  if (!m) return null;
+type Filter = 'upcoming' | 'drafts' | 'past';
 
-  const [orgRes, eventsRes] = await Promise.all([
-    fetch(`${API}/v1/organizations/${m.slug}`, init),
-    fetch(`${API}/v1/organizations/${orgId}/events`, init),
-  ]);
-  if (!orgRes.ok) return null;
-  const org = (await orgRes.json()) as Org;
-  const events: OrgEvent[] = eventsRes.ok ? await eventsRes.json() : [];
-  return { org, events };
-}
+export default function OrganizationDashboardPage() {
+  const { orgId } = useParams<{ orgId: string }>();
+  const welcome = useSearchParams().get('welcome') === '1';
+  const me = useMe();
+  const membership = me.data?.memberships.find((m) => m.organizationId === orgId);
+  const org = useApi<Organization>(membership ? `/v1/organizations/${membership.slug}` : null);
+  const events = useApi<OrgEvent[]>(membership ? `/v1/organizations/${orgId}/events` : null);
+  const [filter, setFilter] = useState<Filter>('upcoming');
 
-export default async function OrganizationDashboardPage({
-  params,
-}: {
-  params: Promise<{ orgId: string }>;
-}) {
-  const { orgId } = await params;
-  const data = await loadDashboard(orgId);
-  if (!data) notFound();
-  const { org, events } = data;
+  if (me.status === 'ready' && !membership) {
+    return (
+      <EmptyState
+        icon="building"
+        title="You don’t host here"
+        body="This organisation isn’t on your account."
+        action={
+          <Link href="/organizer" className="btn btn-primary">
+            Your organisations
+          </Link>
+        }
+      />
+    );
+  }
+  if (me.status === 'error' || org.status === 'error') return <ErrorCard message={(me.error ?? org.error)!} />;
+  if (!org.data) return <Skeleton className="h-80 rounded-card" />;
 
-  const published = events.filter((e) => e.status === 'PUBLISHED');
-  const drafts = events.filter((e) => e.status === 'DRAFT' || e.status === 'SCHEDULED');
-  const past = events.filter((e) => e.status === 'COMPLETED' || e.status === 'CANCELLED');
+  const o = org.data;
+  const now = Date.now();
+  const all = events.data ?? [];
+  const isPast = (e: OrgEvent) => new Date(e.endsAt).getTime() < now || e.status === 'CANCELLED' || e.status === 'COMPLETED';
+  const upcoming = all.filter((e) => !isPast(e) && e.status === 'PUBLISHED');
+  const drafts = all.filter((e) => !isPast(e) && (e.status === 'DRAFT' || e.status === 'SCHEDULED'));
+  const past = all.filter(isPast).sort((a, b) => b.startsAt.localeCompare(a.startsAt));
+  const going = upcoming.reduce((n, e) => n + e.attendeeCount, 0);
+  const shown = filter === 'upcoming' ? upcoming : filter === 'drafts' ? drafts : past;
+  const newEvent = `/organizer/organizations/${orgId}/events/new`;
 
   return (
-    <div>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-ink-400">Church</p>
-          <h1 className="mt-1 font-display text-3xl text-ink-900">{org.name}</h1>
-          <p className="mt-1 text-sm text-ink-500">/{org.slug}</p>
-        </div>
-        {/* A bare "UNVERIFIED" stamp beside a brand-new organisation's name
-            reads as a verdict, and there is nothing behind it to act on. Show
-            the badge only once it says something: in the queue, or through it. */}
-        {org.verificationStatus !== 'UNVERIFIED' && (
-          <span className="rounded-full bg-ink-100 px-3 py-1 text-xs uppercase tracking-wider text-ink-600">
-            {org.verificationStatus}
+    <div className="flex flex-col gap-8">
+      {welcome && (
+        <div role="status" className="panel flex items-start gap-4 p-5">
+          <span className="inline-flex h-10 w-10 flex-none items-center justify-center rounded-full border border-line-3 bg-soft text-accent">
+            <Icon name="check" />
           </span>
-        )}
-      </div>
-
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
-        <Link
-          href={`/organizer/organizations/${org.id}/events/new` as Route}
-          className="rounded-lg border border-brand-300 bg-brand-50 p-6 hover:border-brand-500"
-        >
-          <p className="font-display text-lg text-ink-900">+ Create an event</p>
-          <p className="mt-1 text-sm text-ink-600">Draft a gathering and publish when ready.</p>
-        </Link>
-        <div className="rounded-lg border border-ink-100 bg-white p-6">
-          <p className="text-xs uppercase tracking-wider text-ink-400">Verification</p>
-          <p className="mt-2 text-sm text-ink-700">
-            {VERIFICATION_COPY[org.verificationStatus] ?? VERIFICATION_COPY.UNVERIFIED}
-          </p>
+          <div className="flex flex-col gap-1">
+            <span className="text-[17px] text-strong">You’re set up — welcome to Ekklesia.</span>
+            <span className="text-[14px] text-body">Create your first event and share its link. It takes a few minutes.</span>
+          </div>
         </div>
-        <div className="rounded-lg border border-ink-100 bg-white p-6">
-          <p className="text-xs uppercase tracking-wider text-ink-400">Public link</p>
-          <Link
-            href={`/${org.slug}` as Route}
-            className="mt-2 block text-sm text-brand-700 hover:underline"
-          >
-            ekklesia.app/{org.slug}
+      )}
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-2">
+          <span className="eyebrow text-accent">Dashboard</span>
+          <h1 className="h1 !text-[44px]">{o.name}</h1>
+          <Link href={`/${o.slug}` as never} className="text-[14px] text-muted hover:text-accent">
+            Your public page: /{o.slug} <Icon name="external" size={13} className="inline" />
           </Link>
         </div>
+        <Link href={newEvent as never} className="btn btn-primary btn-lg">
+          <Icon name="plus" size={18} /> New event
+        </Link>
       </div>
 
-      <EventSection
-        title="Published"
-        empty="Nothing live yet."
-        events={published}
-        org={org}
-        live
-      />
-      <EventSection title="Drafts" empty="No drafts." events={drafts} org={org} />
-      {past.length > 0 && (
-        <EventSection title="Past or cancelled" empty="" events={past} org={org} muted />
-      )}
+      <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Kpi label="Live events" value={events.data ? upcoming.length : '—'} />
+        <Kpi label="Going (upcoming)" value={events.data ? going : '—'} />
+        <Kpi label="Drafts" value={events.data ? drafts.length : '—'} />
+        <div className="card flex flex-col gap-2 p-5">
+          <dt className="eyebrow text-[10px] text-faint">Verification</dt>
+          <dd className="text-[13px] leading-relaxed text-body">
+            {VERIFICATION_COPY[o.verificationStatus] ?? VERIFICATION_COPY.UNVERIFIED}
+          </dd>
+        </div>
+      </dl>
+
+      <section className="flex flex-col gap-5" aria-labelledby="events-h">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="events-h" className="text-[24px] text-strong">
+            Events
+          </h2>
+          <div role="tablist" aria-label="Filter events" className="flex gap-2">
+            {(
+              [
+                ['upcoming', `Live · ${upcoming.length}`],
+                ['drafts', `Drafts · ${drafts.length}`],
+                ['past', `Past · ${past.length}`],
+              ] as const
+            ).map(([v, label]) => (
+              <button key={v} type="button" role="tab" aria-selected={filter === v} className="chip" onClick={() => setFilter(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {events.status === 'loading' ? (
+          <Skeleton className="h-48 rounded-card" />
+        ) : events.status === 'error' ? (
+          <ErrorCard message={events.error} />
+        ) : shown.length === 0 ? (
+          <EmptyState
+            icon="calendar"
+            title={filter === 'upcoming' ? 'Nothing live yet' : filter === 'drafts' ? 'No drafts' : 'No past events'}
+            body={filter === 'past' ? undefined : 'Create an event, then publish it when you’re ready.'}
+            action={
+              filter === 'past' ? undefined : (
+                <Link href={newEvent as never} className="btn btn-primary">
+                  Create an event
+                </Link>
+              )
+            }
+          />
+        ) : (
+          <ul className="card divide-y divide-line">
+            {shown.map((e) => (
+              <EventRow key={e.id} e={e} orgId={orgId} orgSlug={o.slug} past={filter === 'past'} />
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
 
-function EventSection({
-  title,
-  empty,
-  events,
-  org,
-  live,
-  muted,
-}: {
-  title: string;
-  empty: string;
-  events: OrgEvent[];
-  org: Org;
-  live?: boolean;
-  muted?: boolean;
-}) {
+function Kpi({ label, value }: { label: string; value: number | string }) {
   return (
-    <section className="mt-10">
-      <div className="flex items-baseline justify-between">
-        <h2 className="font-display text-xl text-ink-900">{title}</h2>
-        <p className="text-xs text-ink-400">{events.length}</p>
+    <div className="card flex flex-col gap-2 p-5">
+      <dt className="eyebrow text-[10px] text-faint">{label}</dt>
+      <dd className="text-[34px] leading-none text-strong">{value}</dd>
+    </div>
+  );
+}
+
+function EventRow({ e, orgId, orgSlug, past }: { e: OrgEvent; orgId: string; orgSlug: string; past: boolean }) {
+  const base = `/organizer/organizations/${orgId}/events/${e.id}`;
+  const pct = e.capacity ? Math.min(100, Math.round((e.attendeeCount / e.capacity) * 100)) : null;
+  return (
+    <li className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <div className="relative h-14 w-20 flex-none overflow-hidden rounded-xl bg-surface-2">
+          <Cover image={e.coverImageUrl} category="OTHER" title={e.title} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="flex items-center gap-2">
+            <Link href={`${base}/edit` as never} className="truncate text-[17px] text-strong hover:text-accent">
+              {e.title}
+            </Link>
+            <span className={e.status === 'PUBLISHED' && !past ? 'tag' : 'tag-muted'}>{STATUS_LABEL[e.status]}</span>
+          </span>
+          <span className="text-[13px] text-muted">
+            {fmtDay(e.startsAt)} · {fmtTime(e.startsAt)}
+          </span>
+        </div>
       </div>
-      {events.length === 0 ? (
-        empty ? <p className="mt-2 text-sm text-ink-400">{empty}</p> : null
-      ) : (
-        <ul className={`mt-4 grid gap-3 ${muted ? 'opacity-60' : ''}`}>
-          {events.map((e) => (
-            <li
-              key={e.id}
-              className="flex items-center gap-4 rounded-lg border border-ink-100 bg-white p-4"
-            >
-              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-ink-100">
-                {e.coverImageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={e.coverImageUrl} alt="" className="h-full w-full object-cover" />
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-ink-900">{e.title}</p>
-                <p className="text-xs text-ink-500">
-                  {new Date(e.startsAt).toLocaleString(undefined, {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  {e.capacity !== null && (
-                    <>
-                      {' · '}
-                      {e.attendeeCount}/{e.capacity} attending
-                    </>
-                  )}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Link
-                  href={`/organizer/organizations/${org.id}/events/${e.id}/edit` as Route}
-                  className="rounded-md border border-ink-200 px-3 py-1.5 text-xs hover:bg-ink-100"
-                >
-                  Edit
-                </Link>
-                <Link
-                  href={`/organizer/organizations/${org.id}/events/${e.id}/attendees` as Route}
-                  className="rounded-md border border-ink-200 px-3 py-1.5 text-xs hover:bg-ink-100"
-                >
-                  Attendees
-                </Link>
-                {live && (
-                  <Link
-                    href={`/${org.slug}/${e.slug}` as Route}
-                    target="_blank"
-                    className="rounded-md border border-ink-200 px-3 py-1.5 text-xs hover:bg-ink-100"
-                  >
-                    View live ↗
-                  </Link>
-                )}
-                <span className="rounded-md bg-ink-100 px-2.5 py-1 text-xs uppercase tracking-wider text-ink-600">
-                  {e.status.toLowerCase()}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+      <div className="flex w-full flex-col gap-1.5 sm:w-[160px]">
+        <span className="text-[13px] text-ink-2">
+          {e.capacity ? `${e.attendeeCount} / ${e.capacity} going` : plural(e.attendeeCount, 'person', 'people') + ' going'}
+        </span>
+        {pct !== null && (
+          <span className="h-1 overflow-hidden rounded-full bg-line-2" aria-hidden="true">
+            <span className="block h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Link href={`${base}/attendees` as never} className="btn btn-outline btn-sm">
+          <Icon name="users" size={15} /> Attendees
+        </Link>
+        {e.status === 'PUBLISHED' && !past && (
+          <Link href={`${base}/check-in` as never} className="btn btn-outline btn-sm">
+            <Icon name="scan" size={15} /> Check-in
+          </Link>
+        )}
+        {e.status === 'PUBLISHED' && (
+          <Link href={`/${orgSlug}/${e.slug}` as never} target="_blank" className="icon-btn" aria-label={`View ${e.title}`}>
+            <Icon name="external" size={16} />
+          </Link>
+        )}
+      </div>
+    </li>
   );
 }

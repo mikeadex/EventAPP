@@ -36,6 +36,10 @@ export default function DeleteAccountPage() {
           Open Ekklesia and go to <strong>Settings → Delete account</strong>. You will be
           asked to confirm, and the account is removed straight away.
         </p>
+        <p>
+          On the web, sign in and go to{' '}
+          <Link href={'/account?section=security' as never}>Account → Sign-in &amp; security</Link>.
+        </p>
       </Section>
 
       <Section heading="If you no longer have the app">

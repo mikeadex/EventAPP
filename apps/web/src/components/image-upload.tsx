@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useRef, useState } from 'react';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { Icon } from './icons';
 
 type Purpose = 'event_cover' | 'org_logo' | 'user_avatar';
 
@@ -76,7 +77,7 @@ export function ImageUpload({
     } catch (err) {
       if (err instanceof ApiError && err.status === 503) {
         setError(
-          'Object storage is not running. Start MinIO (see README) or paste an image URL manually.',
+          'Image uploads aren’t available right now. You can add one later.',
         );
       } else {
         setError(err instanceof Error ? err.message : 'Upload failed');
@@ -88,36 +89,36 @@ export function ImageUpload({
   }
 
   return (
-    <div className={className}>
-      <p className="text-sm font-medium text-ink-700">{label}</p>
-      <div
-        className={`mt-1 ${aspect} relative overflow-hidden rounded-lg border-2 border-dashed border-ink-200 bg-ink-50`}
-      >
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <span className="label">{label}</span>
+      <div className={`${aspect} relative overflow-hidden rounded-panel border border-dashed border-line-2 bg-raised`}>
         {value ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={value} alt="" className="h-full w-full object-cover" />
-            <button
-              type="button"
-              onClick={() => onChange(null)}
-              className="absolute right-2 top-2 rounded-md bg-ink-900/70 px-2 py-1 text-xs text-white hover:bg-ink-900"
-            >
-              Remove
-            </button>
+            <div className="absolute right-3 top-3 flex gap-2">
+              <button type="button" onClick={() => fileRef.current?.click()} className="btn btn-sm glass border border-line-2">
+                Replace
+              </button>
+              <button type="button" onClick={() => onChange(null)} className="btn btn-sm glass border border-line-2">
+                Remove
+              </button>
+            </div>
           </>
         ) : (
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={progress !== 'idle'}
-            className="flex h-full w-full flex-col items-center justify-center text-sm text-ink-500 hover:bg-ink-100 disabled:opacity-60"
+            className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-[14px] text-ink-2 transition-colors hover:bg-softer hover:text-accent disabled:opacity-60"
           >
-            <span className="font-medium">
+            <Icon name="image" size={24} />
+            <span>
               {progress === 'signing' && 'Preparing upload…'}
               {progress === 'uploading' && 'Uploading…'}
-              {progress === 'idle' && 'Click to upload'}
+              {progress === 'idle' && 'Choose an image'}
             </span>
-            <span className="mt-1 text-xs text-ink-400">PNG, JPEG, WebP up to 8 MB</span>
+            <span className="text-[12px] text-faint">PNG, JPEG or WebP, up to 8 MB</span>
           </button>
         )}
       </div>
@@ -128,11 +129,11 @@ export function ImageUpload({
         className="hidden"
         onChange={handleFile}
       />
-      {hint && !error && <p className="mt-1 text-xs text-ink-400">{hint}</p>}
+      {hint && !error && <span className="hint">{hint}</span>}
       {error && (
-        <p role="alert" className="mt-1 text-xs text-danger">
+        <span role="alert" className="error-text">
           {error}
-        </p>
+        </span>
       )}
     </div>
   );

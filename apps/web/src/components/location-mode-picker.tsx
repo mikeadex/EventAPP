@@ -30,28 +30,26 @@ export function LocationModePicker({
   disabled?: boolean;
 }) {
   return (
-    <div>
-      <span className="text-sm font-medium text-ink-700">How can people attend?</span>
-      <div className="mt-2 flex gap-2">
+    <div className="flex flex-col gap-2">
+      <span id="location-mode-label" className="label">
+        How can people attend?
+      </span>
+      <div role="radiogroup" aria-labelledby="location-mode-label" className="flex flex-wrap gap-2">
         {LOCATION_MODES.map((m) => (
           <button
             key={m.value}
             type="button"
+            role="radio"
+            aria-checked={value === m.value}
             disabled={disabled}
             onClick={() => onChange(m.value)}
-            className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
-              value === m.value
-                ? 'border-ink-900 bg-ink-900 text-white'
-                : 'border-ink-200 text-ink-700 hover:bg-ink-100'
-            }`}
+            className={`chip disabled:opacity-50 ${value === m.value ? 'on' : ''}`}
           >
             {m.label}
           </button>
         ))}
       </div>
-      <span className="mt-1 block text-xs text-ink-400">
-        {LOCATION_MODES.find((m) => m.value === value)?.hint}
-      </span>
+      <span className="hint">{LOCATION_MODES.find((m) => m.value === value)?.hint}</span>
     </div>
   );
 }

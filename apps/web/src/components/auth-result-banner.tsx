@@ -32,19 +32,19 @@ export function AuthResultBanner() {
   if (!code || dismissed) return null;
 
   return (
-    <div className="border-b border-ink-200 bg-ink-50">
-      <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-3 text-sm text-ink-700">
+    <div role="status" className="border-b border-line bg-softer">
+      <div className="wrap flex items-center gap-4 py-3 text-[14px] text-ink-2">
         <p className="flex-1">
           {/* Unknown codes still say something true rather than nothing. */}
           {MESSAGES[code] ?? 'That link could not be used. Sign in to try again.'}
         </p>
-        <Link href="/sign-in" className="whitespace-nowrap underline">
+        <Link href="/sign-in" className="whitespace-nowrap text-accent">
           Sign in
         </Link>
         <button
           onClick={() => setDismissed(true)}
           aria-label="Dismiss"
-          className="text-ink-400 hover:text-ink-700"
+          className="icon-btn !h-8 !w-8"
         >
           ✕
         </button>

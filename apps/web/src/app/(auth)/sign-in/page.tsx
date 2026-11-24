@@ -1,130 +1,13 @@
-'use client';
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { SignInForm } from './sign-in-form';
 
-import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { signIn, sendVerificationEmail } from '@/lib/auth-client';
-import { SocialSignIn } from '@/components/social-sign-in';
-import { PasswordField } from '@/components/password-field';
+export const metadata: Metadata = { title: 'Sign in', robots: { index: false } };
 
 export default function SignInPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  // Set only for EMAIL_NOT_VERIFIED, so the offer to resend appears exactly
-  // when it is the thing standing in the way.
-  const [unverified, setUnverified] = useState(false);
-  const [resent, setResent] = useState(false);
-  // See the note in the mobile sign-in screen: an account made through Google
-  // or Apple has no password, so a password attempt on one fails exactly like
-  // a wrong password. The hint names that possibility without confirming the
-  // address exists or which method it uses.
-  const [maybeSocial, setMaybeSocial] = useState(false);
-
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setPending(true);
-    setError(null);
-    setUnverified(false);
-    setResent(false);
-    setMaybeSocial(false);
-    const res = await signIn.email({ email, password });
-    setPending(false);
-    if (res.error) {
-      const code = (res.error as { code?: string }).code;
-      const notVerified = code === 'EMAIL_NOT_VERIFIED';
-      setUnverified(notVerified);
-      setMaybeSocial(!notVerified);
-      setError(
-        notVerified
-          ? 'Confirm your email before signing in. Check your inbox for the link.'
-          : (res.error.message ?? 'Sign-in failed'),
-      );
-      return;
-    }
-    router.push('/');
-    router.refresh();
-  }
-
-  /** Without this, losing the confirmation email leaves the account unusable. */
-  async function resend() {
-    setPending(true);
-    await sendVerificationEmail({ email, callbackURL: '/' }).catch(() => {
-      /* Same generic outcome either way — never reveal whether the address exists. */
-    });
-    setPending(false);
-    setResent(true);
-  }
-
   return (
-    <div>
-      <h1 className="font-display text-3xl text-ink-900">Welcome back</h1>
-      <p className="mt-1 text-sm text-ink-500">
-        Sign in to RSVP, save events, and manage your church.
-      </p>
-      <form onSubmit={onSubmit} className="mt-8 space-y-4">
-        <label className="block">
-          <span className="text-sm font-medium text-ink-700">Email</span>
-          <input
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
-          />
-        </label>
-        <PasswordField
-          label="Password"
-          autoComplete="current-password"
-          required
-          minLength={12}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
-        )}
-        {maybeSocial && (
-          <p className="text-sm leading-relaxed text-ink-500">
-            If you created this account with one of the buttons below, sign in that way —
-            those accounts don&rsquo;t have a password.
-          </p>
-        )}
-        {unverified && !resent && (
-          <button
-            type="button"
-            onClick={() => void resend()}
-            disabled={pending}
-            className="text-sm font-medium text-brand-600 underline disabled:opacity-60"
-          >
-            Resend confirmation email
-          </button>
-        )}
-        {resent && (
-          <p className="text-sm text-ink-500">Confirmation email sent — check your inbox.</p>
-        )}
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full rounded-md bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-        >
-          {pending ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
-
-      <SocialSignIn />
-
-      <p className="mt-6 text-sm text-ink-500">
-        New to Ekklesia?{' '}
-        <Link href="/sign-up" className="font-medium text-brand-600 hover:underline">
-          Create an account
-        </Link>
-      </p>
-    </div>
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
   );
 }

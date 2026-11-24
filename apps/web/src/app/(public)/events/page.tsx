@@ -1,53 +1,113 @@
-import Link from 'next/link';
-import { api } from '@/lib/api';
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { nowRounded, searchEvents } from '@/lib/api';
+import { categoryOf, isCategory } from '@/lib/categories';
+import { EventCard, EventCardSkeleton } from '@/components/event-card';
+import { PageIntro } from '@/components/ui';
+import { DiscoverFilters, DiscoverEmpty, SearchBox } from './filters';
 
-interface EventListItem {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string | null;
-  startsAt: string;
-  coverImageUrl: string | null;
-  organization: { slug: string; name: string };
+export const metadata: Metadata = {
+  title: 'Discover events',
+  description: 'Events from churches, ministries and faith communities near you.',
+};
+
+type Params = { q?: string; category?: string; when?: string; price?: string; sort?: string };
+const DAY = 86_400_000;
+
+export default async function DiscoverPage({ searchParams }: { searchParams: Promise<Params> }) {
+  const sp = await searchParams;
+  return (
+    <div className="wrap pt-12">
+      <PageIntro
+        eyebrow="Discover"
+        title="What’s on"
+        intro="Events from churches, ministries and faith communities. Browse freely — you only sign in to RSVP."
+      />
+      <div className="grid items-start gap-12 md:grid-cols-[260px_minmax(0,1fr)]">
+        <Suspense fallback={null}>
+          <DiscoverFilters />
+        </Suspense>
+        <div className="flex min-w-0 flex-col gap-6">
+          <Suspense fallback={<div className="skeleton h-[52px] w-full !rounded-full" />}>
+            <SearchBox />
+          </Suspense>
+          {/* Keyed on the query so a filter change shows skeletons, not stale cards. */}
+          <Suspense key={JSON.stringify(sp)} fallback={<ResultsSkeleton />}>
+            <Results sp={sp} />
+          </Suspense>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export const revalidate = 60;
+async function Results({ sp }: { sp: Params }) {
+  const category = isCategory(sp.category) ? sp.category : undefined;
+  const now = Date.parse(nowRounded());
+  const when = sp.when;
+  const data = await searchEvents({
+    q: sp.q?.trim() || undefined,
+    category,
+    free: sp.price === 'free',
+    startsAfter: when === 'later' ? new Date(now + 30 * DAY).toISOString() : undefined,
+    startsBefore:
+      when === 'week'
+        ? new Date(now + 7 * DAY).toISOString()
+        : when === 'month'
+          ? new Date(now + 30 * DAY).toISOString()
+          : undefined,
+    limit: 50,
+  }).catch(() => null);
 
-export default async function EventsPage() {
-  const data = await api<{ items: EventListItem[] }>('/v1/events?limit=20').catch(() => ({
-    items: [],
-  }));
+  if (!data) {
+    return (
+      <>
+        <p aria-live="polite" className="text-[14px] text-faint">
+          Couldn’t load events
+        </p>
+        <DiscoverEmpty failed />
+      </>
+    );
+  }
+
+  let items = data.items;
+  // The API has no "paid only" or popularity sort, so those two happen here.
+  if (sp.price === 'paid') items = items.filter((e) => !e.isFree);
+  if (sp.sort === 'popular') items = [...items].sort((a, b) => b.attendeeCount - a.attendeeCount);
+
+  const n = items.length;
+  const summary =
+    `${n} ${n === 1 ? 'event' : 'events'}` +
+    (category ? ` in ${categoryOf(category).label}` : '') +
+    (sp.q ? ` matching “${sp.q}”` : '');
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <h1 className="font-display text-4xl text-ink-900">Upcoming events</h1>
-      {data.items.length === 0 ? (
-        <p className="mt-8 text-ink-500">
-          No events yet — once churches publish, they&apos;ll show up here.
-        </p>
+    <>
+      <p aria-live="polite" className="text-[14px] text-faint">
+        {summary}
+      </p>
+      {n === 0 ? (
+        <DiscoverEmpty />
       ) : (
-        <ul className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {data.items.map((e) => (
-            <li key={e.id} className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <Link href={`/${e.organization.slug}/${e.slug}` as never}>
-                <div className="aspect-[16/9] bg-ink-100">
-                  {e.coverImageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={e.coverImageUrl} alt="" className="h-full w-full object-cover" />
-                  )}
-                </div>
-                <div className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-brand-600">
-                    {new Date(e.startsAt).toLocaleDateString()}
-                  </p>
-                  <h2 className="mt-1 font-medium text-ink-900">{e.title}</h2>
-                  <p className="mt-1 text-sm text-ink-500">{e.organization.name}</p>
-                </div>
-              </Link>
-            </li>
+        <div className="cards">
+          {items.map((e) => (
+            <EventCard key={e.id} event={e} />
           ))}
-        </ul>
+        </div>
       )}
-    </main>
+    </>
+  );
+}
+
+function ResultsSkeleton() {
+  return (
+    <>
+      <div className="skeleton h-4 w-32" />
+      <div className="cards">
+        {Array.from({ length: 6 }, (_, i) => (
+          <EventCardSkeleton key={i} />
+        ))}
+      </div>
+    </>
   );
 }

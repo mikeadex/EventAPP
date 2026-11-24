@@ -1,25 +1,20 @@
-import Link from 'next/link';
+import { SiteHeader } from '@/components/site-header';
+import { SiteFooter } from '@/components/site-footer';
 
+/** Sign in, sign up and password reset: one glowing card under the header. */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
-      <aside className="hidden bg-brand-700 p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <Link href="/" className="font-display text-2xl">
-          Ekklesia
-        </Link>
-        <div>
-          <p className="font-display text-3xl leading-snug">
-            &ldquo;The marketplace built for faith communities — discover gatherings,
-            invite a friend, and welcome them home.&rdquo;
-          </p>
-          <p className="mt-6 text-sm text-brand-100">
-            For churches, ministries, and communities across the UK, EU, and US.
-          </p>
-        </div>
-      </aside>
-      <main className="flex items-center justify-center p-8">
-        <div className="w-full max-w-sm">{children}</div>
+    <div className="flex min-h-[100dvh] flex-col">
+      <SiteHeader />
+      <main id="main" className="relative flex-1 overflow-hidden px-5 pb-24 pt-16">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-[-120px] h-[760px] w-[760px] -translate-x-1/2 rounded-full blur-[30px]"
+          style={{ background: 'radial-gradient(circle, rgba(var(--accent-rgb), 0.14), transparent 65%)' }}
+        />
+        <div className="panel relative mx-auto max-w-[460px] !rounded-hero p-7 sm:p-9">{children}</div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

@@ -166,10 +166,10 @@ export function EventGalleryEditor({
   }
 
   return (
-    <section className="space-y-4">
+    <section className="flex flex-col gap-5">
       <div>
-        <h2 className="font-display text-xl text-ink-900">Photos and video</h2>
-        <p className="mt-1 text-sm text-ink-500">
+        <h2 className="text-[22px] text-strong">Photos and video</h2>
+        <p className="mt-1 text-[14px] text-body">
           Show people what your events are like. The cover is used on cards and in
           shared links — click any photo to make it the cover.
         </p>
@@ -180,7 +180,7 @@ export function EventGalleryEditor({
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy !== null}
-          className="rounded-md bg-ink-900 px-4 py-2 text-sm font-medium text-white hover:bg-ink-800 disabled:opacity-60"
+          className="btn btn-primary btn-sm"
         >
           Add photos
         </button>
@@ -206,30 +206,30 @@ export function EventGalleryEditor({
               }
             }}
             placeholder="Paste a YouTube or Vimeo link"
-            className="min-w-0 flex-1 rounded-md border border-ink-200 px-3 py-2 text-sm"
+            className="input min-w-0 flex-1 !py-2.5"
           />
           <button
             type="button"
             onClick={() => void addVideo()}
             disabled={!videoUrl.trim() || busy !== null}
-            className="rounded-md border border-ink-900 px-4 py-2 text-sm font-medium text-ink-900 disabled:opacity-40"
+            className="btn btn-outline btn-sm"
           >
             Add
           </button>
         </div>
       </div>
 
-      {busy && <p className="text-sm text-ink-500">{busy}</p>}
+      {busy && <p className="text-[14px] text-muted">{busy}</p>}
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="error-text">
           {error}
         </p>
       )}
 
       {items === null ? (
-        <p className="text-sm text-ink-400">Loading…</p>
+        <p className="text-[14px] text-faint">Loading…</p>
       ) : items.length === 0 ? (
-        <p className="rounded-md border border-dashed border-ink-200 p-6 text-center text-sm text-ink-500">
+        <p className="rounded-panel border border-dashed border-line-2 p-6 text-center text-[14px] text-muted">
           No photos yet. Add pictures from a previous event so people know what to expect.
         </p>
       ) : (
@@ -239,9 +239,9 @@ export function EventGalleryEditor({
             return (
               <li
                 key={m.id}
-                className="overflow-hidden rounded-md border border-ink-200 bg-white"
+                className="overflow-hidden rounded-2xl border border-line bg-raised"
               >
-                <div className="relative aspect-[4/3] bg-ink-100">
+                <div className="relative aspect-[4/3] bg-surface-2">
                   {/* Plain <img>: these are arbitrary storage URLs, and routing
                       them through next/image would need every bucket host in
                       the config. */}
@@ -252,17 +252,17 @@ export function EventGalleryEditor({
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-ink-400">
+                    <div className="flex h-full items-center justify-center text-[12px] text-faint">
                       Video
                     </div>
                   )}
                   {m.kind === 'VIDEO' && (
-                    <span className="absolute bottom-1 right-1 rounded bg-ink-900/75 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    <span className="tag-solid absolute bottom-1.5 right-1.5">
                       Video
                     </span>
                   )}
                   {isCover && (
-                    <span className="absolute left-1 top-1 rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-ink-900">
+                    <span className="tag-solid absolute left-1.5 top-1.5">
                       Cover
                     </span>
                   )}
@@ -275,7 +275,7 @@ export function EventGalleryEditor({
                       onClick={() => void move(i, -1)}
                       disabled={i === 0}
                       aria-label="Move earlier"
-                      className="rounded px-1.5 py-0.5 text-ink-600 hover:bg-ink-100 disabled:opacity-30"
+                      className="rounded-full px-2 py-1 text-ink-2 hover:bg-softer hover:text-accent disabled:opacity-30"
                     >
                       ←
                     </button>
@@ -284,7 +284,7 @@ export function EventGalleryEditor({
                       onClick={() => void move(i, 1)}
                       disabled={i === items.length - 1}
                       aria-label="Move later"
-                      className="rounded px-1.5 py-0.5 text-ink-600 hover:bg-ink-100 disabled:opacity-30"
+                      className="rounded-full px-2 py-1 text-ink-2 hover:bg-softer hover:text-accent disabled:opacity-30"
                     >
                       →
                     </button>
@@ -295,7 +295,7 @@ export function EventGalleryEditor({
                       <button
                         type="button"
                         onClick={() => void makeCover(m.id)}
-                        className="rounded px-1.5 py-0.5 text-xs text-ink-600 hover:bg-ink-100"
+                        className="rounded-full px-2 py-1 text-[12px] text-ink-2 hover:bg-softer hover:text-accent"
                       >
                         Cover
                       </button>
@@ -304,7 +304,7 @@ export function EventGalleryEditor({
                       type="button"
                       onClick={() => void remove(m.id)}
                       aria-label="Remove"
-                      className="rounded px-1.5 py-0.5 text-xs text-danger hover:bg-ink-100"
+                      className="rounded-full px-2 py-1 text-[12px] text-accent hover:bg-softer"
                     >
                       Remove
                     </button>

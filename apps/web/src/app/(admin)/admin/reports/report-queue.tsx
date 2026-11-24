@@ -60,12 +60,12 @@ function hoursSince(iso: string) {
 /** How close this report is to the 24-hour commitment in the Terms. */
 function ageLabel(iso: string) {
   const h = hoursSince(iso);
-  if (h < 1) return { text: 'just now', tone: 'text-ink-500' };
-  if (h < 24) return { text: `${Math.floor(h)}h ago`, tone: 'text-ink-500' };
+  if (h < 1) return { text: 'just now', tone: 'text-muted' };
+  if (h < 24) return { text: `${Math.floor(h)}h ago`, tone: 'text-muted' };
   const d = Math.floor(h / 24);
   return {
     text: d === 1 ? 'over 24h ago' : `${d} days ago`,
-    tone: 'font-medium text-danger',
+    tone: 'text-accent',
   };
 }
 
@@ -122,17 +122,17 @@ export function ReportQueue() {
   // Only a permission failure is a dead end. A network blip must not strand a
   // moderator on a screen with no way back — the queue is on a 24-hour clock.
   if (denied) {
-    return <p className="mt-8 rounded-md bg-ink-50 p-4 text-sm text-ink-700">{error}</p>;
+    return <p className="panel mt-8 p-4 text-[14px] text-body">{error}</p>;
   }
 
   return (
     <div className="mt-8">
       {error ? (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md bg-ink-50 p-4 text-sm text-ink-700">
+        <div className="panel mb-6 flex flex-wrap items-center gap-3 p-4 text-[14px] text-body">
           <span>{error}</span>
           <button
             onClick={() => void load()}
-            className="rounded-full border border-ink-300 px-3 py-1 text-xs"
+            className="btn btn-outline btn-sm"
           >
             Try again
           </button>
@@ -143,11 +143,9 @@ export function ReportQueue() {
           <button
             key={t.key}
             onClick={() => setStatus(t.key)}
-            className={`rounded-full border px-4 py-1.5 text-sm ${
-              status === t.key
-                ? 'border-ink-900 bg-ink-900 text-ink-0'
-                : 'border-ink-200 text-ink-700 hover:border-ink-400'
-            }`}
+            type="button"
+            aria-pressed={status === t.key}
+            className="chip"
           >
             {t.label}
             {counts && t.key !== 'ALL' ? (
@@ -158,31 +156,31 @@ export function ReportQueue() {
       </div>
 
       {reports === null ? (
-        <p className="mt-8 text-sm text-ink-500">Loading…</p>
+        <p className="mt-8 text-[14px] text-muted">Loading…</p>
       ) : reports.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-500">Nothing here.</p>
+        <p className="mt-8 text-[14px] text-muted">Nothing here.</p>
       ) : (
         <ul className="mt-6 space-y-4">
           {reports.map((r) => {
             const age = ageLabel(r.createdAt);
             const open = r.status === 'OPEN' || r.status === 'REVIEWING';
             return (
-              <li key={r.id} className="rounded-lg border border-ink-200 p-5">
+              <li key={r.id} className="card p-5">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="font-medium text-ink-900">
+                  <span className="text-strong">
                     {REASON_LABELS[r.reason] ?? r.reason}
                   </span>
                   {URGENT.has(r.reason) && open ? (
-                    <span className="rounded-full bg-danger px-2 py-0.5 text-xs text-ink-0">
+                    <span className="tag">
                       Priority
                     </span>
                   ) : null}
                   <span className={`text-xs ${age.tone}`}>{age.text}</span>
-                  <span className="text-xs text-ink-400">· {r.status.toLowerCase()}</span>
+                  <span className="text-[12px] text-faint">· {r.status.toLowerCase()}</span>
                 </div>
 
-                <p className="mt-3 text-sm text-ink-700">
-                  <span className="text-ink-500">Target: </span>
+                <p className="mt-3 text-[14px] text-body">
+                  <span className="text-muted">Target: </span>
                   {r.target.kind === 'event' && r.target.slug ? (
                     <a
                       href={`/events/${r.target.slug}`}
@@ -195,24 +193,24 @@ export function ReportQueue() {
                   ) : (
                     r.target.label
                   )}
-                  <span className="text-ink-400">
+                  <span className="text-faint">
                     {' '}
                     ({r.target.kind}
                     {r.target.status ? `, ${r.target.status.toLowerCase()}` : ''})
                   </span>
                 </p>
-                <p className="mt-1 text-sm text-ink-500">Reported by {r.reporter}</p>
+                <p className="mt-1 text-[14px] text-muted">Reported by {r.reporter}</p>
                 {r.details ? (
-                  <p className="mt-3 whitespace-pre-wrap rounded-md bg-ink-50 p-3 text-sm text-ink-700">
+                  <p className="mt-3 whitespace-pre-wrap rounded-2xl bg-softer p-3 text-[14px] text-body">
                     {r.details}
                   </p>
                 ) : null}
 
                 {r.actions.length > 0 ? (
-                  <ul className="mt-3 space-y-1 text-xs text-ink-500">
+                  <ul className="mt-3 space-y-1 text-[12px] text-muted">
                     {r.actions.map((a) => (
                       <li key={a.id}>
-                        <span className="font-medium text-ink-700">{a.action}</span> by {a.actor}
+                        <span className="text-body">{a.action}</span> by {a.actor}
                         {a.note ? ` — ${a.note}` : ''}
                       </li>
                     ))}
@@ -220,8 +218,8 @@ export function ReportQueue() {
                 ) : null}
 
                 {open ? (
-                  <div className="mt-4 border-t border-ink-100 pt-4">
-                    <label className="block text-xs text-ink-500" htmlFor={`note-${r.id}`}>
+                  <div className="mt-4 border-t border-line pt-4">
+                    <label className="block text-[12px] text-muted" htmlFor={`note-${r.id}`}>
                       Note (kept on the record, and what an appeal is answered from)
                     </label>
                     <textarea
@@ -229,7 +227,7 @@ export function ReportQueue() {
                       value={notes[r.id] ?? ''}
                       onChange={(e) => setNotes((n) => ({ ...n, [r.id]: e.target.value }))}
                       rows={2}
-                      className="mt-1 w-full rounded-md border border-ink-200 p-2 text-sm"
+                      className="input mt-1 !py-2.5 text-[14px]"
                       placeholder="What you found, and why you decided this."
                     />
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -237,7 +235,7 @@ export function ReportQueue() {
                         <button
                           disabled={busy === r.id}
                           onClick={() => void act(r.id, 'review')}
-                          className="rounded-full border border-ink-300 px-4 py-1.5 text-sm disabled:opacity-50"
+                          className="btn btn-outline btn-sm"
                         >
                           Start review
                         </button>
@@ -251,7 +249,7 @@ export function ReportQueue() {
                               note: notes[r.id],
                             })
                           }
-                          className="rounded-full bg-danger px-4 py-1.5 text-sm text-ink-0 disabled:opacity-50"
+                          className="btn btn-primary btn-sm"
                         >
                           Unpublish event
                         </button>
@@ -261,7 +259,7 @@ export function ReportQueue() {
                         onClick={() =>
                           void act(r.id, 'resolve', { action: 'warn', note: notes[r.id] })
                         }
-                        className="rounded-full border border-ink-300 px-4 py-1.5 text-sm disabled:opacity-50"
+                        className="btn btn-outline btn-sm"
                       >
                         Record warning
                       </button>
@@ -270,7 +268,7 @@ export function ReportQueue() {
                         onClick={() =>
                           void act(r.id, 'resolve', { action: 'dismiss', note: notes[r.id] })
                         }
-                        className="rounded-full border border-ink-300 px-4 py-1.5 text-sm disabled:opacity-50"
+                        className="btn btn-outline btn-sm"
                       >
                         Dismiss
                       </button>

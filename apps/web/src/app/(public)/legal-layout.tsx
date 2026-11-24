@@ -15,18 +15,22 @@ export function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="font-display text-4xl text-ink-900">{title}</h1>
-      <p className="mt-3 text-sm text-ink-500">Last updated {updated}</p>
-      <div className="mt-10 space-y-8 text-ink-700 leading-relaxed">{children}</div>
-    </main>
+    <div className="wrap max-w-[824px] pt-16">
+      <span className="eyebrow text-accent">Legal</span>
+      <h1 className="h1 mt-3">{title}</h1>
+      <p className="mt-3 text-[14px] text-faint">Last updated {updated}</p>
+      <div className="rule-x my-10" />
+      <div className="space-y-8 text-[16px] leading-[1.75] text-body [&_a]:text-accent [&_strong]:text-ink">
+        {children}
+      </div>
+    </div>
   );
 }
 
 export function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="font-display text-xl text-ink-900">{heading}</h2>
+      <h2 className="text-[22px] text-strong">{heading}</h2>
       {children}
     </section>
   );
@@ -52,9 +56,9 @@ export function LegalTable({
     <table className="w-full border-collapse text-sm">
       {/* Hidden while stacked: each cell carries its own label there. */}
       <thead className="hidden sm:table-header-group">
-        <tr className="border-b border-ink-200 text-left">
+        <tr className="border-b border-line-2 text-left">
           {columns.map((c) => (
-            <th key={c} className="py-2 pr-4 font-medium text-ink-900 last:pr-0">
+            <th key={c} className="py-2 pr-4 text-strong last:pr-0">
               {c}
             </th>
           ))}
@@ -64,11 +68,11 @@ export function LegalTable({
         {rows.map((row, i) => (
           <tr
             key={i}
-            className="block border-b border-ink-100 py-3 sm:table-row sm:py-0 sm:align-top"
+            className="block border-b border-line py-3 sm:table-row sm:py-0 sm:align-top"
           >
             {row.map((cell, j) => (
               <td key={j} className="block py-1 sm:table-cell sm:py-3 sm:pr-4 sm:last:pr-0">
-                <span className="mb-0.5 block text-xs font-medium text-ink-500 sm:hidden">
+                <span className="mb-0.5 block text-[12px] text-muted sm:hidden">
                   {columns[j]}
                 </span>
                 {cell}

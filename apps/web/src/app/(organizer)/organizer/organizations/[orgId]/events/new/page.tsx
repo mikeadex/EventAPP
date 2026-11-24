@@ -1,267 +1,189 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import type { Route } from 'next';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useState, type FormEvent } from 'react';
+import { Segmented } from '@/components/controls';
+import {
+  BasicsFields,
+  CapacityField,
+  EventPreview,
+  WhenWhereFields,
+  draftTimes,
+  draftToPayload,
+  emptyDraft,
+  validateDraft,
+  type EventDraft,
+} from '@/components/host/event-form';
+import { StepHeader } from '@/components/host/steps';
+import { Icon } from '@/components/icons';
+import { Row } from '@/components/ui';
 import { apiClient, ApiError } from '@/lib/api-client';
-import { ImageUpload } from '@/components/image-upload';
-import { LocationModePicker, type LocationMode } from '@/components/location-mode-picker';
+import { categoryOf } from '@/lib/categories';
+import { fmtDateLong, fmtTime } from '@/lib/format';
+import { useMe } from '@/lib/use-api';
 
-const CATEGORIES = [
-  'service', 'worship', 'prayer', 'youth', 'kids', 'small_group',
-  'conference', 'outreach', 'social', 'fundraiser', 'class', 'other',
-] as const;
+const STEPS = ['The basics', 'When and where', 'Places and publishing'];
 
-interface CreateResponse {
-  id: string;
-  slug: string;
-}
+/** Which fields each step owns, so errors send people back to the right one. */
+const STEP_FIELDS: (keyof EventDraft)[][] = [
+  ['title', 'category', 'summary', 'description', 'coverImageUrl'],
+  ['date', 'start', 'end', 'onlineUrl', 'venueName', 'city'],
+  ['capacity'],
+];
 
 export default function NewEventPage() {
   const router = useRouter();
   const { orgId } = useParams<{ orgId: string }>();
+  const me = useMe();
+  const host = me.data?.memberships.find((m) => m.organizationId === orgId)?.name ?? 'Your organisation';
 
-  const [title, setTitle] = useState('');
-  const [summary, setSummary] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('service');
-  const [startsAt, setStartsAt] = useState('');
-  const [endsAt, setEndsAt] = useState('');
-  const [locationMode, setLocationMode] = useState<LocationMode>('in_person');
-  const [onlineUrl, setOnlineUrl] = useState('');
-  const [venueName, setVenueName] = useState('');
-  const [addressLine1, setAddressLine1] = useState('');
-  const [city, setCity] = useState('');
-  const [postalCode, setPostalCode] = useState('');
-  const [country, setCountry] = useState('GB');
-  const [capacity, setCapacity] = useState<string>('');
-  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
-
+  const [step, setStep] = useState(0);
+  const [d, setD] = useState<EventDraft>(() => emptyDraft());
+  const [visibility, setVisibility] = useState<'public' | 'unlisted'>('public');
+  const [showErrors, setShowErrors] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<'draft' | 'publish' | null>(null);
 
-  async function submit(publish: boolean) {
-    setPending(true);
+  const set = <K extends keyof EventDraft>(k: K, v: EventDraft[K]) => setD((p) => ({ ...p, [k]: v }));
+  const errors = validateDraft(d);
+  const stepErrors = (i: number) => STEP_FIELDS[i]!.filter((f) => errors[f]);
+  const visibleErrors = showErrors ? errors : {};
+
+  function next(e: FormEvent) {
+    e.preventDefault();
+    if (stepErrors(step).length) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function save(publish: boolean) {
+    const firstBad = STEP_FIELDS.findIndex((_, i) => stepErrors(i).length > 0);
+    if (firstBad !== -1) {
+      setShowErrors(true);
+      setStep(firstBad);
+      return;
+    }
+    setPending(publish ? 'publish' : 'draft');
     setError(null);
     try {
-      const created = await apiClient<CreateResponse>(
-        `/v1/organizations/${orgId}/events`,
-        {
-          method: 'POST',
-          body: {
-            title,
-            summary: summary || undefined,
-            description: description || undefined,
-            category,
-            startsAt: new Date(startsAt).toISOString(),
-            endsAt: new Date(endsAt).toISOString(),
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            isOnline: locationMode !== 'in_person',
-            onlineUrl: locationMode === 'in_person' ? undefined : onlineUrl,
-            capacity: capacity ? Number(capacity) : undefined,
-            coverImageUrl: coverImageUrl ?? undefined,
-            venue: locationMode === 'online'
-              ? undefined
-              : {
-                  name: venueName,
-                  addressLine1,
-                  city,
-                  postalCode,
-                  country,
-                },
-          },
-        },
-      );
+      // No ticket types: the API takes free RSVPs against a default place
+      // type it creates on the first booking.
+      const created = await apiClient<{ id: string }>(`/v1/organizations/${orgId}/events`, {
+        method: 'POST',
+        body: { ...draftToPayload(d, false), visibility },
+      });
       if (publish) {
-        await apiClient(`/v1/events/${created.id}/publish`, { method: 'POST' });
+        try {
+          await apiClient(`/v1/events/${created.id}/publish`, { method: 'POST' });
+        } catch (err) {
+          // Saved but not live: take them to the editor to sort it out.
+          router.replace(`/organizer/organizations/${orgId}/events/${created.id}/edit?publishError=1` as never);
+          throw err;
+        }
       }
-      router.push(`/organizer/organizations/${orgId}` as Route);
-      router.refresh();
+      router.replace(`/organizer/organizations/${orgId}` as never);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong');
-    } finally {
-      setPending(false);
+      setPending(null);
+      setError(err instanceof ApiError ? err.message : 'We couldn’t save your event. Try again.');
     }
   }
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    void submit(false);
-  }
+  const t = draftTimes(d);
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="font-display text-3xl text-ink-900">Create event</h1>
-      <p className="mt-1 text-ink-500">
-        Draft now, publish whenever you&apos;re ready.
-      </p>
+    <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0">
+        <StepHeader eyebrow="New event" steps={STEPS} current={step} />
+        <form onSubmit={next} className="card flex flex-col gap-6 p-6 sm:p-8" noValidate>
+          {step === 0 && <BasicsFields d={d} set={set} errors={visibleErrors} />}
+          {step === 1 && <WhenWhereFields d={d} set={set} errors={visibleErrors} />}
+          {step === 2 && (
+            <>
+              <div className="flex flex-col gap-3">
+                <Segmented
+                  label="Tickets"
+                  value="free"
+                  onChange={() => {}}
+                  options={[{ value: 'free', label: 'Free — people reserve a place' }]}
+                />
+                {/* TODO(confirm): paid tickets. The API only books free places
+                    today (RSVP refuses any event with a priced ticket type), so
+                    offering "Paid" here would publish an event nobody can book. */}
+                <p className="flex items-start gap-2 text-[13px] leading-relaxed text-muted">
+                  <Icon name="coins" size={15} className="mt-0.5 flex-none" />
+                  Paid tickets aren&rsquo;t available yet. Every place is free to reserve and gets its own QR ticket.
+                </p>
+              </div>
+              <CapacityField d={d} set={set} errors={visibleErrors} />
+              <Segmented
+                label="Who can find it?"
+                value={visibility}
+                onChange={setVisibility}
+                options={[
+                  { value: 'public', label: 'Public — listed on Discover' },
+                  { value: 'unlisted', label: 'Unlisted — only people with the link' },
+                ]}
+              />
+              <div className="panel flex flex-col gap-3 p-5">
+                <span className="eyebrow text-[10px] text-faint">Review</span>
+                <Row k="Title" v={d.title || '—'} />
+                <Row k="Category" v={categoryOf(d.category).label} />
+                <Row k="When" v={t ? `${fmtDateLong(t.startsAt.toISOString())}, ${fmtTime(t.startsAt.toISOString())}–${fmtTime(t.endsAt.toISOString())}` : '—'} />
+                <Row
+                  k="Where"
+                  v={
+                    d.mode === 'online'
+                      ? 'Online'
+                      : `${d.venueName || '—'}${d.city ? `, ${d.city}` : ''}${d.mode === 'hybrid' ? ' + online' : ''}`
+                  }
+                />
+                <Row k="Places" v={d.capacity ? `${d.capacity}, free` : 'Unlimited, free'} />
+              </div>
+            </>
+          )}
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-5">
-        <ImageUpload
-          purpose="event_cover"
-          value={coverImageUrl}
-          onChange={setCoverImageUrl}
-          label="Cover image"
-          hint="Recommended 1600×700. Shown on event cards and detail page."
-        />
+          {error && (
+            <p role="alert" className="error-text">
+              {error}
+            </p>
+          )}
 
-        <Field label="Title">
-          <input
-            required
-            minLength={3}
-            maxLength={140}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={fieldStyle}
-          />
-        </Field>
-
-        <Field label="Short summary" hint="One line. Shown on event cards.">
-          <input maxLength={280} value={summary} onChange={(e) => setSummary(e.target.value)} className={fieldStyle} />
-        </Field>
-
-        <Field label="Description">
-          <textarea
-            rows={5}
-            maxLength={10000}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className={fieldStyle}
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Category">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as typeof category)}
-              className={fieldStyle}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c.replace('_', ' ')}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Capacity" hint="Leave blank for no limit.">
-            <input
-              type="number"
-              min={1}
-              value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
-              className={fieldStyle}
-            />
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Starts at">
-            <input
-              type="datetime-local"
-              required
-              value={startsAt}
-              onChange={(e) => setStartsAt(e.target.value)}
-              className={fieldStyle}
-            />
-          </Field>
-          <Field label="Ends at">
-            <input
-              type="datetime-local"
-              required
-              value={endsAt}
-              onChange={(e) => setEndsAt(e.target.value)}
-              className={fieldStyle}
-            />
-          </Field>
-        </div>
-
-        <LocationModePicker value={locationMode} onChange={setLocationMode} />
-
-        {locationMode !== 'in_person' && (
-          <Field label="Stream URL" hint="Where people watch — YouTube, Zoom, whatever you use.">
-            <input
-              type="url"
-              required
-              value={onlineUrl}
-              onChange={(e) => setOnlineUrl(e.target.value)}
-              className={fieldStyle}
-            />
-          </Field>
-        )}
-
-        {locationMode !== 'online' && (
-          <div className="rounded-md border border-ink-100 bg-ink-50 p-4 space-y-3">
-            <p className="text-xs uppercase tracking-wider text-ink-400">Venue</p>
-            <Field label="Venue name">
-              <input required value={venueName} onChange={(e) => setVenueName(e.target.value)} className={fieldStyle} />
-            </Field>
-            <Field label="Address line 1">
-              <input required value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} className={fieldStyle} />
-            </Field>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="City">
-                <input required value={city} onChange={(e) => setCity(e.target.value)} className={fieldStyle} />
-              </Field>
-              <Field label="Postal code">
-                <input required value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className={fieldStyle} />
-              </Field>
-              <Field label="Country">
-                <select value={country} onChange={(e) => setCountry(e.target.value)} className={fieldStyle}>
-                  <option value="GB">GB</option>
-                  <option value="IE">IE</option>
-                  <option value="US">US</option>
-                </select>
-              </Field>
-            </div>
+          <div className="rule-x" />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {step > 0 ? (
+              <button type="button" className="btn btn-ghost" onClick={() => setStep(step - 1)}>
+                <Icon name="arrowLeft" size={16} /> Back
+              </button>
+            ) : (
+              <Link href={`/organizer/organizations/${orgId}` as never} className="btn btn-ghost">
+                Cancel
+              </Link>
+            )}
+            {step < STEPS.length - 1 ? (
+              <button type="submit" className="btn btn-primary btn-lg">
+                Continue
+              </button>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                <button type="button" className="btn btn-outline btn-lg" disabled={pending !== null} onClick={() => void save(false)}>
+                  {pending === 'draft' ? 'Saving…' : 'Save as draft'}
+                </button>
+                <button type="button" className="btn btn-primary btn-lg" disabled={pending !== null} onClick={() => void save(true)}>
+                  {pending === 'publish' ? 'Publishing…' : 'Publish event'}
+                </button>
+              </div>
+            )}
           </div>
-        )}
-
-        {error && (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
-        )}
-
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={pending}
-            className="rounded-md border border-ink-200 px-5 py-2.5 font-medium text-ink-800 hover:bg-ink-100 disabled:opacity-60"
-          >
-            {pending ? 'Saving…' : 'Save draft'}
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => void submit(true)}
-            className="rounded-md bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-          >
-            {pending ? 'Publishing…' : 'Save & publish'}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
+      <aside className="hidden xl:sticky xl:top-24 xl:block">
+        <EventPreview d={d} host={host} />
+      </aside>
     </div>
   );
 }
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="text-sm font-medium text-ink-700">{label}</span>
-      {children}
-      {hint && <span className="mt-1 block text-xs text-ink-400">{hint}</span>}
-    </label>
-  );
-}
-
-const fieldStyle =
-  'mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200';

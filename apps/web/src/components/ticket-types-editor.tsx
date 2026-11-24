@@ -1,7 +1,10 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { money } from '@/lib/format';
+import { Field } from './controls';
+import { Icon } from './icons';
 
 interface TicketType {
   id: string;
@@ -14,35 +17,30 @@ interface TicketType {
   perOrderMax: number;
 }
 
-/** Money is stored in minor units; organisers think in pounds. */
-function formatPrice(minor: number, currency: string): string {
-  if (minor === 0) return 'Free';
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(minor / 100);
-}
-
-export function TicketTypesEditor({
-  eventId,
-  disabled = false,
-}: {
-  eventId: string;
-  disabled?: boolean;
-}) {
+/**
+ * The places an event offers.
+ *
+ * Free only. RSVP refuses any event that has a priced ticket type, and there
+ * is no checkout yet, so a priced type used to turn a live event into one
+ * nobody could book. TODO(confirm): restore priced types when payments launch.
+ *
+ * Bookings are taken against the first type, so naming it ("Adults", "Seat")
+ * changes what attendees see; adding more doesn't split the capacity.
+ */
+export function TicketTypesEditor({ eventId, disabled = false }: { eventId: string; disabled?: boolean }) {
   const [items, setItems] = useState<TicketType[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-
   const [name, setName] = useState('');
-  const [price, setPrice] = useState('0');
-  const [currency, setCurrency] = useState('GBP');
-  const [quantity, setQuantity] = useState('100');
+  const [quantity, setQuantity] = useState('');
 
   const load = useCallback(async () => {
     try {
       const res = await apiClient<{ items: TicketType[] }>(`/v1/events/${eventId}/ticket-types`);
       setItems(res.items);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load ticket types');
+      setError(err instanceof ApiError ? err.message : 'We couldn’t load the places for this event.');
     } finally {
       setLoaded(true);
     }
@@ -60,20 +58,17 @@ export function TicketTypesEditor({
       await apiClient(`/v1/events/${eventId}/ticket-types`, {
         method: 'POST',
         body: {
-          name,
-          // Pounds in the field, pence over the wire. Rounded because 19.99
-          // times 100 is not exactly 1999 in binary floating point.
-          priceMinor: Math.round(Number(price) * 100),
-          currency,
-          quantity: Number(quantity),
+          name: name.trim(),
+          priceMinor: 0,
+          currency: items[0]?.currency ?? 'GBP',
+          quantity: quantity ? Number(quantity) : 1_000_000,
         },
       });
       setName('');
-      setPrice('0');
-      setQuantity('100');
+      setQuantity('');
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add ticket type');
+      setError(err instanceof ApiError ? err.message : 'We couldn’t add that.');
     } finally {
       setPending(false);
     }
@@ -86,122 +81,103 @@ export function TicketTypesEditor({
       await apiClient(`/v1/events/${eventId}/ticket-types/${id}`, { method: 'DELETE' });
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not delete ticket type');
+      setError(err instanceof ApiError ? err.message : 'We couldn’t remove that.');
     } finally {
       setPending(false);
     }
   }
 
-  const hasPaid = items.some((t) => t.priceMinor > 0);
+  const paid = items.filter((t) => t.priceMinor > 0);
 
   return (
-    <section>
-      <h2 className="font-display text-xl text-ink-900">Tickets</h2>
-      <p className="mt-1 text-sm text-ink-500">
-        With no ticket types, the event takes free RSVPs. Add a priced type to sell tickets.
-      </p>
+    <section className="flex flex-col gap-5">
+      <div>
+        <h2 className="text-[22px] text-strong">Ticket types</h2>
+        <p className="mt-1 text-[14px] text-body">
+          Optional. Without any, people simply reserve a free place. Paid tickets aren&rsquo;t available yet.
+        </p>
+      </div>
+
+      {paid.length > 0 && (
+        <p role="alert" className="flex items-start gap-3 rounded-2xl border border-line-3 bg-soft p-4 text-[14px] leading-relaxed">
+          <Icon name="alert" className="mt-0.5 flex-none text-accent" />
+          <span>
+            This event has a priced ticket type, so nobody can book it — online payment isn&rsquo;t live. Remove{' '}
+            {paid.map((t) => `“${t.name}”`).join(', ')} to open free bookings.
+          </span>
+        </p>
+      )}
 
       {!loaded ? (
-        <p className="mt-4 text-sm text-ink-400">Loading…</p>
-      ) : items.length === 0 ? (
-        <p className="mt-4 rounded-md border border-dashed border-ink-200 p-4 text-sm text-ink-500">
-          No ticket types yet — this event accepts free RSVPs.
-        </p>
-      ) : (
-        <ul className="mt-4 divide-y divide-ink-100 rounded-md border border-ink-100">
+        <p className="text-[14px] text-faint">Loading…</p>
+      ) : items.length > 0 ? (
+        <ul className="divide-y divide-line rounded-panel border border-line">
           {items.map((t) => (
             <li key={t.id} className="flex items-center justify-between gap-4 p-4">
               <div className="min-w-0">
-                <p className="font-medium text-ink-900">{t.name}</p>
-                <p className="text-sm text-ink-500">
-                  {formatPrice(t.priceMinor, t.currency)} · {t.sold}/{t.quantity} issued
+                <p className="truncate text-[16px] text-strong">{t.name}</p>
+                <p className="text-[13px] text-muted">
+                  {t.priceMinor === 0 ? 'Free' : money(t.priceMinor, t.currency)} · {t.sold} booked
+                  {t.quantity < 1_000_000 ? ` of ${t.quantity}` : ''}
                 </p>
               </div>
               <button
                 type="button"
                 disabled={disabled || pending || t.sold > 0}
                 onClick={() => void remove(t.id)}
-                title={t.sold > 0 ? 'Tickets have been issued for this type' : undefined}
-                className="shrink-0 rounded-md border border-ink-200 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-40"
+                title={t.sold > 0 ? 'People have booked this — it can’t be removed' : undefined}
+                className="btn btn-ghost btn-sm"
+                aria-label={`Remove ${t.name}`}
               >
-                Delete
+                <Icon name="trash" size={16} />
               </button>
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
 
-      {hasPaid && (
-        <p className="mt-3 rounded-md border border-ink-200 bg-ink-50 p-3 text-xs text-ink-600">
-          Paid tickets need Stripe keys configured in production before checkout will work.
-          Free RSVP is disabled while a priced type exists.
-        </p>
-      )}
-
-      <form onSubmit={add} className="mt-6 flex flex-wrap items-end gap-3">
-        <label className="block">
-          <span className="text-sm font-medium text-ink-700">Name</span>
-          <input
-            required
-            maxLength={80}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Standard"
-            className={`${fieldStyle} w-44`}
-          />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-ink-700">Price</span>
-          <input
-            required
-            type="number"
-            min={0}
-            step="0.01"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className={`${fieldStyle} w-28`}
-          />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-ink-700">Currency</span>
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className={`${fieldStyle} w-24`}
-          >
-            <option value="GBP">GBP</option>
-            <option value="EUR">EUR</option>
-            <option value="USD">USD</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-ink-700">Quantity</span>
-          <input
-            required
-            type="number"
-            min={1}
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            className={`${fieldStyle} w-28`}
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={disabled || pending}
-          className="rounded-md border border-ink-200 px-4 py-2 font-medium text-ink-800 hover:bg-ink-100 disabled:opacity-60"
-        >
-          Add ticket type
+      <form onSubmit={add} className="flex flex-col gap-4 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <Field label="Name">
+            {(p) => (
+              <input
+                {...p}
+                required
+                maxLength={80}
+                className="input"
+                placeholder="Free place"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            )}
+          </Field>
+        </div>
+        <div className="sm:w-[160px]">
+          <Field label="How many">
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                min={1}
+                inputMode="numeric"
+                className="input"
+                placeholder="No limit"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+            )}
+          </Field>
+        </div>
+        <button type="submit" disabled={disabled || pending || !name.trim()} className="btn btn-outline">
+          <Icon name="plus" size={16} /> Add
         </button>
       </form>
 
       {error && (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="error-text">
           {error}
         </p>
       )}
     </section>
   );
 }
-
-const fieldStyle =
-  'mt-1 rounded-md border border-ink-200 bg-white px-3 py-2 text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200';

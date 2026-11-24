@@ -13,4 +13,19 @@ export const authClient = createAuthClient({
   fetchOptions: { credentials: 'include' },
 });
 
-export const { useSession, signIn, signUp, signOut, sendVerificationEmail } = authClient;
+export const {
+  useSession,
+  signIn,
+  signUp,
+  signOut,
+  sendVerificationEmail,
+  requestPasswordReset,
+  resetPassword,
+  changePassword,
+  updateUser,
+} = authClient;
+
+/** Absolute URL on this site — Better Auth resolves relative ones against the API. */
+export function webUrl(path: string) {
+  return new URL(path, window.location.origin).toString();
+}
