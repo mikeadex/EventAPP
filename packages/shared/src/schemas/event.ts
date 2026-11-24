@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SUPPORTED_CURRENCIES } from '../types.js';
+import { httpUrl } from './url.js';
 
 export const EventStatus = z.enum([
   'draft',
@@ -63,7 +64,7 @@ export const CreateEventSchema = z
     endsAt: z.string().datetime(),
     timezone: z.string().min(1).max(64), // IANA TZ
     isOnline: z.boolean().default(false),
-    onlineUrl: z.string().url().optional(),
+    onlineUrl: httpUrl().optional(),
     venue: VenueInput.optional(),
     capacity: z.number().int().min(1).max(1_000_000).optional(),
     coverImageUrl: z.string().url().optional(),
@@ -90,7 +91,7 @@ export const UpdateEventSchema = z.object({
   endsAt: z.string().datetime().optional(),
   timezone: z.string().min(1).max(64).optional(),
   isOnline: z.boolean().optional(),
-  onlineUrl: z.string().url().nullable().optional(),
+  onlineUrl: httpUrl().nullable().optional(),
   venue: VenueInput.nullable().optional(),
   capacity: z.number().int().min(1).max(1_000_000).nullable().optional(),
   coverImageUrl: z.string().url().nullable().optional(),
