@@ -310,6 +310,60 @@ export class ClaimsService {
     return { cancelledEvents };
   }
 
+  // ─── Renew ───────────────────────────────────────────────────────────────
+
+  /**
+   * "Email me a new link" from an expired claim page. Sends a fresh invite to
+   * the address the church already has on file — never to one supplied by the
+   * caller — so holding an old link only ever lets someone nudge the real
+   * contact. The expired link is spent first, with a conditional update, so
+   * each one renews at most once however often it is replayed.
+   *
+   * Answers only `{ sent }`: the expired page never showed the address and
+   * this must not either.
+   */
+  async renewClaim(raw: string, req: Request | undefined) {
+    const res = await this.tokens.peek(raw, 'CLAIM');
+    if (!('error' in res)) throw new ConflictException({ code: 'NOT_EXPIRED' });
+    if (res.error !== 'EXPIRED') throw await this.refusal(raw, res.error);
+
+    // peek reports EXPIRED only for an unspent, unrevoked link of an
+    // UNCLAIMED church; read both again to check the address still matches.
+    const row = await this.prisma.organizationClaimToken.findUnique({
+      where: { tokenHash: hashToken(raw) },
+      include: { organization: true },
+    });
+    const organization = row?.organization;
+    const current = organization?.contactEmail?.trim().toLowerCase();
+    if (
+      !row ||
+      !organization ||
+      organization.deletedAt ||
+      organization.claimStatus !== 'UNCLAIMED' ||
+      !current ||
+      current !== row.email.toLowerCase()
+    ) {
+      throw gone('USED');
+    }
+
+    const { count } = await this.prisma.organizationClaimToken.updateMany({
+      where: { tokenHash: row.tokenHash, kind: 'CLAIM', usedAt: null, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    if (count === 0) throw gone('USED');
+
+    const { sent } = await this.sendInvite(organization.id, null);
+    await this.audit.write({
+      organizationId: organization.id,
+      action: 'host.claim.renew',
+      targetType: 'organization',
+      targetId: organization.id,
+      metadata: { sent },
+      req,
+    });
+    return { sent };
+  }
+
   // ─── Invite (staff) ──────────────────────────────────────────────────────
 
   /**
@@ -319,8 +373,11 @@ export class ClaimsService {
    *
    * A failed send does not throw: the links stay issued (the next resend
    * voids the claim link anyway) and `sent` says whether it went.
+   *
+   * `actorUserId` is the staff member who asked, or null for a renewal the
+   * church's contact asked for from an expired link.
    */
-  async sendInvite(organizationId: string, actorUserId: string) {
+  async sendInvite(organizationId: string, actorUserId: string | null) {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) throw new NotFoundException('Organization not found');
     if (org.claimStatus !== 'UNCLAIMED') throw new ConflictException({ code: 'NOT_UNCLAIMED' });
@@ -378,16 +435,21 @@ export class ClaimsService {
   private async valid(raw: string, kind: 'CLAIM' | 'TAKEDOWN'): Promise<Valid> {
     const res = await this.tokens.peek(raw, kind);
     if (!('error' in res)) return res;
+    throw await this.refusal(raw, res.error);
+  }
+
+  /** The 410 for a link peek refused. */
+  private async refusal(raw: string, error: ClaimTokenError): Promise<GoneException> {
     // A link spent by the claim itself (or revoked by it) reads USED; say
     // "already claimed" instead so the page can tell them so.
-    if (res.error === 'USED') {
+    if (error === 'USED') {
       const row = await this.prisma.organizationClaimToken.findUnique({
         where: { tokenHash: hashToken(raw) },
         include: { organization: { select: { claimStatus: true } } },
       });
-      if (row?.organization.claimStatus === 'CLAIMED') throw gone('CLAIMED');
+      if (row?.organization.claimStatus === 'CLAIMED') return gone('CLAIMED');
     }
-    throw gone(res.error);
+    return gone(error);
   }
 
   /**

@@ -1079,4 +1079,120 @@ describe('ClaimsService', () => {
       });
     });
   });
+
+  describe('renew an expired claim link', () => {
+    const OLD_ENV = { ...process.env };
+    const EIGHT_DAYS = 8 * 24 * 3600 * 1000;
+    beforeEach(() => {
+      process.env.WEB_URL = 'https://ekklesiaevents.com';
+      process.env.RESEND_API_KEY = 're_test';
+    });
+    afterEach(() => {
+      process.env = { ...OLD_ENV };
+    });
+    const later = () => jest.setSystemTime(new Date(NOW.getTime() + EIGHT_DAYS));
+    const sentText = (email: { send: jest.Mock }, i: number) =>
+      ((email.send.mock.calls[i] as unknown[])[0] as { to: string; text: string });
+
+    it('emails a fresh link to the address on file, spends the old one and answers only { sent }', async () => {
+      const { db, svc, tokens, email, issue } = await setup();
+      const raw = await issue('CLAIM');
+      later();
+      const res = await svc.renewClaim(raw, undefined);
+      expect(res).toEqual({ sent: true });
+      expect(email.send).toHaveBeenCalledTimes(1);
+      const mail = sentText(email, 0);
+      expect(mail.to).toBe('pastor@grace.org');
+      const fresh = mail.text.match(/\/claim\/([A-Za-z0-9_-]+)/)![1]!;
+      expect(await tokens.peek(fresh, 'CLAIM')).toMatchObject({ organization: { id: 'org1' } });
+      expect(await tokens.peek(raw, 'CLAIM')).toEqual({ error: 'USED' });
+      // A contact-asked renewal has no staff actor.
+      expect(db.state.tokens.filter((t) => t.createdByUserId === null).map((t) => t.kind)).toEqual(
+        ['CLAIM', 'TAKEDOWN'],
+      );
+      expect(db.state.audits).toEqual([
+        expect.objectContaining({
+          action: 'host.claim.renew',
+          organizationId: 'org1',
+          metadata: { sent: true },
+        }),
+      ]);
+      expect(db.state.audits[0]!.actorUserId).toBeUndefined();
+    });
+
+    it('renews a link once: replaying it answers 410 USED and sends nothing more', async () => {
+      const { svc, email, issue } = await setup();
+      const raw = await issue('CLAIM');
+      later();
+      await svc.renewClaim(raw, undefined);
+      expect(await refusal(svc.renewClaim(raw, undefined))).toEqual({
+        status: 410,
+        body: { code: 'USED' },
+      });
+      expect(email.send).toHaveBeenCalledTimes(1);
+    });
+
+    it('two racing renewals of one link send one email', async () => {
+      const { svc, email, issue } = await setup();
+      const raw = await issue('CLAIM');
+      later();
+      const results = await Promise.allSettled([
+        svc.renewClaim(raw, undefined),
+        svc.renewClaim(raw, undefined),
+      ]);
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      expect(email.send).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses a link that still works with 409 NOT_EXPIRED', async () => {
+      const { svc, email, issue } = await setup();
+      const raw = await issue('CLAIM');
+      expect(await refusal(svc.renewClaim(raw, undefined))).toEqual({
+        status: 409,
+        body: { code: 'NOT_EXPIRED' },
+      });
+      expect(email.send).not.toHaveBeenCalled();
+    });
+
+    it('answers the same 410 codes as the claim page for unknown, claimed and taken-down links', async () => {
+      const unknown = await setup();
+      expect(await refusal(unknown.svc.renewClaim('nope', undefined))).toEqual({
+        status: 410,
+        body: { code: 'INVALID' },
+      });
+
+      const claimed = await setup();
+      const raw = await claimed.issue('CLAIM');
+      await claimed.svc.attach(raw, signedIn(claimed.db, 'pastor@grace.org'), undefined);
+      later();
+      expect(await refusal(claimed.svc.renewClaim(raw, undefined))).toEqual({
+        status: 410,
+        body: { code: 'CLAIMED' },
+      });
+
+      jest.setSystemTime(NOW);
+      const down = await setup();
+      const claim = await down.issue('CLAIM');
+      const takedown = await down.issue('TAKEDOWN');
+      await down.svc.takedown(takedown, {}, undefined);
+      later();
+      expect(await refusal(down.svc.renewClaim(claim, undefined))).toEqual({
+        status: 410,
+        body: { code: 'USED' },
+      });
+      for (const s of [unknown, claimed, down]) expect(s.email.send).not.toHaveBeenCalled();
+    });
+
+    it("never sends to an address other than the church's current contact", async () => {
+      const { db, svc, email, issue } = await setup();
+      const raw = await issue('CLAIM');
+      db.state.orgs[0]!.contactEmail = 'someone-else@grace.org';
+      later();
+      expect(await refusal(svc.renewClaim(raw, undefined))).toEqual({
+        status: 410,
+        body: { code: 'USED' },
+      });
+      expect(email.send).not.toHaveBeenCalled();
+    });
+  });
 });

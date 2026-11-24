@@ -67,6 +67,13 @@ export class ClaimsController {
     return this.claims.attach(token, user, req);
   }
 
+  /** Expired link: email a fresh one to the church's address on file. */
+  @Post('claims/:token/renew')
+  @HttpCode(200)
+  renewClaim(@Param('token') token: string, @Req() req: Request) {
+    return this.claims.renewClaim(token, req);
+  }
+
   @Get('takedown/:token')
   getTakedown(@Param('token') token: string) {
     return this.claims.getTakedown(token);
