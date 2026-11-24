@@ -15,7 +15,7 @@ import {
   slugify,
   type CreateEventInput,
 } from '@ekklesia/shared';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { AuditLogService } from '../../common/audit-log.service.js';
@@ -208,36 +208,44 @@ export class AdminHostsService {
     const { church, event: eventInput } = AdminCreateHostSchema.parse(body);
     assertFreeOnly(eventInput);
 
-    const org = await this.prisma.$transaction(async (tx) => {
-      const slug = await this.allocateSlug(tx, church.name, church.city);
-      const created = await tx.organization.create({
-        data: {
-          slug,
-          name: church.name,
-          kind: church.kind.toUpperCase() as 'CHURCH' | 'MINISTRY' | 'COMMUNITY',
-          country: church.country,
-          currency: CURRENCY_FOR_COUNTRY[church.country],
-          city: church.city,
-          contactName: church.contactName,
-          contactEmail: church.contactEmail,
-          claimStatus: 'UNCLAIMED',
-          verificationStatus: 'UNVERIFIED',
-          addedByUserId: staffId,
-        },
-        select: { id: true, slug: true },
+    const org = await this.prisma
+      .$transaction(async (tx) => {
+        const slug = await this.allocateSlug(tx, church.name, church.city);
+        const created = await tx.organization.create({
+          data: {
+            slug,
+            name: church.name,
+            kind: church.kind.toUpperCase() as 'CHURCH' | 'MINISTRY' | 'COMMUNITY',
+            country: church.country,
+            currency: CURRENCY_FOR_COUNTRY[church.country],
+            city: church.city,
+            contactName: church.contactName,
+            contactEmail: church.contactEmail,
+            claimStatus: 'UNCLAIMED',
+            verificationStatus: 'UNVERIFIED',
+            addedByUserId: staffId,
+          },
+          select: { id: true, slug: true },
+        });
+        await this.audit.write({
+          actorUserId: staffId,
+          organizationId: created.id,
+          action: 'admin.host.create',
+          targetType: 'organization',
+          targetId: created.id,
+          metadata: { name: church.name },
+          req,
+          tx,
+        });
+        return created;
+      })
+      .catch((err: unknown) => {
+        // Another add took the free slug between our check and the insert.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          throw new ConflictException({ code: 'SLUG_TAKEN' });
+        }
+        throw err;
       });
-      await this.audit.write({
-        actorUserId: staffId,
-        organizationId: created.id,
-        action: 'admin.host.create',
-        targetType: 'organization',
-        targetId: created.id,
-        metadata: { name: church.name },
-        req,
-        tx,
-      });
-      return created;
-    });
 
     let event: { id: string; slug: string };
     try {
@@ -270,7 +278,9 @@ export class AdminHostsService {
   // ─── Claim email and contact ─────────────────────────────────────────────
 
   async resend(organizationId: string, staffId: string, req: Request | undefined) {
-    await this.findHost(organizationId);
+    const org = await this.findHost(organizationId);
+    if (org.claimStatus !== 'UNCLAIMED') throw notUnclaimed();
+    if (!org.contactEmail?.trim()) throw new ConflictException({ code: 'NO_CONTACT_EMAIL' });
     return { inviteSent: await this.resendInvite(organizationId, staffId, req) };
   }
 
@@ -295,6 +305,9 @@ export class AdminHostsService {
         },
       });
       if (count === 0) throw notUnclaimed();
+      // Links already sent to the old address must stop working: a take-down
+      // link never expires, and a claim link would hand over the page.
+      await revokeLinks(tx, organizationId);
       // Both addresses: pointing a claim at a new address hands over the
       // page, so the audit must show where it went.
       await this.audit.write({
@@ -328,6 +341,9 @@ export class AdminHostsService {
         data: { claimStatus: 'UNCLAIMED' },
       });
       if (count === 0) throw new ConflictException({ code: 'NOT_DISPUTED' });
+      // Nothing sent before the take-down may come back to life; only a new
+      // invite issues working links.
+      await revokeLinks(tx, organizationId);
       await this.audit.write({
         actorUserId: staffId,
         organizationId,
@@ -402,9 +418,17 @@ export class AdminHostsService {
     }
   }
 
-  /** A fresh claim email; NOT_UNCLAIMED / NO_CONTACT_EMAIL pass through as 409. */
+  /**
+   * A fresh claim email, audited. Runs after a restore or contact change has
+   * committed, so it never throws: a failure reads as `false`.
+   */
   private async resendInvite(organizationId: string, staffId: string, req: Request | undefined) {
-    const { sent } = await this.claims.sendInvite(organizationId, staffId);
+    let sent = false;
+    try {
+      sent = (await this.claims.sendInvite(organizationId, staffId)).sent;
+    } catch (err) {
+      this.logger.error(`Claim invite for ${organizationId} failed: ${(err as Error).message}`);
+    }
     await this.audit.write({
       actorUserId: staffId,
       organizationId,
@@ -436,6 +460,14 @@ export class AdminHostsService {
     }
     return `${root}-${randomId(10).toLowerCase()}`;
   }
+}
+
+/** Void every claim and take-down link still usable for this church. */
+async function revokeLinks(tx: Prisma.TransactionClient, organizationId: string) {
+  await tx.organizationClaimToken.updateMany({
+    where: { organizationId, usedAt: null, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
 }
 
 /** Unclaimed churches list free events only: no owner, no payout account. */

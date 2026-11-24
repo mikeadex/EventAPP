@@ -1,10 +1,12 @@
 import type { ExecutionContext } from '@nestjs/common';
 import { HttpException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Prisma } from '@prisma/client';
 import { AuditLogService } from '../../common/audit-log.service.js';
 import { PlatformRoleGuard } from '../../common/platform-role.guard.js';
 import { AdminEventsService } from './admin-events.service.js';
 import { AdminHostsService } from './admin-hosts.service.js';
+import { ClaimTokensService } from '../claims/claim-tokens.service.js';
 import { AdminController } from './admin.module.js';
 
 // Importing AdminController loads auth.ts, which builds an EmailService at
@@ -49,7 +51,31 @@ type Audit = {
   targetId?: string;
   metadata?: unknown;
 };
-type State = { orgs: Org[]; events: Event[]; memberships: Membership[]; audits: Audit[] };
+type Token = {
+  id: string;
+  organizationId: string;
+  kind: 'CLAIM' | 'TAKEDOWN';
+  email: string;
+  tokenHash: string;
+  expiresAt: Date | null;
+  usedAt: Date | null;
+  revokedAt: Date | null;
+  createdByUserId: string | null;
+  createdAt: Date;
+};
+type TokenWhere = {
+  organizationId?: string;
+  kind?: Token['kind'];
+  usedAt?: null;
+  revokedAt?: null;
+};
+type State = {
+  orgs: Org[];
+  events: Event[];
+  memberships: Membership[];
+  tokens: Token[];
+  audits: Audit[];
+};
 
 type Insensitive = { equals?: string; contains?: string; mode?: 'insensitive' };
 type OrgWhere = {
@@ -148,8 +174,17 @@ function fakeDb(initial: State) {
       },
     },
     event: {
-      findUnique: async ({ where }: { where: { id: string } }) =>
-        s.events.find((e) => e.id === where.id) ?? null,
+      findFirst: async ({
+        where,
+      }: {
+        where: { id: string; deletedAt: null; status: { not: string } };
+      }) => {
+        const e = s.events.find(
+          (x) => x.id === where.id && x.deletedAt === null && x.status !== where.status.not,
+        );
+        const o = e && s.orgs.find((x) => x.id === e.organizationId);
+        return e && o && o.deletedAt === null ? e : null;
+      },
       update: async ({ where, data }: { where: { id: string }; data: Partial<Event> }) => {
         const e = s.events.find((x) => x.id === where.id)!;
         return Object.assign(e, data);
@@ -158,6 +193,36 @@ function fakeDb(initial: State) {
     organizationMembership: {
       count: async ({ where }: { where: { organizationId: string } }) =>
         s.memberships.filter((m) => m.organizationId === where.organizationId).length,
+    },
+    organizationClaimToken: {
+      create: async ({ data }: { data: Partial<Token> }) => {
+        const row = {
+          id: `t${s.tokens.length + 1}`,
+          expiresAt: null,
+          usedAt: null,
+          revokedAt: null,
+          createdByUserId: null,
+          createdAt: new Date(),
+          ...data,
+        } as Token;
+        s.tokens.push(row);
+        return row;
+      },
+      findUnique: async ({ where }: { where: { tokenHash: string } }) => {
+        const r = s.tokens.find((x) => x.tokenHash === where.tokenHash);
+        return r ? { ...r, organization: s.orgs.find((o) => o.id === r.organizationId) } : null;
+      },
+      updateMany: async ({ where, data }: { where: TokenWhere; data: Partial<Token> }) => {
+        const hit = s.tokens.filter(
+          (r) =>
+            (where.organizationId === undefined || r.organizationId === where.organizationId) &&
+            (where.kind === undefined || r.kind === where.kind) &&
+            (where.usedAt === undefined || r.usedAt === null) &&
+            (where.revokedAt === undefined || r.revokedAt === null),
+        );
+        hit.forEach((r) => Object.assign(r, data));
+        return { count: hit.length };
+      },
     },
     auditLog: {
       create: async ({ data }: { data: Audit }) => {
@@ -224,8 +289,10 @@ function setup(opts: { orgs?: Org[]; events?: Event[]; memberships?: Membership[
     orgs: opts.orgs ?? [],
     events: opts.events ?? [],
     memberships: opts.memberships ?? [],
+    tokens: [],
     audits: [],
   });
+  const tokens = new ClaimTokensService(db as never);
   const audit = new AuditLogService(db as never);
   const events = {
     create: jest.fn(async (organizationId: string, _actor: string, body: { title: string }) => {
@@ -251,16 +318,21 @@ function setup(opts: { orgs?: Org[]; events?: Event[]; memberships?: Membership[
       return e;
     }),
   };
+  /** The links the last invite carried, as ClaimsService.sendInvite issues them. */
+  const sent: { claim?: string; takedown?: string } = {};
   const claims = {
-    sendInvite: jest.fn(async (organizationId: string) => ({
-      sent: true,
-      email: db.state.orgs.find((o) => o.id === organizationId)!.contactEmail!,
-      hasAccount: false,
-    })),
+    sendInvite: jest.fn(async (organizationId: string, staffId: string) => {
+      const email = db.state.orgs.find((o) => o.id === organizationId)!.contactEmail!;
+      const issue = (kind: 'CLAIM' | 'TAKEDOWN') =>
+        tokens.issue(db as never, { organizationId, email, kind, createdByUserId: staffId });
+      sent.claim = await issue('CLAIM');
+      sent.takedown = await issue('TAKEDOWN');
+      return { sent: true, email, hasAccount: false };
+    }),
   };
   const hosts = new AdminHostsService(db as never, audit, events as never, claims as never);
   const adminEvents = new AdminEventsService(db as never, audit, events as never);
-  return { db, hosts, adminEvents, events, claims };
+  return { db, hosts, adminEvents, events, claims, tokens, sent };
 }
 
 /** The HTTP status and body a refused call would answer with. */
@@ -410,6 +482,23 @@ describe('AdminHostsService', () => {
       );
       expect(admin.host.slug).not.toBe('admin');
       expect(db.state.orgs.map((o) => o.slug)).toHaveLength(3);
+    });
+
+    it('answers 409 SLUG_TAKEN when another add takes the slug first', async () => {
+      const { db, hosts, events } = setup();
+      jest.spyOn(db.organization, 'create').mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError(
+          'Unique constraint failed on the fields: (`slug`)',
+          {
+            code: 'P2002',
+            clientVersion: 'test',
+          },
+        ),
+      );
+      expect(
+        await refusal(hosts.create('staff1', { church: church(), event: eventInput() }, undefined)),
+      ).toEqual({ status: 409, body: { code: 'SLUG_TAKEN' } });
+      expect(events.create).not.toHaveBeenCalled();
     });
 
     it('event create failure soft-deletes the new org', async () => {
@@ -613,6 +702,78 @@ describe('AdminHostsService', () => {
       expect(actions(db)).toEqual(['admin.host.restore', 'admin.claim.resend']);
     });
 
+    it('a contact change voids every link sent to the old address; the new ones work', async () => {
+      const { hosts, tokens, sent } = setup({ orgs: [org()] });
+      await hosts.resend('org1', 'staff1', undefined);
+      const old = { ...sent };
+      await hosts.changeContact('org1', 'staff1', { contactEmail: 'joe@grace.org' }, undefined);
+
+      await expect(tokens.peek(old.claim!, 'CLAIM')).resolves.toEqual({ error: 'USED' });
+      await expect(tokens.peek(old.takedown!, 'TAKEDOWN')).resolves.toEqual({ error: 'USED' });
+      await expect(tokens.peek(sent.claim!, 'CLAIM')).resolves.toMatchObject({
+        token: { email: 'joe@grace.org' },
+      });
+      await expect(tokens.peek(sent.takedown!, 'TAKEDOWN')).resolves.toMatchObject({
+        token: { email: 'joe@grace.org' },
+      });
+    });
+
+    it('restore voids links sent before the take-down, even with no new invite', async () => {
+      const { db, hosts, tokens, sent } = setup({ orgs: [org()] });
+      await hosts.resend('org1', 'staff1', undefined);
+      const old = { ...sent };
+      // An older take-down link survives the take-down itself (only the used
+      // one is spent), so it would read as live again once UNCLAIMED.
+      db.state.orgs[0]!.claimStatus = 'DISPUTED';
+      await hosts.restore('org1', 'staff1', {}, undefined);
+
+      await expect(tokens.peek(old.claim!, 'CLAIM')).resolves.toEqual({ error: 'USED' });
+      await expect(tokens.peek(old.takedown!, 'TAKEDOWN')).resolves.toEqual({ error: 'USED' });
+    });
+
+    it('restore with a new invite: old links stay dead, the new ones work', async () => {
+      const { db, hosts, tokens, sent } = setup({ orgs: [org()] });
+      await hosts.resend('org1', 'staff1', undefined);
+      const old = { ...sent };
+      db.state.orgs[0]!.claimStatus = 'DISPUTED';
+      await hosts.restore('org1', 'staff1', { sendInvite: true }, undefined);
+
+      await expect(tokens.peek(old.takedown!, 'TAKEDOWN')).resolves.toEqual({ error: 'USED' });
+      await expect(tokens.peek(sent.claim!, 'CLAIM')).resolves.toHaveProperty('token');
+      await expect(tokens.peek(sent.takedown!, 'TAKEDOWN')).resolves.toHaveProperty('token');
+    });
+
+    it('an invite that throws after a committed contact change answers inviteSent:false', async () => {
+      const { db, hosts, claims } = setup({ orgs: [org()] });
+      jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+      claims.sendInvite.mockRejectedValueOnce(new Error('db blip'));
+      await expect(
+        hosts.changeContact('org1', 'staff1', { contactEmail: 'joe@grace.org' }, undefined),
+      ).resolves.toEqual({ inviteSent: false });
+      expect(db.state.orgs[0]!.contactEmail).toBe('joe@grace.org');
+      expect(actions(db)).toEqual(['admin.host.contact', 'admin.claim.resend']);
+      expect(db.state.audits[1]!.metadata).toEqual({ sent: false });
+    });
+
+    it('an invite that throws after a committed restore answers inviteSent:false', async () => {
+      const { db, hosts, claims } = setup({ orgs: [org({ claimStatus: 'DISPUTED' })] });
+      jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+      claims.sendInvite.mockRejectedValueOnce(new Error('db blip'));
+      await expect(
+        hosts.restore('org1', 'staff1', { sendInvite: true }, undefined),
+      ).resolves.toEqual({ claimStatus: 'UNCLAIMED', inviteSent: false });
+      expect(actions(db)).toEqual(['admin.host.restore', 'admin.claim.resend']);
+    });
+
+    it('resend refuses a claimed church with 409 NOT_UNCLAIMED', async () => {
+      const { hosts, claims } = setup({ orgs: [org({ claimStatus: 'CLAIMED' })] });
+      expect(await refusal(hosts.resend('org1', 'staff1', undefined))).toEqual({
+        status: 409,
+        body: { code: 'NOT_UNCLAIMED' },
+      });
+      expect(claims.sendInvite).not.toHaveBeenCalled();
+    });
+
     it('refuses to restore a church that is not taken down', async () => {
       const { db, hosts } = setup({ orgs: [org()] });
       expect(await refusal(hosts.restore('org1', 'staff1', {}, undefined))).toEqual({
@@ -662,6 +823,27 @@ describe('AdminEventsService.unpublish', () => {
     ).rejects.toMatchObject({
       name: 'ZodError',
     });
+    expect(events.cancel).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for a draft, or an event of a deleted church', async () => {
+    const ev = (id: string, organizationId: string, status: string): Event => ({
+      id,
+      slug: id,
+      organizationId,
+      title: id,
+      status,
+      deletedAt: null,
+    });
+    const { adminEvents, events } = setup({
+      orgs: [org(), org({ id: 'gone', slug: 'gone', deletedAt: NOW })],
+      events: [ev('draft', 'org1', 'DRAFT'), ev('orphan', 'gone', 'PUBLISHED')],
+    });
+    for (const id of ['draft', 'orphan']) {
+      expect(
+        (await refusal(adminEvents.unpublish(id, 'staff1', { reason: 'x' }, undefined))).status,
+      ).toBe(404);
+    }
     expect(events.cancel).not.toHaveBeenCalled();
   });
 

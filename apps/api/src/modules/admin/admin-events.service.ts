@@ -70,11 +70,17 @@ export class AdminEventsService {
   /** Cancel the event as its host would (ticket holders are told) and audit it. */
   async unpublish(eventId: string, staffId: string, body: unknown, req: Request | undefined) {
     const { reason } = AdminUnpublishSchema.parse(body);
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: { organizationId: true, deletedAt: true },
+    // The same events the staff list shows: no drafts, nothing deleted.
+    const event = await this.prisma.event.findFirst({
+      where: {
+        id: eventId,
+        deletedAt: null,
+        status: { not: 'DRAFT' },
+        organization: { is: { deletedAt: null } },
+      },
+      select: { organizationId: true },
     });
-    if (!event || event.deletedAt) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Event not found');
 
     await this.events.cancel(eventId, staffId, reason);
     await this.audit.write({
