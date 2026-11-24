@@ -2,11 +2,16 @@ import { StyleSheet } from 'react-native';
 import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 
 /**
- * The shared look of the four auth screens.
+ * The shared look of the centred auth screens — sign-up, forgot, reset.
  *
- * They had four near-identical copies of this block, differing only in which
- * keys each happened to use — so restyling meant changing the same thing four
+ * They had near-identical copies of this block, differing only in which keys
+ * each happened to use, so restyling meant changing the same thing several
  * times and getting it slightly wrong somewhere. One copy now.
+ *
+ * Sign-in and password (designs 10 and 11) left this behind when they split:
+ * they are top-bar-and-footer screens rather than a centred stack, and
+ * stretching these styles over that shape would have made both harder to
+ * read than two honest style blocks.
  *
  * Dark only, like the rest of the refresh so far.
  */

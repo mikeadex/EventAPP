@@ -9,43 +9,55 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router, Link } from 'expo-router';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, theme } from '@ekklesia/ui/tokens';
+import { radius, theme, palette } from '@ekklesia/ui/tokens';
 import { Text } from '@/components/text';
-import { authStyles } from '@/components/auth-styles';
-import { signIn, sendVerificationEmail, emailOtp } from '@/lib/auth-client';
-import { SocialSignIn } from '@/components/social-sign-in';
-import { PasswordInput } from '@/components/password-input';
 import { Logo } from '@/components/logo';
+import { SocialSignIn } from '@/components/social-sign-in';
+import { emailOtp } from '@/lib/auth-client';
 
+/**
+ * Design 10 — sign in, step one.
+ *
+ * Asks for the address and nothing else. The password lives on its own screen
+ * (design 11, `password.tsx`), which is what lets this one lead with Apple and
+ * Google: most people arriving have one of those and no password with us, and
+ * a password field sitting here would be the largest thing on screen for the
+ * minority who do.
+ *
+ * Splitting also means the address is known by the time anything can fail, so
+ * the failures that need it — the code route, the social-account hint — have
+ * it to hand rather than having to ask again.
+ *
+ * Deliberately does NOT check whether the address has an account before moving
+ * on. That check is the whole mechanism of an account-enumeration oracle, and
+ * it would be running on an unauthenticated endpoint against any address
+ * anyone cared to type.
+ */
 export default function SignInScreen() {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  // Set only for EMAIL_NOT_VERIFIED, so the offer to resend appears exactly
-  // when it is the thing standing in the way.
-  const [unverified, setUnverified] = useState(false);
-  const [resent, setResent] = useState(false);
-  // An account created through Google or Apple has no password at all, so a
-  // password attempt on one fails exactly like a wrong password and the
-  // person is left with nothing to act on — the social buttons are already on
-  // this screen, but no reason to think they are the answer. The hint below
-  // names that possibility without confirming the address exists or which
-  // method it uses, which would turn this form into an account check.
-  const [maybeSocial, setMaybeSocial] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
 
+  function continueWithEmail() {
+    const address = email.trim();
+    if (!address) {
+      setError('Enter your email address to carry on.');
+      return;
+    }
+    setError(null);
+    router.push({ pathname: '/auth/password', params: { email: address } });
+  }
+
   /**
-   * "Email me a sign-in code instead" (design 10).
-   *
-   * Navigates on success *and* on failure, and that is deliberate. Reporting
-   * "no account for that address" here would make this a free account-lookup
-   * for anyone who cared to try addresses; the code screen says the same
-   * nothing whether or not a code was ever sent. Only a send that failed on
-   * our side — mail provider down, network gone — is worth saying out loud,
-   * because that one is ours to fix and not a hint about anybody's account.
+   * Navigates whether or not a code was actually sent. The API answers the
+   * same for an address with an account and one without — see the `emailOTP`
+   * plugin — and reporting the difference here would undo that. Only a send
+   * that failed on our side is worth saying out loud.
    */
   async function sendCode() {
     const address = email.trim();
@@ -65,163 +77,160 @@ export default function SignInScreen() {
     router.push({ pathname: '/auth/email-code', params: { email: address } });
   }
 
-  async function submit() {
-    setPending(true);
-    setError(null);
-    setUnverified(false);
-    setResent(false);
-    setMaybeSocial(false);
-    const res = await signIn.email({ email, password });
-    setPending(false);
-    if (res.error) {
-      const code = (res.error as { code?: string }).code;
-      const notVerified = code === 'EMAIL_NOT_VERIFIED';
-      setUnverified(notVerified);
-      setMaybeSocial(!notVerified);
-      setError(
-        notVerified
-          ? 'Confirm your email before signing in. Check your inbox for the link.'
-          : (res.error.message ?? 'Sign-in failed'),
-      );
-      return;
-    }
-    router.replace('/(tabs)');
-  }
-
-  /** Without this, losing the confirmation email leaves the account unusable. */
-  async function resend() {
-    setPending(true);
-    await sendVerificationEmail({ email }).catch(() => {
-      /* Same generic outcome either way — never reveal whether the address exists. */
-    });
-    setPending(false);
-    setResent(true);
-  }
-
   return (
     <KeyboardAvoidingView
-      style={authStyles.page}
+      style={[styles.screen, { paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <StatusBar style="light" />
+
+      <View style={styles.topBar}>
+        <Pressable style={styles.roundBtn} onPress={() => router.back()} hitSlop={8}>
+          <Ionicons name="chevron-back" size={20} color={theme.dark.textPrimary} />
+        </Pressable>
+        <Logo size={28} />
+        <View style={styles.roundBtn} />
+      </View>
+
       <ScrollView
-        contentContainerStyle={authStyles.scroll}
+        contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Logo size={44} style={authStyles.logo} />
-        <Text variant="display" tone="onPhoto" style={authStyles.h}>
-          Welcome back
-        </Text>
-        <Text variant="bodyLg" tone="secondary" style={authStyles.m}>
-          Sign in to see your tickets and saved events.
-        </Text>
-
-        {/* Above the form, per the handoff: most people here have a Google or
-          Apple account and no password with us. */}
-        <SocialSignIn onSignedIn={() => router.replace('/(tabs)')} />
-
-        <TextInput
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          // `username` rather than `emailAddress`: it is the account identifier
-          // half of a credential pair, and it is what makes the device offer to
-          // save the password alongside it and fill both back in next time.
-          textContentType="username"
-          autoComplete="email"
-          value={email}
-          onChangeText={setEmail}
-          style={authStyles.input}
-          placeholderTextColor={theme.dark.textMuted}
-        />
-        <PasswordInput
-          placeholder="Password"
-          purpose="current"
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        {error && (
-          <Text variant="label" style={authStyles.error}>
-            {error}
+        <View style={styles.head}>
+          <Text variant="hero" tone="onPhoto">
+            Welcome back
           </Text>
-        )}
-        {maybeSocial && (
-          <Text variant="label" style={authStyles.hint}>
-            If you created this account with one of the buttons above, sign in that way — those
-            accounts don&rsquo;t have a password.
+          <Text variant="body" tone="secondary">
+            Sign in to see your tickets and saved events.
           </Text>
-        )}
-        {unverified && !resent && (
-          <Pressable onPress={() => void resend()} disabled={pending} style={authStyles.resend}>
-            <Text variant="label" style={authStyles.link}>
-              Resend confirmation email
+        </View>
+
+        <View style={styles.form}>
+          <SocialSignIn onSignedIn={() => router.replace('/(tabs)')} />
+
+          <View style={styles.field}>
+            <Text variant="footnote" tone="onPhotoMuted">
+              Email address
+            </Text>
+            <TextInput
+              placeholder="you@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              // The account identifier half of a credential pair, which is
+              // what makes the device offer to save the password alongside it
+              // and fill both back in next time.
+              textContentType="username"
+              autoComplete="email"
+              value={email}
+              onChangeText={(v) => {
+                setEmail(v);
+                if (error) setError(null);
+              }}
+              onSubmitEditing={continueWithEmail}
+              returnKeyType="next"
+              style={styles.input}
+              placeholderTextColor={theme.dark.textMuted}
+            />
+          </View>
+
+          {error ? (
+            <Text variant="label" style={styles.error}>
+              {error}
+            </Text>
+          ) : null}
+
+          <Pressable
+            onPress={continueWithEmail}
+            style={({ pressed }) => [styles.cta, pressed && { opacity: 0.8 }]}
+          >
+            <Text variant="bodyLg" style={styles.ctaText}>
+              Continue with email
             </Text>
           </Pressable>
-        )}
-        {resent && (
-          <Text variant="label" style={authStyles.sent}>
-            Confirmation email sent — check your inbox.
-          </Text>
-        )}
 
-        <Link href="/auth/forgot-password" style={authStyles.forgot}>
-          <Text variant="label" style={authStyles.link}>
-            Forgot password?
-          </Text>
-        </Link>
-
-        <Pressable style={authStyles.btn} onPress={submit} disabled={pending}>
-          {pending ? (
-            <ActivityIndicator color={theme.dark.accent} />
-          ) : (
-            <Text variant="bodyLg" style={authStyles.btnText}>
-              Sign in
-            </Text>
-          )}
-        </Pressable>
-
-        {/* Design 10's alternative to typing a password on a phone. */}
-        <Pressable
-          onPress={() => void sendCode()}
-          disabled={sendingCode || pending}
-          hitSlop={8}
-          style={({ pressed }) => [styles.codeLink, pressed && { opacity: 0.7 }]}
-        >
-          {sendingCode ? (
-            <ActivityIndicator color={theme.dark.accent} size="small" />
-          ) : (
-            <>
-              <Ionicons name="mail-outline" size={15} color={theme.dark.accent} />
-              <Text variant="footnote" tone="accent">
-                Email me a sign-in code instead
-              </Text>
-            </>
-          )}
-        </Pressable>
-
-        <View style={{ marginTop: spacing[6], flexDirection: 'row' }}>
-          <Text variant="label" style={authStyles.muted}>
-            New here?{' '}
-          </Text>
-          <Link href={'/auth/sign-up' as never}>
-            <Text variant="label" style={authStyles.link}>
-              Create an account
-            </Text>
-          </Link>
+          <Pressable
+            onPress={() => void sendCode()}
+            disabled={sendingCode}
+            hitSlop={8}
+            style={({ pressed }) => [styles.codeLink, pressed && { opacity: 0.7 }]}
+          >
+            {sendingCode ? (
+              <ActivityIndicator color={theme.dark.accent} size="small" />
+            ) : (
+              <>
+                <Ionicons name="mail-outline" size={15} color={theme.dark.accent} />
+                <Text variant="footnote" tone="accent">
+                  Email me a sign-in code instead
+                </Text>
+              </>
+            )}
+          </Pressable>
         </View>
       </ScrollView>
+
+      <View style={[styles.legal, { paddingBottom: insets.bottom + 30 }]}>
+        <Text variant="caption" tone="secondary" style={styles.legalText}>
+          By continuing you agree to our Terms and Privacy Policy.
+        </Text>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+  },
+  roundBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.dark.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  body: { paddingHorizontal: 24, paddingTop: 44, paddingBottom: 24 },
+  head: { gap: 10 },
+  form: { paddingTop: 36, gap: 12 },
+  field: { gap: 9 },
+  input: {
+    backgroundColor: theme.dark.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.45)',
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    fontSize: 15,
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
+  },
+  error: { color: '#D9A9A2' },
+  cta: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 17,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(249,142,128,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.55)',
+  },
+  ctaText: { color: palette.coral[200] },
   codeLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
+    paddingVertical: 10,
   },
+  legal: { paddingHorizontal: 32 },
+  legalText: { textAlign: 'center', lineHeight: 19 },
 });
