@@ -31,6 +31,11 @@ export class BetterAuthClaimAccounts extends ClaimAccounts {
     return { id: user.id };
   }
 
+  async hashPassword(password: string) {
+    const ctx = await (await getAuth()).$context;
+    return ctx.password.hash(password);
+  }
+
   async deleteUser(id: string) {
     const ctx = await (await getAuth()).$context;
     await ctx.internalAdapter.deleteUser(id);

@@ -44,7 +44,12 @@ export abstract class ClaimAccounts {
   }): Promise<{ id: string }>;
   /** Undo `createPasswordUser` when the claim it was made for is refused. */
   abstract deleteUser(id: string): Promise<void>;
+  /** Better Auth's own hash, so the password signs in with `signIn.email`. */
+  abstract hashPassword(password: string): Promise<string>;
 }
+
+/** An unverified account being taken over by the claim; see claimWithPassword. */
+type Takeover = { name: string; passwordHash: string };
 
 type Valid = { token: OrganizationClaimToken; organization: Organization };
 
@@ -85,11 +90,12 @@ export class ClaimsService {
       }),
       this.findUserByEmail(token.email),
     ]);
+    // An unverified sign-up can't sign in, so it is not an account to use here.
     return {
       organization: { name: organization.name, slug: organization.slug, kind: organization.kind },
       email: token.email.toLowerCase(),
       events: events.map((e) => ({ title: e.title, startsAt: e.startsAt })),
-      hasAccount: !!existing,
+      hasAccount: !!existing?.emailVerified,
     };
   }
 
@@ -102,8 +108,23 @@ export class ClaimsService {
     const { token, organization } = await this.valid(raw, 'CLAIM');
     const email = token.email.toLowerCase();
 
-    // Any existing account — staff included — signs in and attaches instead.
-    if (await this.findUserByEmail(email)) throw new ConflictException({ code: 'SIGN_IN' });
+    // A verified account — or any staff account — signs in and attaches.
+    const existing = await this.findUserByEmail(email);
+    if (existing && (existing.emailVerified || existing.platformRole !== 'USER')) {
+      throw new ConflictException({ code: 'SIGN_IN' });
+    }
+    if (existing) {
+      // Someone signed up with this address but never confirmed it — possibly
+      // not its owner, and it would otherwise block the claim forever (they
+      // cannot sign in either). Following the emailed claim link proves
+      // control of the address, so the claim takes that account over.
+      const passwordHash = await this.accounts.hashPassword(input.password);
+      await this.complete(raw, organization.id, existing.id, 'password', req, {
+        name: input.name,
+        passwordHash,
+      });
+      return { email };
+    }
 
     let user: { id: string };
     try {
@@ -113,7 +134,8 @@ export class ClaimsService {
         password: input.password,
       });
     } catch (err) {
-      // Someone made this account between the check above and now.
+      // Someone made this account between the check above and now; a retry
+      // takes the path above.
       if (await this.findUserByEmail(email)) throw new ConflictException({ code: 'SIGN_IN' });
       throw err;
     }
@@ -142,6 +164,11 @@ export class ClaimsService {
     if (user.email.toLowerCase() !== token.email.toLowerCase()) {
       throw new ForbiddenException({ code: 'EMAIL_MISMATCH' });
     }
+    const account = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { emailVerified: true },
+    });
+    if (!account?.emailVerified) throw new ForbiddenException({ code: 'EMAIL_NOT_VERIFIED' });
     await this.complete(raw, organization.id, user.id, 'attach', req);
     return {
       organization: { id: organization.id, slug: organization.slug, name: organization.name },
@@ -154,11 +181,13 @@ export class ClaimsService {
     userId: string,
     via: 'password' | 'attach',
     req: Request | undefined,
+    takeover?: Takeover,
   ) {
     await this.prisma.$transaction(async (tx) => {
       const now = new Date();
       await this.leaveUnclaimed(tx, organizationId, { claimStatus: 'CLAIMED', claimedAt: now });
       await this.consume(tx, raw, 'CLAIM');
+      if (takeover) await this.takeOver(tx, userId, takeover);
       await tx.organizationMembership.upsert({
         where: { userId_organizationId: { userId, organizationId } },
         create: { userId, organizationId, role: 'OWNER', acceptedAt: now },
@@ -175,10 +204,30 @@ export class ClaimsService {
         action: 'host.claim',
         targetType: 'organization',
         targetId: organizationId,
-        metadata: { via },
+        metadata: takeover ? { via, takeover: 'unverified-account' } : { via },
         req,
         tx,
       });
+    });
+  }
+
+  /**
+   * Make an unverified account the claimer's: verified, their name, their
+   * password as its only sign-in, and every earlier session ended.
+   */
+  private async takeOver(tx: Prisma.TransactionClient, userId: string, t: Takeover) {
+    // Conditional, so an account verified since we looked is not taken.
+    const { count } = await tx.user.updateMany({
+      where: { id: userId, emailVerified: false },
+      data: { emailVerified: true, name: t.name },
+    });
+    if (count === 0) throw new ConflictException({ code: 'SIGN_IN' });
+    await tx.session.deleteMany({ where: { userId } });
+    // An unverified account has nothing worth keeping here: drop whatever
+    // sign-in methods it had and leave just the claimer's password.
+    await tx.account.deleteMany({ where: { userId } });
+    await tx.account.create({
+      data: { userId, providerId: 'credential', accountId: userId, password: t.passwordHash },
     });
   }
 
@@ -273,7 +322,7 @@ export class ClaimsService {
       return { claim: await issue('CLAIM'), takedown: await issue('TAKEDOWN') };
     });
 
-    const hasAccount = !!(await this.findUserByEmail(email));
+    const hasAccount = !!(await this.findUserByEmail(email))?.emailVerified;
     const web = webUrl();
     const data = {
       orgName: org.name,
@@ -369,7 +418,7 @@ export class ClaimsService {
   private findUserByEmail(email: string) {
     return this.prisma.user.findFirst({
       where: { email: { equals: email, mode: 'insensitive' } },
-      select: { id: true },
+      select: { id: true, emailVerified: true, platformRole: true },
     });
   }
 }

@@ -29,7 +29,16 @@ type Token = {
   createdByUserId: string | null;
   createdAt: Date;
 };
-type User = { id: string; email: string; name: string; platformRole: string };
+type User = {
+  id: string;
+  email: string;
+  name: string;
+  platformRole: string;
+  /** Treated as true when left out. */
+  emailVerified?: boolean;
+};
+type Session = { id: string; userId: string };
+type Account = { userId: string; providerId: string; accountId: string; password: string | null };
 type Membership = { userId: string; organizationId: string; role: string; acceptedAt: Date | null };
 type Event = {
   id: string;
@@ -51,6 +60,8 @@ type State = {
   orgs: Org[];
   tokens: Token[];
   users: User[];
+  sessions: Session[];
+  accounts: Account[];
   memberships: Membership[];
   events: Event[];
   audits: Audit[];
@@ -115,8 +126,48 @@ function fakeDb(initial: State) {
       },
     },
     user: {
-      findFirst: async ({ where }: { where: { email: { equals: string } } }) =>
-        s.users.find((u) => u.email.toLowerCase() === where.email.equals.toLowerCase()) ?? null,
+      findFirst: async ({ where }: { where: { email: { equals: string } } }) => {
+        const u = s.users.find((x) => x.email.toLowerCase() === where.email.equals.toLowerCase());
+        return u ? { ...u, emailVerified: u.emailVerified ?? true } : null;
+      },
+      findUnique: async ({ where }: { where: { id: string } }) => {
+        const u = s.users.find((x) => x.id === where.id);
+        return u ? { ...u, emailVerified: u.emailVerified ?? true } : null;
+      },
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: { id: string; emailVerified?: boolean };
+        data: Partial<User>;
+      }) => {
+        const hit = s.users.filter(
+          (u) =>
+            u.id === where.id &&
+            (where.emailVerified === undefined ||
+              (u.emailVerified ?? true) === where.emailVerified),
+        );
+        hit.forEach((u) => Object.assign(u, data));
+        return { count: hit.length };
+      },
+    },
+    session: {
+      deleteMany: async ({ where }: { where: { userId: string } }) => {
+        const before = s.sessions.length;
+        s.sessions = s.sessions.filter((x) => x.userId !== where.userId);
+        return { count: before - s.sessions.length };
+      },
+    },
+    account: {
+      deleteMany: async ({ where }: { where: { userId: string } }) => {
+        const before = s.accounts.length;
+        s.accounts = s.accounts.filter((x) => x.userId !== where.userId);
+        return { count: before - s.accounts.length };
+      },
+      create: async ({ data }: { data: Account }) => {
+        s.accounts.push({ ...data });
+        return data;
+      },
     },
     organizationMembership: {
       upsert: async ({
@@ -238,11 +289,21 @@ const event = (id: string, over: Partial<Event> = {}): Event => ({
   ...over,
 });
 
-async function setup(opts: { users?: User[]; orgs?: Org[]; events?: Event[] } = {}) {
+async function setup(
+  opts: {
+    users?: User[];
+    sessions?: Session[];
+    accounts?: Account[];
+    orgs?: Org[];
+    events?: Event[];
+  } = {},
+) {
   const db = fakeDb({
     orgs: opts.orgs ?? [org()],
     tokens: [],
     users: opts.users ?? [],
+    sessions: opts.sessions ?? [],
+    accounts: opts.accounts ?? [],
     memberships: [],
     events: opts.events ?? [],
     audits: [],
@@ -259,11 +320,16 @@ async function setup(opts: { users?: User[]; orgs?: Org[]; events?: Event[] } = 
   const email = { send: jest.fn(async () => ({ id: null })) };
   const accounts: ClaimAccounts = {
     createPasswordUser: jest.fn(async ({ email: addr, name }) => {
+      // Like the unique index on User.email.
+      if (db.state.users.some((u) => u.email === addr.toLowerCase())) {
+        throw new Error('Unique constraint failed on the fields: (`email`)');
+      }
       const user = {
         id: `u${db.state.users.length + 1}`,
         email: addr.toLowerCase(),
         name,
         platformRole: 'USER',
+        emailVerified: true,
       };
       db.state.users.push(user);
       return { id: user.id };
@@ -271,6 +337,7 @@ async function setup(opts: { users?: User[]; orgs?: Org[]; events?: Event[] } = 
     deleteUser: jest.fn(async (id: string) => {
       db.state.users = db.state.users.filter((u) => u.id !== id);
     }),
+    hashPassword: jest.fn(async (password: string) => `hashed:${password}`),
   };
   const svc = new ClaimsService(
     db as never,
@@ -302,7 +369,35 @@ async function refusal(p: Promise<unknown>) {
 }
 
 const PASSWORD = 'correct horse battery';
-const signedIn = (email: string) => ({ id: 'u_existing', email, platformRole: 'USER' });
+/** A signed-in user (and their row), as CurrentUserService would hand over. */
+function signedIn(db: { state: State }, email: string, emailVerified = true) {
+  if (!db.state.users.some((u) => u.id === 'u_existing')) {
+    db.state.users.push({
+      id: 'u_existing',
+      email: email.toLowerCase(),
+      name: 'Signed In',
+      platformRole: 'USER',
+      emailVerified,
+    });
+  }
+  return { id: 'u_existing', email, platformRole: 'USER' };
+}
+
+/** Someone signed up with the contact's address and never confirmed it. */
+const squatter: User = {
+  id: 'u_squat',
+  email: 'pastor@grace.org',
+  name: 'Not Ruth',
+  platformRole: 'USER',
+  emailVerified: false,
+};
+const squatterSession: Session = { id: 's1', userId: 'u_squat' };
+const squatterAccount: Account = {
+  userId: 'u_squat',
+  providerId: 'credential',
+  accountId: 'u_squat',
+  password: 'hashed:attacker-password',
+};
 
 describe('ClaimsService', () => {
   beforeEach(() => {
@@ -383,6 +478,78 @@ describe('ClaimsService', () => {
       ).toEqual({ status: 409, body: { code: 'SIGN_IN' } });
     });
 
+    it('an unverified sign-up with the address does not count as an account', async () => {
+      const { svc, issue } = await setup({ users: [{ ...squatter }] });
+      const raw = await issue('CLAIM');
+      await expect(svc.getClaim(raw)).resolves.toMatchObject({ hasAccount: false });
+    });
+
+    it('takes over an unverified pre-registration: verified, new password, old sessions gone', async () => {
+      const { db, svc, issue, accounts } = await setup({
+        users: [{ ...squatter }],
+        sessions: [{ ...squatterSession }, { id: 'other', userId: 'u_other' }],
+        accounts: [
+          { ...squatterAccount },
+          { userId: 'u_squat', providerId: 'google', accountId: 'g-1', password: null },
+        ],
+      });
+      const raw = await issue('CLAIM');
+
+      await expect(
+        svc.claimWithPassword(raw, { name: 'Ruth Ade', password: PASSWORD }, undefined),
+      ).resolves.toEqual({ email: 'pastor@grace.org' });
+
+      expect(accounts.createPasswordUser).not.toHaveBeenCalled();
+      expect(db.state.users).toEqual([{ ...squatter, name: 'Ruth Ade', emailVerified: true }]);
+      expect(db.state.sessions).toEqual([{ id: 'other', userId: 'u_other' }]);
+      expect(db.state.accounts).toEqual([
+        {
+          userId: 'u_squat',
+          providerId: 'credential',
+          accountId: 'u_squat',
+          password: `hashed:${PASSWORD}`,
+        },
+      ]);
+      expect(db.state.memberships).toEqual([
+        { userId: 'u_squat', organizationId: 'org1', role: 'OWNER', acceptedAt: NOW },
+      ]);
+      expect(db.state.orgs[0]!.claimStatus).toBe('CLAIMED');
+      expect(db.state.audits).toEqual([
+        expect.objectContaining({
+          action: 'host.claim',
+          actorUserId: 'u_squat',
+          metadata: { via: 'password', takeover: 'unverified-account' },
+        }),
+      ]);
+    });
+
+    it('a refused take-over changes nothing on the unverified account', async () => {
+      const { db, svc, issue } = await setup({
+        users: [{ ...squatter }],
+        sessions: [{ ...squatterSession }],
+        accounts: [{ ...squatterAccount }],
+        orgs: [org({ claimStatus: 'DISPUTED' })],
+      });
+      const raw = await issue('CLAIM');
+      expect(
+        await refusal(svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined)),
+      ).toEqual({ status: 410, body: { code: 'USED' } });
+      expect(db.state.users).toEqual([squatter]);
+      expect(db.state.sessions).toEqual([squatterSession]);
+      expect(db.state.accounts).toEqual([squatterAccount]);
+    });
+
+    it('never takes over an unverified staff-role account', async () => {
+      const { db, svc, issue } = await setup({
+        users: [{ ...squatter, platformRole: 'PLATFORM_ADMIN' }],
+      });
+      const raw = await issue('CLAIM');
+      expect(
+        await refusal(svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined)),
+      ).toEqual({ status: 409, body: { code: 'SIGN_IN' } });
+      expect(db.state.users[0]!.emailVerified).toBe(false);
+    });
+
     it('creates the account, makes it OWNER, claims the church and spends the links', async () => {
       const { db, svc, issue, accounts } = await setup();
       const raw = await issue('CLAIM');
@@ -449,7 +616,7 @@ describe('ClaimsService', () => {
     it('attach rejects mismatched email', async () => {
       const { db, svc, issue } = await setup();
       const raw = await issue('CLAIM');
-      expect(await refusal(svc.attach(raw, signedIn('someone@else.org'), undefined))).toEqual({
+      expect(await refusal(svc.attach(raw, signedIn(db, 'someone@else.org'), undefined))).toEqual({
         status: 403,
         body: { code: 'EMAIL_MISMATCH' },
       });
@@ -457,11 +624,24 @@ describe('ClaimsService', () => {
       expect(db.state.tokens[0]!.usedAt).toBeNull();
     });
 
+    it('attach refuses a signed-in account whose address is not verified', async () => {
+      const { db, svc, issue } = await setup();
+      const raw = await issue('CLAIM');
+      expect(
+        await refusal(svc.attach(raw, signedIn(db, 'pastor@grace.org', false), undefined)),
+      ).toEqual({
+        status: 403,
+        body: { code: 'EMAIL_NOT_VERIFIED' },
+      });
+      expect(db.state.memberships).toEqual([]);
+      expect(db.state.orgs[0]!.claimStatus).toBe('UNCLAIMED');
+    });
+
     it('attaches the church to the signed-in account, matching the address in any case', async () => {
       const { db, svc, issue } = await setup();
       const raw = await issue('CLAIM');
       await issue('TAKEDOWN');
-      await expect(svc.attach(raw, signedIn('PASTOR@Grace.ORG'), undefined)).resolves.toEqual({
+      await expect(svc.attach(raw, signedIn(db, 'PASTOR@Grace.ORG'), undefined)).resolves.toEqual({
         organization: { id: 'org1', slug: 'grace-chapel', name: 'Grace Chapel' },
       });
       expect(db.state.memberships).toEqual([
@@ -488,7 +668,7 @@ describe('ClaimsService', () => {
       const { db, svc, issue, events } = await setup({ events: [event('e1')] });
       const claim = await issue('CLAIM');
       const takedown = await issue('TAKEDOWN');
-      await svc.attach(claim, signedIn('pastor@grace.org'), undefined);
+      await svc.attach(claim, signedIn(db, 'pastor@grace.org'), undefined);
 
       expect(await refusal(svc.getTakedown(takedown))).toEqual({
         status: 410,
@@ -590,17 +770,43 @@ describe('ClaimsService', () => {
     it('two racing claims on one link: exactly one wins, the other is 410', async () => {
       const { db, svc, issue } = await setup();
       const raw = await issue('CLAIM');
+      const user = signedIn(db, 'pastor@grace.org');
       const results = await Promise.allSettled([
-        svc.attach(raw, signedIn('pastor@grace.org'), undefined),
-        svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined),
+        svc.attach(raw, user, undefined),
+        svc.attach(raw, user, undefined),
       ]);
       expect(results.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected']);
       const lost = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
       expect((lost.reason as HttpException).getStatus()).toBe(410);
       expect(db.state.memberships).toHaveLength(1);
       expect(db.state.audits.filter((a) => a.action === 'host.claim')).toHaveLength(1);
-      // The losing password claim left no stray account behind.
-      expect(db.state.users).toHaveLength(0);
+    });
+
+    it('two racing password claims: one wins, the other is refused and leaves no account', async () => {
+      const { db, svc, issue } = await setup();
+      const raw = await issue('CLAIM');
+      const body = { name: 'Ruth', password: PASSWORD };
+      const results = await Promise.allSettled([
+        svc.claimWithPassword(raw, body, undefined),
+        svc.claimWithPassword(raw, body, undefined),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected']);
+      const lost = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+      expect([409, 410]).toContain((lost.reason as HttpException).getStatus());
+      expect(db.state.users).toHaveLength(1);
+      expect(db.state.memberships).toHaveLength(1);
+    });
+
+    it('two racing take-overs of one unverified account: exactly one wins', async () => {
+      const { db, svc, issue } = await setup({ users: [{ ...squatter }] });
+      const raw = await issue('CLAIM');
+      const results = await Promise.allSettled([
+        svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined),
+        svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected']);
+      expect(db.state.memberships).toHaveLength(1);
+      expect(db.state.accounts).toHaveLength(1);
     });
 
     it('a claim that loses to a take-down is 410 USED and writes nothing', async () => {
@@ -630,7 +836,7 @@ describe('ClaimsService', () => {
       const claim = await issue('CLAIM');
       const takedown = await issue('TAKEDOWN');
       const stalePeek = await tokens.peek(takedown, 'TAKEDOWN');
-      await svc.attach(claim, signedIn('pastor@grace.org'), undefined);
+      await svc.attach(claim, signedIn(db, 'pastor@grace.org'), undefined);
       jest.spyOn(tokens, 'peek').mockResolvedValueOnce(stalePeek);
 
       expect(await refusal(svc.takedown(takedown, {}, undefined))).toEqual({
@@ -647,7 +853,7 @@ describe('ClaimsService', () => {
       const claim = await issue('CLAIM');
       const takedown = await issue('TAKEDOWN');
       const results = await Promise.allSettled([
-        svc.attach(claim, signedIn('pastor@grace.org'), undefined),
+        svc.attach(claim, signedIn(db, 'pastor@grace.org'), undefined),
         svc.takedown(takedown, {}, undefined),
       ]);
       expect(results.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected']);
@@ -731,11 +937,11 @@ describe('ClaimsService', () => {
     });
 
     it('every take-down link dies once the church is claimed', async () => {
-      const { svc, tokens, email } = await setup();
+      const { db, svc, tokens, email } = await setup();
       await svc.sendInvite('org1', 'staff1');
       await svc.sendInvite('org1', 'staff1');
       const claim = linkIn(sentAt(email, 1).text, 'claim');
-      await svc.attach(claim, signedIn('pastor@grace.org'), undefined);
+      await svc.attach(claim, signedIn(db, 'pastor@grace.org'), undefined);
       for (const i of [0, 1]) {
         const raw = linkIn(sentAt(email, i).text, 'takedown');
         expect(await refusal(svc.takedown(raw, {}, undefined))).toEqual({
