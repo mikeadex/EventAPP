@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 import { api, describeApiError } from '@/lib/api';
 import { EmptyState, ErrorState } from '@/components/states';
 import { showToast } from '@/components/toast';
@@ -62,14 +62,14 @@ export default function BlockedScreen() {
     <View style={[styles.c, { paddingTop: insets.top + spacing[2] }]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.title}>Blocked</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing[5], gap: spacing[3] }}>
         {items === null ? (
-          <ActivityIndicator color={color.ink[500]} style={{ marginTop: spacing[8] }} />
+          <ActivityIndicator color={theme.dark.textSecondary} style={{ marginTop: spacing[8] }} />
         ) : items.length === 0 ? (
           <EmptyState scheme="light"
             icon="ban-outline"
@@ -105,7 +105,7 @@ export default function BlockedScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -113,24 +113,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
     paddingBottom: spacing[3],
   },
-  title: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  title: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     padding: spacing[4],
   },
-  name: { fontSize: fontSize.base, color: color.ink[900], fontWeight: fontWeight.medium },
-  kind: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 2 },
+  name: { fontSize: fontSize.base, color: theme.dark.textPrimary },
+  kind: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2 },
   unblock: {
     borderWidth: 1,
-    borderColor: color.ink[900],
+    borderColor: 'rgba(249,142,128,0.55)',
     borderRadius: radius.full,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[2],
   },
-  unblockText: { fontSize: fontSize.sm, color: color.ink[900], fontWeight: fontWeight.medium },
+  unblockText: { fontSize: fontSize.sm, color: theme.dark.textPrimary },
 });

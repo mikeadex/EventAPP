@@ -12,7 +12,7 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 import { PasswordInput } from '@/components/password-input';
 import { changePassword } from '@/lib/auth-client';
 
@@ -53,7 +53,7 @@ export default function ChangePasswordScreen() {
   if (done) {
     return (
       <View style={[styles.c, styles.center]}>
-        <Ionicons name="shield-checkmark-outline" size={48} color={color.ink[900]} />
+        <Ionicons name="shield-checkmark-outline" size={48} color={theme.dark.textPrimary} />
         <Text style={styles.h}>Password changed</Text>
         <Text style={styles.doneMsg}>
           Your password has been updated. Other signed-in devices have been signed out.
@@ -72,7 +72,7 @@ export default function ChangePasswordScreen() {
     >
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.h}>Change password</Text>
         <View style={styles.backBtn} />
@@ -117,7 +117,7 @@ export default function ChangePasswordScreen() {
         disabled={!canSubmit}
       >
         {pending ? (
-          <ActivityIndicator color={color.ink[0]} />
+          <ActivityIndicator color={palette.coral[200]} />
         ) : (
           <Text style={styles.btnText}>Update password</Text>
         )}
@@ -128,7 +128,7 @@ export default function ChangePasswordScreen() {
 
 const styles = StyleSheet.create({
   pwBox: { marginBottom: 0 },
-  c: { flex: 1, backgroundColor: color.ink[0], paddingHorizontal: spacing[4] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep, paddingHorizontal: spacing[4] },
   center: { justifyContent: 'center', alignItems: 'center', gap: spacing[3], padding: spacing[6] },
   header: {
     flexDirection: 'row',
@@ -137,43 +137,43 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   backBtn: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  h: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: color.ink[900] },
+  h: { fontSize: fontSize.xl, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
 
   fieldLabel: {
     fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    color: color.ink[400],
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: spacing[2],
     marginTop: spacing[4],
   },
   input: {
-    backgroundColor: color.ink[0],
+    backgroundColor: theme.dark.backgroundDeep,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
     fontSize: fontSize.base,
-    color: color.ink[900],
+    color: theme.dark.textPrimary,
   },
-  hintWarn: { fontSize: fontSize.xs, color: color.danger, marginTop: spacing[1] },
-  error: { color: color.danger, marginTop: spacing[4], fontSize: fontSize.sm },
+  hintWarn: { fontSize: fontSize.xs, color: '#D9A9A2', marginTop: spacing[1] },
+  error: { color: '#D9A9A2', marginTop: spacing[4], fontSize: fontSize.sm },
   doneMsg: {
-    color: color.ink[500],
+    color: theme.dark.textSecondary,
     fontSize: fontSize.sm,
     textAlign: 'center',
     maxWidth: 300,
   },
 
   btn: {
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     paddingVertical: spacing[4],
     borderRadius: radius.full,
     alignItems: 'center',
     marginTop: spacing[6],
   },
   btnDisabled: { opacity: 0.4 },
-  btnText: { color: color.ink[0], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
+  btnText: { color: palette.coral[200], fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
 });

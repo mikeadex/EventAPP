@@ -13,7 +13,7 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 import { updateUser, useSession } from '@/lib/auth-client';
 import { canPickImages, pickImages, uploadImage } from '@/lib/upload';
 import { showToast } from '@/components/toast';
@@ -86,7 +86,7 @@ export default function EditProfileScreen() {
     >
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.h}>Edit profile</Text>
         <View style={styles.backBtn} />
@@ -107,11 +107,11 @@ export default function EditProfileScreen() {
           )}
           {uploading ? (
             <View style={[StyleSheet.absoluteFill, styles.avatarBusy]}>
-              <ActivityIndicator color={color.ink[0]} />
+              <ActivityIndicator color={palette.coral[200]} />
             </View>
           ) : canPickImages() ? (
             <View style={styles.avatarBadge}>
-              <Ionicons name="camera" size={14} color={color.ink[0]} />
+              <Ionicons name="camera" size={14} color={palette.coral[200]} />
             </View>
           ) : null}
         </Pressable>
@@ -130,7 +130,7 @@ export default function EditProfileScreen() {
           setSaved(false);
         }}
         placeholder="Your name"
-        placeholderTextColor={color.ink[300]}
+        placeholderTextColor={theme.dark.textMuted}
         style={styles.input}
         autoCapitalize="words"
         autoCorrect={false}
@@ -146,7 +146,7 @@ export default function EditProfileScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {saved ? (
         <View style={styles.savedRow}>
-          <Ionicons name="checkmark-circle" size={16} color={color.ink[900]} />
+          <Ionicons name="checkmark-circle" size={16} color={theme.dark.textPrimary} />
           <Text style={styles.savedText}>Profile updated</Text>
         </View>
       ) : null}
@@ -157,7 +157,7 @@ export default function EditProfileScreen() {
         disabled={!dirty || pending}
       >
         {pending ? (
-          <ActivityIndicator color={color.ink[0]} />
+          <ActivityIndicator color={palette.coral[200]} />
         ) : (
           <Text style={styles.btnText}>Save changes</Text>
         )}
@@ -167,7 +167,7 @@ export default function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0], paddingHorizontal: spacing[4] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep, paddingHorizontal: spacing[4] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -175,78 +175,82 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   backBtn: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  h: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: color.ink[900] },
+  h: { fontSize: fontSize.xl, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
 
   avatarWrap: { alignItems: 'center', marginVertical: spacing[5], gap: spacing[2] },
   avatarLg: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarText: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold, color: color.ink[900] },
+  avatarText: { fontSize: fontSize['4xl'], fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
   avatarBusy: {
     backgroundColor: 'rgba(10,9,7,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // A real control, not a wash. The generic background mapping turned this
+  // from a solid near-black disc into 14% coral, which on the avatar's own
+  // dark fill was all but invisible — the only hint that a photo can be
+  // changed at all.
   avatarBadge: {
     position: 'absolute',
-    right: 2,
-    bottom: 2,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: color.ink[900],
+    right: 0,
+    bottom: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: theme.dark.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: color.ink[0],
+    borderColor: theme.dark.backgroundDeep,
   },
-  removePhoto: { fontSize: fontSize.xs, color: color.ink[500], fontWeight: fontWeight.medium },
+  removePhoto: { fontSize: fontSize.xs, color: theme.dark.textSecondary },
 
   fieldLabel: {
     fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    color: color.ink[400],
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: spacing[2],
     marginTop: spacing[4],
   },
   input: {
-    backgroundColor: color.ink[0],
+    backgroundColor: theme.dark.backgroundDeep,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
     fontSize: fontSize.base,
-    color: color.ink[900],
+    color: theme.dark.textPrimary,
   },
-  inputDisabled: { backgroundColor: color.ink[50] },
-  inputDisabledText: { fontSize: fontSize.base, color: color.ink[400] },
-  hint: { fontSize: fontSize.xs, color: color.ink[400], marginTop: spacing[1] },
+  inputDisabled: { backgroundColor: theme.dark.surface },
+  inputDisabledText: { fontSize: fontSize.base, color: theme.dark.textMuted },
+  hint: { fontSize: fontSize.xs, color: theme.dark.textMuted, marginTop: spacing[1] },
 
-  error: { color: color.danger, marginTop: spacing[3], fontSize: fontSize.sm },
+  error: { color: '#D9A9A2', marginTop: spacing[3], fontSize: fontSize.sm },
   savedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[1],
     marginTop: spacing[3],
   },
-  savedText: { color: color.ink[900], fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  savedText: { color: theme.dark.textPrimary, fontSize: fontSize.sm },
 
   btn: {
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     paddingVertical: spacing[4],
     borderRadius: radius.full,
     alignItems: 'center',
     marginTop: spacing[6],
   },
   btnDisabled: { opacity: 0.4 },
-  btnText: { color: color.ink[0], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
+  btnText: { color: palette.coral[200], fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
 });

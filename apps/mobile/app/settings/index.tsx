@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 import { useSession, clearStoredToken } from '@/lib/auth-client';
 import { api, ApiError } from '@/lib/api';
 
@@ -26,11 +26,11 @@ function SettingsRow({
   return (
     <Pressable style={styles.row} onPress={onPress} disabled={!onPress}>
       <View style={styles.rowIcon}>
-        <Ionicons name={icon} size={18} color={color.ink[900]} />
+        <Ionicons name={icon} size={18} color={theme.dark.textPrimary} />
       </View>
       <Text style={[styles.rowLabel, danger && styles.rowLabelDanger]}>{label}</Text>
       {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
-      {onPress ? <Ionicons name="chevron-forward" size={18} color={color.ink[300]} /> : null}
+      {onPress ? <Ionicons name="chevron-forward" size={18} color={theme.dark.textMuted} /> : null}
     </Pressable>
   );
 }
@@ -84,7 +84,7 @@ export default function SettingsScreen() {
     <View style={[styles.c, { paddingTop: insets.top + spacing[2] }]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.h}>Settings</Text>
         <View style={styles.backBtn} />
@@ -147,7 +147,7 @@ export default function SettingsScreen() {
           <View style={[styles.menu, styles.menuDanger]}>
             {deleting ? (
               <View style={styles.row}>
-                <ActivityIndicator color={color.danger} />
+                <ActivityIndicator color={'#D9A9A2'} />
                 <Text style={[styles.rowLabel, styles.rowLabelDanger]}>Deleting account…</Text>
               </View>
             ) : (
@@ -166,7 +166,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0], paddingHorizontal: spacing[4] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep, paddingHorizontal: spacing[4] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -174,12 +174,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   backBtn: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  h: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: color.ink[900] },
+  h: { fontSize: fontSize.xl, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
 
   sectionLabel: {
     fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-    color: color.ink[400],
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginTop: spacing[5],
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   },
   menu: {
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.xl,
     overflow: 'hidden',
   },
@@ -203,13 +203,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowLabel: { flex: 1, fontSize: fontSize.base, color: color.ink[900], fontWeight: fontWeight.medium },
-  rowLabelDanger: { color: color.danger },
-  menuDanger: { borderColor: color.danger },
-  rowDetail: { fontSize: fontSize.sm, color: color.ink[400] },
-  divider: { height: 1, backgroundColor: color.ink[100], marginLeft: spacing[4] + 36 + spacing[3] },
+  rowLabel: { flex: 1, fontSize: fontSize.base, color: theme.dark.textPrimary },
+  rowLabelDanger: { color: '#D9A9A2' },
+  menuDanger: { borderColor: 'rgba(217,86,74,0.5)' },
+  rowDetail: { fontSize: fontSize.sm, color: theme.dark.textMuted },
+  divider: { height: 1, backgroundColor: theme.dark.surfaceRaised, marginLeft: spacing[4] + 36 + spacing[3] },
 });

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { REPORT_REASONS, type ReportReason } from '@ekklesia/shared';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 import { api, describeApiError } from '@/lib/api';
 import { showToast } from '@/components/toast';
 
@@ -99,7 +99,7 @@ export function ReportSheet({
       >
         <View style={styles.header}>
           <Pressable onPress={onClose} hitSlop={12}>
-            <Ionicons name="close" size={24} color={color.ink[900]} />
+            <Ionicons name="close" size={24} color={theme.dark.textPrimary} />
           </Pressable>
           <Text style={styles.title}>Report {what}</Text>
         </View>
@@ -123,7 +123,7 @@ export function ReportSheet({
                 <Ionicons
                   name={reason === r ? 'radio-button-on' : 'radio-button-off'}
                   size={20}
-                  color={reason === r ? color.ink[900] : color.ink[400]}
+                  color={reason === r ? theme.dark.accent : theme.dark.textMuted}
                 />
                 <Text style={styles.optionText}>{LABELS[r]}</Text>
               </Pressable>
@@ -137,7 +137,7 @@ export function ReportSheet({
                 value={details}
                 onChangeText={setDetails}
                 placeholder="What happened?"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 multiline
                 maxLength={1000}
@@ -152,7 +152,7 @@ export function ReportSheet({
             onPress={() => void submit()}
           >
             {busy ? (
-              <ActivityIndicator color={color.ink[0]} />
+              <ActivityIndicator color={palette.coral[200]} />
             ) : (
               <Text style={styles.sendText}>Send report</Text>
             )}
@@ -164,7 +164,7 @@ export function ReportSheet({
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -172,36 +172,36 @@ const styles = StyleSheet.create({
     padding: spacing[5],
     paddingBottom: spacing[3],
   },
-  title: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  blurb: { fontSize: fontSize.sm, color: color.ink[500], lineHeight: 20 },
+  title: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  blurb: { fontSize: fontSize.sm, color: theme.dark.textSecondary, lineHeight: 20 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     padding: spacing[4],
   },
-  optionOn: { borderColor: color.ink[900] },
-  optionText: { flex: 1, fontSize: fontSize.sm, color: color.ink[900] },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: color.ink[700], marginBottom: spacing[2] },
+  optionOn: { borderColor: 'rgba(249,142,128,0.55)' },
+  optionText: { flex: 1, fontSize: fontSize.sm, color: theme.dark.textPrimary },
+  label: { fontSize: fontSize.sm, fontFamily: 'Alata_400Regular', color: theme.dark.textSecondary, marginBottom: spacing[2] },
   input: {
     minHeight: 96,
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     padding: spacing[3],
     fontSize: fontSize.base,
-    color: color.ink[900],
+    color: theme.dark.textPrimary,
   },
   send: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
     marginTop: spacing[2],
   },
-  sendText: { color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  sendText: { color: palette.coral[200], fontSize: fontSize.base },
 });
