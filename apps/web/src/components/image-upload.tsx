@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useRef, useState } from 'react';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { Icon } from './icons';
 
 type Purpose = 'event_cover' | 'org_logo' | 'user_avatar';
 
@@ -20,6 +21,15 @@ interface Props {
   hint?: string;
   /** "wide" for hero/cover, "square" for logo/avatar. */
   shape?: 'wide' | 'square';
+  /**
+   * `box` (default) is the shape-driven drop area. `row` is the host
+   * onboarding logo picker: a dashed row with a round preview and "Upload".
+   * `cover` is the create-event cover: a 180px dashed area. Both of the
+   * design variants put the hint above the control.
+   */
+  variant?: 'box' | 'row' | 'cover';
+  /** Initials shown in the `row` preview before an image is chosen. */
+  initials?: string;
   className?: string;
 }
 
@@ -39,6 +49,8 @@ export function ImageUpload({
   label = 'Image',
   hint,
   shape = 'wide',
+  variant = 'box',
+  initials = '',
   className = '',
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -76,7 +88,7 @@ export function ImageUpload({
     } catch (err) {
       if (err instanceof ApiError && err.status === 503) {
         setError(
-          'Object storage is not running. Start MinIO (see README) or paste an image URL manually.',
+          'Image uploads aren’t available right now. You can add one later.',
         );
       } else {
         setError(err instanceof Error ? err.message : 'Upload failed');
@@ -87,37 +99,120 @@ export function ImageUpload({
     }
   }
 
+  const busy = progress === 'signing' ? 'Preparing upload…' : progress === 'uploading' ? 'Uploading…' : null;
+  const fileInput = (
+    <input
+      ref={fileRef}
+      type="file"
+      accept="image/png,image/jpeg,image/webp,image/gif"
+      className="hidden"
+      onChange={handleFile}
+    />
+  );
+  const errorText = error && (
+    <span role="alert" className="error-text">
+      {error}
+    </span>
+  );
+
+  if (variant === 'row' || variant === 'cover') {
+    return (
+      <div className={`flex flex-col gap-2 ${className}`}>
+        <span className="label">{label}</span>
+        {hint && <span className="hint -mt-1">{hint}</span>}
+        {variant === 'row' ? (
+          <div className="flex items-center gap-4 rounded-2xl border border-dashed border-line-3 bg-raised p-4">
+            <span className="inline-flex h-14 w-14 flex-none items-center justify-center overflow-hidden rounded-full border border-line-3 bg-avatar text-[18px] text-accent">
+              {value ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={value} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initials || <Icon name="image" size={20} />
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={progress !== 'idle'}
+              aria-label={`${label}: ${busy ?? (value ? 'replace image' : 'upload an image')}`}
+              className="text-[15px] text-accent disabled:opacity-60"
+            >
+              {busy ?? (value ? 'Replace' : 'Upload')}
+            </button>
+            {value && (
+              <button
+                type="button"
+                onClick={() => onChange(null)}
+                aria-label={`Remove ${label.toLowerCase()}`}
+                className="ml-auto text-[14px] text-ink-2 hover:text-accent"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        ) : value ? (
+          <div className="relative h-[180px] overflow-hidden rounded-[18px] border border-line-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={value} alt="" className="h-full w-full object-cover" />
+            <div className="absolute right-3 top-3 flex gap-2">
+              <button type="button" onClick={() => fileRef.current?.click()} aria-label={`Replace ${label.toLowerCase()}`} className="btn btn-sm glass border border-line-2">
+                Replace
+              </button>
+              <button type="button" onClick={() => onChange(null)} aria-label={`Remove ${label.toLowerCase()}`} className="btn btn-sm glass border border-line-2">
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={progress !== 'idle'}
+            aria-label={`${label}: ${busy ?? 'upload a photo'}`}
+            className="flex h-[180px] w-full flex-col items-center justify-center gap-2 rounded-[18px] border border-dashed border-line-3 bg-raised p-4 text-center text-[15px] text-ink-2 transition-colors hover:text-accent disabled:opacity-60"
+          >
+            <Icon name="image" size={28} className="text-accent" />
+            <span>{busy ?? 'Upload a photo · 16:9 works best'}</span>
+          </button>
+        )}
+        {fileInput}
+        {errorText}
+      </div>
+    );
+  }
+
   return (
-    <div className={className}>
-      <p className="text-sm font-medium text-ink-700">{label}</p>
-      <div
-        className={`mt-1 ${aspect} relative overflow-hidden rounded-lg border-2 border-dashed border-ink-200 bg-ink-50`}
-      >
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <span className="label">{label}</span>
+      <div className={`${aspect} relative overflow-hidden rounded-panel border border-dashed border-line-2 bg-raised`}>
         {value ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={value} alt="" className="h-full w-full object-cover" />
-            <button
-              type="button"
-              onClick={() => onChange(null)}
-              className="absolute right-2 top-2 rounded-md bg-ink-900/70 px-2 py-1 text-xs text-white hover:bg-ink-900"
-            >
-              Remove
-            </button>
+            <div className="absolute right-3 top-3 flex gap-2">
+              <button type="button" onClick={() => fileRef.current?.click()} aria-label={`Replace ${label.toLowerCase()}`} className="btn btn-sm glass border border-line-2">
+                Replace
+              </button>
+              <button type="button" onClick={() => onChange(null)} aria-label={`Remove ${label.toLowerCase()}`} className="btn btn-sm glass border border-line-2">
+                Remove
+              </button>
+            </div>
           </>
         ) : (
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={progress !== 'idle'}
-            className="flex h-full w-full flex-col items-center justify-center text-sm text-ink-500 hover:bg-ink-100 disabled:opacity-60"
+            aria-label={`${label}: ${progress === 'idle' ? 'choose an image' : 'uploading'}`}
+            className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-[14px] text-ink-2 transition-colors hover:bg-softer hover:text-accent disabled:opacity-60"
           >
-            <span className="font-medium">
+            <Icon name="image" size={24} />
+            <span>
               {progress === 'signing' && 'Preparing upload…'}
               {progress === 'uploading' && 'Uploading…'}
-              {progress === 'idle' && 'Click to upload'}
+              {progress === 'idle' && 'Choose an image'}
             </span>
-            <span className="mt-1 text-xs text-ink-400">PNG, JPEG, WebP up to 8 MB</span>
+            <span className="text-[12px] text-faint">PNG, JPEG or WebP, up to 8 MB</span>
           </button>
         )}
       </div>
@@ -128,11 +223,11 @@ export function ImageUpload({
         className="hidden"
         onChange={handleFile}
       />
-      {hint && !error && <p className="mt-1 text-xs text-ink-400">{hint}</p>}
+      {hint && !error && <span className="hint">{hint}</span>}
       {error && (
-        <p role="alert" className="mt-1 text-xs text-danger">
+        <span role="alert" className="error-text">
           {error}
-        </p>
+        </span>
       )}
     </div>
   );

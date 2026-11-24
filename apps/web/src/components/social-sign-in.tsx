@@ -20,7 +20,7 @@ const LABELS: Record<string, string> = {
 
 /** Simple monochrome marks — the palette is deliberately colourless. */
 function ProviderMark({ id }: { id: string }) {
-  const common = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'currentColor' } as const;
+  const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'currentColor' } as const;
   if (id === 'apple') {
     return (
       <svg {...common} aria-hidden="true">
@@ -78,46 +78,44 @@ export function SocialSignIn({ callbackURL = '/' }: { callbackURL?: string }) {
   if (providers.length === 0) return null;
 
   return (
-    <div className="mt-6">
-      <div className="flex items-center gap-3">
-        <span className="h-px flex-1 bg-ink-100" />
-        <span className="text-xs uppercase tracking-wider text-ink-400">or</span>
-        <span className="h-px flex-1 bg-ink-100" />
-      </div>
+    <div className="flex flex-col gap-3">
       {failure && (
-        <p role="alert" className="mt-4 text-sm text-ink-700">
+        <p role="alert" className="error-text text-center">
           {failure}
         </p>
       )}
-      <div className="mt-4 space-y-2">
-        {providers.map((id) => (
-          <button
-            key={id}
-            type="button"
-            disabled={pending !== null}
-            onClick={() => {
-              setPending(id);
-              // A full navigation, not an XHR: the state cookie must be set
-              // first-party on the API's own domain, or the browser drops it
-              // and the callback fails with state_mismatch. The return URL is
-              // absolute so we land back here rather than on the API root.
-              const back = new URL(callbackURL, window.location.origin).toString();
-              // On failure return to this page rather than the post-login
-              // target, so the error is visible next to the sign-in form.
-              // Path only: reusing the full href would stack an ?error= from a
-              // previous attempt onto the next one.
-              const onError = window.location.origin + window.location.pathname;
-              window.location.href =
-                `${BASE}/v1/social/start?provider=${encodeURIComponent(id)}` +
-                `&redirect=${encodeURIComponent(back)}` +
-                `&errorRedirect=${encodeURIComponent(onError)}`;
-            }}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-ink-200 px-4 py-2.5 font-medium text-ink-800 hover:bg-ink-100 disabled:opacity-60"
-          >
-            <ProviderMark id={id} />
-            {pending === id ? 'Redirecting…' : LABELS[id] ?? `Continue with ${id}`}
-          </button>
-        ))}
+      {providers.map((id) => (
+        <button
+          key={id}
+          type="button"
+          disabled={pending !== null}
+          onClick={() => {
+            setPending(id);
+            // A full navigation, not an XHR: the state cookie must be set
+            // first-party on the API's own domain, or the browser drops it
+            // and the callback fails with state_mismatch. The return URL is
+            // absolute so we land back here rather than on the API root.
+            const back = new URL(callbackURL, window.location.origin).toString();
+            // On failure return to this page rather than the post-login
+            // target, so the error is visible next to the sign-in form.
+            // Path only: reusing the full href would stack an ?error= from a
+            // previous attempt onto the next one.
+            const onError = window.location.origin + window.location.pathname;
+            window.location.href =
+              `${BASE}/v1/social/start?provider=${encodeURIComponent(id)}` +
+              `&redirect=${encodeURIComponent(back)}` +
+              `&errorRedirect=${encodeURIComponent(onError)}`;
+          }}
+          className="btn btn-outline btn-lg w-full"
+        >
+          <ProviderMark id={id} />
+          {pending === id ? 'Redirecting…' : LABELS[id] ?? `Continue with ${id}`}
+        </button>
+      ))}
+      <div className="my-2 flex items-center gap-4 text-[12px] text-faint">
+        <span className="rule-x flex-1" />
+        or
+        <span className="rule-x flex-1" />
       </div>
     </div>
   );

@@ -1,267 +1,171 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import type { Route } from 'next';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useState, type FormEvent } from 'react';
+import {
+  BasicsFields,
+  CapacityField,
+  EventPreview,
+  ReviewList,
+  TicketKind,
+  VisibilityChips,
+  WhenWhereFields,
+  draftToPayload,
+  emptyDraft,
+  validateDraft,
+  type EventDraft,
+} from '@/components/host/event-form';
+import { StepTabs } from '@/components/host/steps';
 import { apiClient, ApiError } from '@/lib/api-client';
-import { ImageUpload } from '@/components/image-upload';
-import { LocationModePicker, type LocationMode } from '@/components/location-mode-picker';
+import { useMe } from '@/lib/use-api';
 
-const CATEGORIES = [
-  'service', 'worship', 'prayer', 'youth', 'kids', 'small_group',
-  'conference', 'outreach', 'social', 'fundraiser', 'class', 'other',
-] as const;
+const STEPS = ['The basics', 'Tickets', 'Review & publish'];
 
-interface CreateResponse {
-  id: string;
-  slug: string;
-}
+/** Which fields each step owns, so errors send people back to the right one. */
+const STEP_FIELDS: (keyof EventDraft)[][] = [
+  ['title', 'category', 'summary', 'description', 'coverImageUrl', 'date', 'start', 'end', 'onlineUrl', 'venueName', 'city'],
+  ['capacity'],
+  [],
+];
 
 export default function NewEventPage() {
   const router = useRouter();
   const { orgId } = useParams<{ orgId: string }>();
+  const me = useMe();
+  const host = me.data?.memberships.find((m) => m.organizationId === orgId)?.name ?? 'Your organisation';
 
-  const [title, setTitle] = useState('');
-  const [summary, setSummary] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('service');
-  const [startsAt, setStartsAt] = useState('');
-  const [endsAt, setEndsAt] = useState('');
-  const [locationMode, setLocationMode] = useState<LocationMode>('in_person');
-  const [onlineUrl, setOnlineUrl] = useState('');
-  const [venueName, setVenueName] = useState('');
-  const [addressLine1, setAddressLine1] = useState('');
-  const [city, setCity] = useState('');
-  const [postalCode, setPostalCode] = useState('');
-  const [country, setCountry] = useState('GB');
-  const [capacity, setCapacity] = useState<string>('');
-  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
-
+  const [step, setStep] = useState(0);
+  const [d, setD] = useState<EventDraft>(() => emptyDraft());
+  const [visibility, setVisibility] = useState<'public' | 'unlisted'>('public');
+  const [showErrors, setShowErrors] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<'draft' | 'publish' | null>(null);
 
-  async function submit(publish: boolean) {
-    setPending(true);
+  const set = <K extends keyof EventDraft>(k: K, v: EventDraft[K]) => setD((p) => ({ ...p, [k]: v }));
+  const errors = validateDraft(d);
+  const stepErrors = (i: number) => STEP_FIELDS[i]!.filter((f) => errors[f]);
+  const visibleErrors = showErrors ? errors : {};
+
+  function go(i: number) {
+    setStep(i);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function next(e: FormEvent) {
+    e.preventDefault();
+    if (stepErrors(step).length) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
+    go(Math.min(step + 1, STEPS.length - 1));
+  }
+
+  async function save(publish: boolean) {
+    const firstBad = STEP_FIELDS.findIndex((_, i) => stepErrors(i).length > 0);
+    if (firstBad !== -1) {
+      setShowErrors(true);
+      setStep(firstBad);
+      return;
+    }
+    setPending(publish ? 'publish' : 'draft');
     setError(null);
     try {
-      const created = await apiClient<CreateResponse>(
-        `/v1/organizations/${orgId}/events`,
-        {
-          method: 'POST',
-          body: {
-            title,
-            summary: summary || undefined,
-            description: description || undefined,
-            category,
-            startsAt: new Date(startsAt).toISOString(),
-            endsAt: new Date(endsAt).toISOString(),
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            isOnline: locationMode !== 'in_person',
-            onlineUrl: locationMode === 'in_person' ? undefined : onlineUrl,
-            capacity: capacity ? Number(capacity) : undefined,
-            coverImageUrl: coverImageUrl ?? undefined,
-            venue: locationMode === 'online'
-              ? undefined
-              : {
-                  name: venueName,
-                  addressLine1,
-                  city,
-                  postalCode,
-                  country,
-                },
-          },
-        },
-      );
+      // No ticket types: the API takes free RSVPs against a default place
+      // type it creates on the first booking.
+      const created = await apiClient<{ id: string }>(`/v1/organizations/${orgId}/events`, {
+        method: 'POST',
+        body: { ...draftToPayload(d, false), visibility },
+      });
       if (publish) {
-        await apiClient(`/v1/events/${created.id}/publish`, { method: 'POST' });
+        try {
+          await apiClient(`/v1/events/${created.id}/publish`, { method: 'POST' });
+        } catch (err) {
+          // Saved but not live: take them to the editor to sort it out.
+          router.replace(`/organizer/organizations/${orgId}/events/${created.id}/edit?publishError=1` as never);
+          throw err;
+        }
       }
-      router.push(`/organizer/organizations/${orgId}` as Route);
-      router.refresh();
+      router.replace(`/organizer/organizations/${orgId}` as never);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong');
-    } finally {
-      setPending(false);
+      setPending(null);
+      setError(err instanceof ApiError ? err.message : 'We couldn’t save your event. Try again.');
     }
   }
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    void submit(false);
-  }
-
   return (
-    <div className="max-w-2xl">
-      <h1 className="font-display text-3xl text-ink-900">Create event</h1>
-      <p className="mt-1 text-ink-500">
-        Draft now, publish whenever you&apos;re ready.
-      </p>
-
-      <form onSubmit={onSubmit} className="mt-8 space-y-5">
-        <ImageUpload
-          purpose="event_cover"
-          value={coverImageUrl}
-          onChange={setCoverImageUrl}
-          label="Cover image"
-          hint="Recommended 1600×700. Shown on event cards and detail page."
-        />
-
-        <Field label="Title">
-          <input
-            required
-            minLength={3}
-            maxLength={140}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={fieldStyle}
-          />
-        </Field>
-
-        <Field label="Short summary" hint="One line. Shown on event cards.">
-          <input maxLength={280} value={summary} onChange={(e) => setSummary(e.target.value)} className={fieldStyle} />
-        </Field>
-
-        <Field label="Description">
-          <textarea
-            rows={5}
-            maxLength={10000}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className={fieldStyle}
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Category">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as typeof category)}
-              className={fieldStyle}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c.replace('_', ' ')}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Capacity" hint="Leave blank for no limit.">
-            <input
-              type="number"
-              min={1}
-              value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
-              className={fieldStyle}
-            />
-          </Field>
+    <div className="flex flex-col gap-6">
+      {/* "Preview" from the design isn't offered here: the public event page
+          only serves published events, so there's nothing to open yet. */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-3">
+          <span className="eyebrow text-accent">New event</span>
+          <h1 className="text-[34px] leading-[1.1] text-strong [overflow-wrap:anywhere] sm:text-[40px]">
+            {d.title.trim() || 'Untitled event'}
+          </h1>
         </div>
+        <button type="button" className="btn btn-outline" disabled={pending !== null} onClick={() => void save(false)}>
+          {pending === 'draft' ? 'Saving…' : 'Save draft'}
+        </button>
+      </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Starts at">
-            <input
-              type="datetime-local"
-              required
-              value={startsAt}
-              onChange={(e) => setStartsAt(e.target.value)}
-              className={fieldStyle}
-            />
-          </Field>
-          <Field label="Ends at">
-            <input
-              type="datetime-local"
-              required
-              value={endsAt}
-              onChange={(e) => setEndsAt(e.target.value)}
-              className={fieldStyle}
-            />
-          </Field>
-        </div>
+      <StepTabs steps={STEPS} current={step} onSelect={go} />
 
-        <LocationModePicker value={locationMode} onChange={setLocationMode} />
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <form onSubmit={next} className="card flex min-w-0 flex-col gap-6 p-6 sm:p-8" noValidate>
+          {step === 0 && (
+            <>
+              <BasicsFields d={d} set={set} errors={visibleErrors} />
+              <WhenWhereFields d={d} set={set} errors={visibleErrors} />
+            </>
+          )}
+          {step === 1 && (
+            <>
+              <TicketKind />
+              <CapacityField d={d} set={set} errors={visibleErrors} />
+            </>
+          )}
+          {step === 2 && (
+            <>
+              <h2 className="text-[22px] text-strong">Ready to publish?</h2>
+              <ReviewList d={d} />
+              <VisibilityChips value={visibility} onChange={setVisibility} />
+            </>
+          )}
 
-        {locationMode !== 'in_person' && (
-          <Field label="Stream URL" hint="Where people watch — YouTube, Zoom, whatever you use.">
-            <input
-              type="url"
-              required
-              value={onlineUrl}
-              onChange={(e) => setOnlineUrl(e.target.value)}
-              className={fieldStyle}
-            />
-          </Field>
-        )}
+          {error && (
+            <p role="alert" className="error-text">
+              {error}
+            </p>
+          )}
 
-        {locationMode !== 'online' && (
-          <div className="rounded-md border border-ink-100 bg-ink-50 p-4 space-y-3">
-            <p className="text-xs uppercase tracking-wider text-ink-400">Venue</p>
-            <Field label="Venue name">
-              <input required value={venueName} onChange={(e) => setVenueName(e.target.value)} className={fieldStyle} />
-            </Field>
-            <Field label="Address line 1">
-              <input required value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} className={fieldStyle} />
-            </Field>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="City">
-                <input required value={city} onChange={(e) => setCity(e.target.value)} className={fieldStyle} />
-              </Field>
-              <Field label="Postal code">
-                <input required value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className={fieldStyle} />
-              </Field>
-              <Field label="Country">
-                <select value={country} onChange={(e) => setCountry(e.target.value)} className={fieldStyle}>
-                  <option value="GB">GB</option>
-                  <option value="IE">IE</option>
-                  <option value="US">US</option>
-                </select>
-              </Field>
-            </div>
+          <div className="rule-x mt-1" />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {step > 0 ? (
+              <button type="button" className="btn btn-outline btn-lg" onClick={() => go(step - 1)}>
+                Back
+              </button>
+            ) : (
+              <Link href={`/organizer/organizations/${orgId}` as never} className="btn btn-lg text-ink-2 hover:text-ink">
+                Cancel
+              </Link>
+            )}
+            {step < STEPS.length - 1 ? (
+              <button type="submit" className="btn btn-primary btn-lg">
+                {step === 0 ? 'Continue to tickets' : 'Review'}
+              </button>
+            ) : (
+              <button type="button" className="btn btn-primary btn-lg" disabled={pending !== null} onClick={() => void save(true)}>
+                {pending === 'publish' ? 'Publishing…' : 'Publish event'}
+              </button>
+            )}
           </div>
-        )}
-
-        {error && (
-          <p role="alert" className="text-sm text-danger">
-            {error}
-          </p>
-        )}
-
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={pending}
-            className="rounded-md border border-ink-200 px-5 py-2.5 font-medium text-ink-800 hover:bg-ink-100 disabled:opacity-60"
-          >
-            {pending ? 'Saving…' : 'Save draft'}
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => void submit(true)}
-            className="rounded-md bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-          >
-            {pending ? 'Publishing…' : 'Save & publish'}
-          </button>
-        </div>
-      </form>
+        </form>
+        <aside className="xl:sticky xl:top-24">
+          <EventPreview d={d} host={host} />
+        </aside>
+      </div>
     </div>
   );
 }
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="text-sm font-medium text-ink-700">{label}</span>
-      {children}
-      {hint && <span className="mt-1 block text-xs text-ink-400">{hint}</span>}
-    </label>
-  );
-}
-
-const fieldStyle =
-  'mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200';

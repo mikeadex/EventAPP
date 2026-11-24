@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SUPPORTED_COUNTRIES, SUPPORTED_CURRENCIES } from '../types.js';
+import { httpUrl } from './url.js';
 
 export const OrgKind = z.enum(['church', 'ministry', 'community']);
 export type OrgKind = z.infer<typeof OrgKind>;
@@ -14,7 +15,7 @@ export const CreateOrganizationSchema = z.object({
   kind: OrgKind.default('church'),
   country: z.enum(SUPPORTED_COUNTRIES),
   currency: z.enum(SUPPORTED_CURRENCIES),
-  websiteUrl: z.string().url().optional(),
+  websiteUrl: httpUrl().optional(),
   // Two distinct jobs: `shortDescription` is the one-line tagline under the
   // host's name and on cards; `description` is the fuller story on their page.
   shortDescription: z.string().max(280).optional(),

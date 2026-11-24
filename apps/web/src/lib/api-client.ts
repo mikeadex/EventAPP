@@ -34,7 +34,14 @@ export async function apiClient<T = unknown>(
   const text = await res.text();
   const payload = text ? (() => { try { return JSON.parse(text); } catch { return text; } })() : null;
   if (!res.ok) {
+    // Validation failures carry a generic message plus per-field issues; the
+    // first issue ("Use a link starting with https://") is what people need.
+    const issue =
+      payload && typeof payload === 'object' && 'issues' in payload
+        ? (payload as { issues?: { message?: string }[] }).issues?.[0]?.message
+        : undefined;
     const msg =
+      issue ??
       (payload && typeof payload === 'object' && 'message' in payload
         ? String((payload as { message: unknown }).message)
         : `Request failed: ${res.status}`);
