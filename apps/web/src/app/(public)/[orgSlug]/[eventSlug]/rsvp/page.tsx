@@ -64,8 +64,10 @@ export default async function RsvpPage({
   }
 
   return (
-    <div className="wrap max-w-[1040px] pt-10">
-      <BackLink href={href}>Back to event</BackLink>
+    <div className="wrap max-w-[1080px] pt-10">
+      <BackLink href={href} className="mb-6">
+        Back to event
+      </BackLink>
       {blocker ? (
         <EmptyState icon="ticket" title={blocker.title} body={blocker.body} action={blocker.action} />
       ) : (
@@ -74,10 +76,20 @@ export default async function RsvpPage({
             id: event.id,
             title: event.title,
             startsAt: event.startsAt,
+            endsAt: event.endsAt,
             timezone: event.timezone,
+            href,
+            coverImageUrl: event.coverImageUrl,
+            category: event.category,
+            venueLine: event.venue
+              ? [event.venue.name, event.venue.addressLine1, event.venue.city, event.venue.postalCode]
+                  .filter(Boolean)
+                  .join(', ')
+              : 'Online',
             place: event.venue ? `${event.venue.name}, ${event.venue.city}` : 'Online',
             host: event.organization.name,
             tierName: event.ticketTypes[0]?.name && event.ticketTypes[0].name !== 'RSVP' ? event.ticketTypes[0].name : 'Free place',
+            tierDescription: event.ticketTypes[0]?.description ?? null,
             remaining,
           }}
           initialQty={Number(qty) || 1}

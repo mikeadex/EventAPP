@@ -79,7 +79,7 @@ export function DiscoverFilters() {
       {hasFilters && (
         <button
           type="button"
-          onClick={() => set({ category: null, when: null, price: null })}
+          onClick={() => set({ category: null, when: null, price: null, q: null })}
           className="self-start text-[14px] text-accent"
         >
           × Clear filters
@@ -125,7 +125,7 @@ export function SearchBox() {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <label className="field h-[52px] flex-1">
-        <Icon name="search" className="text-accent" />
+        <Icon name="search" className="text-muted" />
         <span className="sr-only">Search events</span>
         <input
           type="search"
@@ -172,6 +172,8 @@ export function DiscoverEmpty({ failed = false }: { failed?: boolean }) {
     />
   ) : (
     <EmptyState
+      plain
+      icon="calendarX"
       title="No events match"
       body="Try a different search, or clear your filters to see everything on."
       action={

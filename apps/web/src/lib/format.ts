@@ -79,3 +79,16 @@ export function mapsUrl(v: { name?: string; addressLine1?: string; city?: string
   const q = [v.name, v.addressLine1, v.city, v.postalCode].filter(Boolean).join(', ');
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
+
+/**
+ * "2 × Volunteer" for a booking's tickets, or "2 places" when the tier name
+ * isn't known.
+ */
+export function ticketsLabel(n: number, tier: { name: string } | null | undefined) {
+  return tier?.name ? `${n} × ${tier.name}` : plural(n, 'place');
+}
+
+/** What a booking cost: "Free", or the total of its tickets. */
+export function ticketsPrice(n: number, tier: { priceMinor: number; currency: string } | null | undefined) {
+  return tier ? money(tier.priceMinor * n, tier.currency) : 'Free';
+}

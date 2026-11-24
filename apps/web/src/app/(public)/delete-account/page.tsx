@@ -24,7 +24,7 @@ const CONTACT = 'david@ekklesiaevents.com';
  */
 export default function DeleteAccountPage() {
   return (
-    <LegalPage title="Delete your account" updated="2 September 2026">
+    <LegalPage eyebrow="Account" title="Delete your account" updated="2 September 2026">
       <p>
         You can permanently delete your Ekklesia account at any time. Deletion is
         immediate for your profile and sign-in details, and completes in full within

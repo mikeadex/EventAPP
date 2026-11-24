@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Your tickets', robots: { index: fals
 
 export default function MyTicketsPage() {
   return (
-    <div className="wrap max-w-[1040px] py-12">
+    <div className="wrap max-w-[1040px] pt-12">
       <Suspense fallback={null}>
         <TicketsList />
       </Suspense>

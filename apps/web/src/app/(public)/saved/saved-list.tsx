@@ -2,20 +2,18 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { SaveButton } from '@/components/client';
-import { Cover } from '@/components/cover';
-import { EventCardSkeleton } from '@/components/event-card';
+import { EventCard, EventCardSkeleton } from '@/components/event-card';
+import { Icon } from '@/components/icons';
 import { EmptyState, ErrorCard, PageIntro } from '@/components/ui';
-import { fmtWhen } from '@/lib/format';
 import type { SavedEvent } from '@/lib/types';
 import { useApi, useRequireSession } from '@/lib/use-api';
-import { eventHref } from '@/lib/url';
 
 export function SavedList() {
   const { ready } = useRequireSession();
   const saved = useApi<SavedEvent[]>(ready ? '/v1/me/saved-events' : null);
   // Unsaving from this page hides the card; re-saving (before leaving) brings it back.
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const hide = (id: string) => setHidden((h) => new Set(h).add(id));
 
   const now = Date.now();
   const items = (saved.data ?? []).filter((s) => !hidden.has(s.event.id));
@@ -24,7 +22,16 @@ export function SavedList() {
 
   return (
     <>
-      <PageIntro eyebrow="Saved" title="Events you’ve saved" intro="Keep an eye on things you might go to." />
+      <PageIntro
+        eyebrow="Saved"
+        title="Saved events"
+        intro="Events you’ve hearted. Synced with the Ekklesia app."
+        action={
+          <Link href="/events" className="btn btn-outline">
+            Discover more <Icon name="arrowRight" size={16} />
+          </Link>
+        }
+      />
       {saved.status === 'loading' ? (
         <div className="cards" aria-busy="true">
           {[0, 1, 2].map((i) => (
@@ -42,9 +49,10 @@ export function SavedList() {
         />
       ) : items.length === 0 ? (
         <EmptyState
+          plain
           icon="heart"
           title="Nothing saved yet"
-          body="Tap the heart on any event to keep it here."
+          body="Tap the heart on any event to keep it here for later."
           action={
             <Link href="/events" className="btn btn-primary">
               Discover events
@@ -56,7 +64,7 @@ export function SavedList() {
           {upcoming.length > 0 && (
             <div className="cards">
               {upcoming.map((s) => (
-                <SavedCard key={s.event.id} item={s} onUnsave={(id) => setHidden((h) => new Set(h).add(id))} />
+                <EventCard key={s.event.id} event={s.event} onSavedChange={(on) => !on && hide(s.event.id)} />
               ))}
             </div>
           )}
@@ -65,7 +73,7 @@ export function SavedList() {
               <h2 className="text-[22px] text-strong">Already happened</h2>
               <div className="cards opacity-70">
                 {past.map((s) => (
-                  <SavedCard key={s.event.id} item={s} onUnsave={(id) => setHidden((h) => new Set(h).add(id))} />
+                  <EventCard key={s.event.id} event={s.event} onSavedChange={(on) => !on && hide(s.event.id)} />
                 ))}
               </div>
             </section>
@@ -73,30 +81,5 @@ export function SavedList() {
         </div>
       )}
     </>
-  );
-}
-
-function SavedCard({ item, onUnsave }: { item: SavedEvent; onUnsave: (id: string) => void }) {
-  const e = item.event;
-  return (
-    <article className="card card-link group relative flex h-full flex-col overflow-hidden">
-      <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
-        <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.03]">
-          <Cover image={e.coverImageUrl} category="OTHER" title={e.title} />
-        </div>
-        <span className="absolute right-3.5 top-3.5 z-10">
-          <SaveButton eventId={e.id} title={e.title} onChange={(on) => !on && onUnsave(e.id)} />
-        </span>
-      </div>
-      <div className="flex flex-1 flex-col gap-2.5 p-5">
-        <p className="eyebrow text-ink-2">{fmtWhen(e.startsAt)}</p>
-        <h3 className="text-[21px] leading-tight text-strong">
-          <Link href={eventHref(e) as never} className="after:absolute after:inset-0">
-            {e.title}
-          </Link>
-        </h3>
-        <p className="text-[15px] text-muted">{e.organization.name}</p>
-      </div>
-    </article>
   );
 }

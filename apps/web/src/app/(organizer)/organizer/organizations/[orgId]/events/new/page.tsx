@@ -3,33 +3,30 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { Segmented } from '@/components/controls';
 import {
   BasicsFields,
   CapacityField,
   EventPreview,
+  ReviewList,
+  TicketKind,
+  VisibilityChips,
   WhenWhereFields,
-  draftTimes,
   draftToPayload,
   emptyDraft,
   validateDraft,
   type EventDraft,
 } from '@/components/host/event-form';
-import { StepHeader } from '@/components/host/steps';
-import { Icon } from '@/components/icons';
-import { Row } from '@/components/ui';
+import { StepTabs } from '@/components/host/steps';
 import { apiClient, ApiError } from '@/lib/api-client';
-import { categoryOf } from '@/lib/categories';
-import { fmtDateLong, fmtTime } from '@/lib/format';
 import { useMe } from '@/lib/use-api';
 
-const STEPS = ['The basics', 'When and where', 'Places and publishing'];
+const STEPS = ['The basics', 'Tickets', 'Review & publish'];
 
 /** Which fields each step owns, so errors send people back to the right one. */
 const STEP_FIELDS: (keyof EventDraft)[][] = [
-  ['title', 'category', 'summary', 'description', 'coverImageUrl'],
-  ['date', 'start', 'end', 'onlineUrl', 'venueName', 'city'],
+  ['title', 'category', 'summary', 'description', 'coverImageUrl', 'date', 'start', 'end', 'onlineUrl', 'venueName', 'city'],
   ['capacity'],
+  [],
 ];
 
 export default function NewEventPage() {
@@ -50,6 +47,11 @@ export default function NewEventPage() {
   const stepErrors = (i: number) => STEP_FIELDS[i]!.filter((f) => errors[f]);
   const visibleErrors = showErrors ? errors : {};
 
+  function go(i: number) {
+    setStep(i);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   function next(e: FormEvent) {
     e.preventDefault();
     if (stepErrors(step).length) {
@@ -57,8 +59,7 @@ export default function NewEventPage() {
       return;
     }
     setShowErrors(false);
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    go(Math.min(step + 1, STEPS.length - 1));
   }
 
   async function save(publish: boolean) {
@@ -93,57 +94,43 @@ export default function NewEventPage() {
     }
   }
 
-  const t = draftTimes(d);
-
   return (
-    <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="min-w-0">
-        <StepHeader eyebrow="New event" steps={STEPS} current={step} />
-        <form onSubmit={next} className="card flex flex-col gap-6 p-6 sm:p-8" noValidate>
-          {step === 0 && <BasicsFields d={d} set={set} errors={visibleErrors} />}
-          {step === 1 && <WhenWhereFields d={d} set={set} errors={visibleErrors} />}
+    <div className="flex flex-col gap-6">
+      {/* "Preview" from the design isn't offered here: the public event page
+          only serves published events, so there's nothing to open yet. */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-3">
+          <span className="eyebrow text-accent">New event</span>
+          <h1 className="text-[34px] leading-[1.1] text-strong [overflow-wrap:anywhere] sm:text-[40px]">
+            {d.title.trim() || 'Untitled event'}
+          </h1>
+        </div>
+        <button type="button" className="btn btn-outline" disabled={pending !== null} onClick={() => void save(false)}>
+          {pending === 'draft' ? 'Saving…' : 'Save draft'}
+        </button>
+      </div>
+
+      <StepTabs steps={STEPS} current={step} onSelect={go} />
+
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <form onSubmit={next} className="card flex min-w-0 flex-col gap-6 p-6 sm:p-8" noValidate>
+          {step === 0 && (
+            <>
+              <BasicsFields d={d} set={set} errors={visibleErrors} />
+              <WhenWhereFields d={d} set={set} errors={visibleErrors} />
+            </>
+          )}
+          {step === 1 && (
+            <>
+              <TicketKind />
+              <CapacityField d={d} set={set} errors={visibleErrors} />
+            </>
+          )}
           {step === 2 && (
             <>
-              <div className="flex flex-col gap-3">
-                <Segmented
-                  label="Tickets"
-                  value="free"
-                  onChange={() => {}}
-                  options={[{ value: 'free', label: 'Free — people reserve a place' }]}
-                />
-                {/* TODO(confirm): paid tickets. The API only books free places
-                    today (RSVP refuses any event with a priced ticket type), so
-                    offering "Paid" here would publish an event nobody can book. */}
-                <p className="flex items-start gap-2 text-[13px] leading-relaxed text-muted">
-                  <Icon name="coins" size={15} className="mt-0.5 flex-none" />
-                  Paid tickets aren&rsquo;t available yet. Every place is free to reserve and gets its own QR ticket.
-                </p>
-              </div>
-              <CapacityField d={d} set={set} errors={visibleErrors} />
-              <Segmented
-                label="Who can find it?"
-                value={visibility}
-                onChange={setVisibility}
-                options={[
-                  { value: 'public', label: 'Public — listed on Discover' },
-                  { value: 'unlisted', label: 'Unlisted — only people with the link' },
-                ]}
-              />
-              <div className="panel flex flex-col gap-3 p-5">
-                <span className="eyebrow text-[10px] text-faint">Review</span>
-                <Row k="Title" v={d.title || '—'} />
-                <Row k="Category" v={categoryOf(d.category).label} />
-                <Row k="When" v={t ? `${fmtDateLong(t.startsAt.toISOString())}, ${fmtTime(t.startsAt.toISOString())}–${fmtTime(t.endsAt.toISOString())}` : '—'} />
-                <Row
-                  k="Where"
-                  v={
-                    d.mode === 'online'
-                      ? 'Online'
-                      : `${d.venueName || '—'}${d.city ? `, ${d.city}` : ''}${d.mode === 'hybrid' ? ' + online' : ''}`
-                  }
-                />
-                <Row k="Places" v={d.capacity ? `${d.capacity}, free` : 'Unlimited, free'} />
-              </div>
+              <h2 className="text-[22px] text-strong">Ready to publish?</h2>
+              <ReviewList d={d} />
+              <VisibilityChips value={visibility} onChange={setVisibility} />
             </>
           )}
 
@@ -153,37 +140,32 @@ export default function NewEventPage() {
             </p>
           )}
 
-          <div className="rule-x" />
+          <div className="rule-x mt-1" />
           <div className="flex flex-wrap items-center justify-between gap-3">
             {step > 0 ? (
-              <button type="button" className="btn btn-ghost" onClick={() => setStep(step - 1)}>
-                <Icon name="arrowLeft" size={16} /> Back
+              <button type="button" className="btn btn-outline btn-lg" onClick={() => go(step - 1)}>
+                Back
               </button>
             ) : (
-              <Link href={`/organizer/organizations/${orgId}` as never} className="btn btn-ghost">
+              <Link href={`/organizer/organizations/${orgId}` as never} className="btn btn-lg text-ink-2 hover:text-ink">
                 Cancel
               </Link>
             )}
             {step < STEPS.length - 1 ? (
               <button type="submit" className="btn btn-primary btn-lg">
-                Continue
+                {step === 0 ? 'Continue to tickets' : 'Review'}
               </button>
             ) : (
-              <div className="flex flex-wrap gap-3">
-                <button type="button" className="btn btn-outline btn-lg" disabled={pending !== null} onClick={() => void save(false)}>
-                  {pending === 'draft' ? 'Saving…' : 'Save as draft'}
-                </button>
-                <button type="button" className="btn btn-primary btn-lg" disabled={pending !== null} onClick={() => void save(true)}>
-                  {pending === 'publish' ? 'Publishing…' : 'Publish event'}
-                </button>
-              </div>
+              <button type="button" className="btn btn-primary btn-lg" disabled={pending !== null} onClick={() => void save(true)}>
+                {pending === 'publish' ? 'Publishing…' : 'Publish event'}
+              </button>
             )}
           </div>
         </form>
+        <aside className="xl:sticky xl:top-24">
+          <EventPreview d={d} host={host} />
+        </aside>
       </div>
-      <aside className="hidden xl:sticky xl:top-24 xl:block">
-        <EventPreview d={d} host={host} />
-      </aside>
     </div>
   );
 }

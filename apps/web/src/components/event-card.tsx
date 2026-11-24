@@ -9,19 +9,28 @@ import { SaveButton } from './client';
 import { Icon } from './icons';
 
 /** Grid card — photo on top, details below. */
-export function EventCard({ event, status }: { event: EventCardData; status?: string }) {
+export function EventCard({
+  event,
+  status,
+  onSavedChange,
+}: {
+  event: EventCardData;
+  status?: string;
+  /** Called after the heart toggles — Saved uses it to hide unsaved cards. */
+  onSavedChange?: (saved: boolean) => void;
+}) {
   const href = eventHref(event);
   return (
     <article className="card card-link group relative flex h-full flex-col overflow-hidden">
       <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">
-        <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.03]">
+        <div className="absolute inset-0">
           <Cover image={event.coverImageUrl} category={event.category} title={event.title} />
         </div>
         <div className="pointer-events-none absolute inset-x-3.5 top-3.5 flex items-start justify-between">
           <span className="tag-solid">{categoryOf(event.category).label}</span>
           <span className="pointer-events-auto">
             <Suspense fallback={null}>
-              <SaveButton eventId={event.id} title={event.title} />
+              <SaveButton eventId={event.id} title={event.title} onChange={onSavedChange} />
             </Suspense>
           </span>
         </div>

@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Cover } from '@/components/cover';
-import { Icon } from '@/components/icons';
-import { EmptyState, ErrorCard, PageIntro, Skeleton } from '@/components/ui';
-import { fmtDay, fmtTime, plural } from '@/lib/format';
+import { EmptyState, ErrorCard, Eyebrow, Skeleton } from '@/components/ui';
+import { fmtDayMonth, fmtTime, fmtWhen, ticketsLabel, ticketsPrice } from '@/lib/format';
 import type { Ticket } from '@/lib/types';
 import { useApi, useRequireSession } from '@/lib/use-api';
 
@@ -31,32 +30,36 @@ export function TicketsList() {
 
   return (
     <>
-      <PageIntro eyebrow="Your tickets" title="Where you’re going" />
-
-      <div role="tablist" aria-label="Tickets" className="mb-8 flex gap-2">
-        {(
-          [
-            ['upcoming', `Upcoming${tickets.data ? ` · ${upcoming.length}` : ''}`],
-            ['past', `Past${tickets.data ? ` · ${past.length}` : ''}`],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            role="tab"
-            type="button"
-            aria-selected={tab === value}
-            onClick={() => setTab(value)}
-            className="chip"
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          <Eyebrow>Tickets</Eyebrow>
+          <h1 className="h1">Your tickets</h1>
+        </div>
+        <div role="tablist" aria-label="Ticket list" className="flex gap-2">
+          {(
+            [
+              ['upcoming', `Upcoming${tickets.data ? ` · ${upcoming.length}` : ''}`],
+              ['past', `Past${tickets.data ? ` · ${past.length}` : ''}`],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              role="tab"
+              type="button"
+              aria-selected={tab === value}
+              onClick={() => setTab(value)}
+              className="chip"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tickets.status === 'loading' ? (
         <div className="flex flex-col gap-4" aria-busy="true">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-[120px] w-full rounded-card" />
+            <Skeleton key={i} className="h-[180px] w-full rounded-card" />
           ))}
         </div>
       ) : tickets.status === 'error' ? (
@@ -90,6 +93,13 @@ export function TicketsList() {
           ))}
         </ul>
       )}
+
+      <p className="mt-8 text-[14px] text-faint">
+        Tickets are also in the Ekklesia app and in your confirmation emails.{' '}
+        <Link href="/saved" className="text-accent">
+          See saved events →
+        </Link>
+      </p>
     </>
   );
 }
@@ -97,37 +107,52 @@ export function TicketsList() {
 function TicketRow({ tickets, past }: { tickets: Ticket[]; past: boolean }) {
   const t = tickets[0]!;
   const e = t.event;
-  const checkedIn = tickets.filter((x) => x.status === 'CHECKED_IN').length;
-  const place = e.isOnline ? 'Online' : e.venue ? `${e.venue.name}, ${e.venue.city}` : 'Venue to be confirmed';
+  const href = `/me/tickets/${t.id}`;
+  const scanned = tickets.find((x) => x.status === 'CHECKED_IN');
+  const place = e.isOnline ? 'Online' : e.venue ? e.venue.name : 'Venue to be confirmed';
+  const status = scanned
+    ? `Checked in${scanned.checkedInAt ? ` · ${fmtDayMonth(scanned.checkedInAt, e.timezone)}, ${fmtTime(scanned.checkedInAt, e.timezone)}` : ''}`
+    : past
+      ? 'Event ended'
+      : 'Valid · active on the day';
   return (
-    <li className="card card-link relative flex items-center gap-5 p-4 sm:p-5">
-      <div className="relative hidden h-[88px] w-[132px] flex-none overflow-hidden rounded-2xl bg-surface-2 sm:block">
+    <li className="card card-link grid overflow-hidden sm:grid-cols-[280px_minmax(0,1fr)_auto]">
+      <Link
+        href={href as never}
+        tabIndex={-1}
+        aria-hidden="true"
+        className={`relative block min-h-[180px] bg-surface-2 ${past ? 'opacity-[.55]' : ''}`}
+      >
         <Cover image={e.coverImageUrl} category="OTHER" title={e.title} />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="eyebrow text-[11px] text-ink-2">
-          {fmtDay(e.startsAt, e.timezone)} · {fmtTime(e.startsAt, e.timezone)}
-        </span>
-        <h2 className="truncate text-[20px] leading-tight text-strong">
-          <Link href={`/me/tickets/${t.id}` as never} className="after:absolute after:inset-0">
-            {e.title}
-          </Link>
+      </Link>
+      <div className="flex min-w-0 flex-col gap-2 p-6">
+        <span className="eyebrow text-ink-2">{fmtWhen(e.startsAt, e.timezone)}</span>
+        <h2 className="text-[24px] leading-[1.2] text-strong [overflow-wrap:anywhere]">
+          <Link href={href as never}>{e.title}</Link>
         </h2>
-        <p className="truncate text-[14px] text-muted">
+        <p className="text-[15px] text-muted">
           {e.organization.name} · {place}
         </p>
-        <p className="flex flex-wrap items-center gap-2 pt-1 text-[13px]">
-          <span className="font-mono text-faint">{t.code}</span>
-          {tickets.length > 1 && <span className="tag-muted">{plural(tickets.length, 'place')}</span>}
-          {checkedIn > 0 && <span className="tag">Checked in</span>}
+        <p className="mt-2 flex flex-wrap gap-2">
+          <span className="tag">{ticketsLabel(tickets.length, t.ticketType)}</span>
+          <span className="tag !border-line !text-ink-2">{ticketsPrice(tickets.length, t.ticketType)}</span>
         </p>
       </div>
-      {!past && (
-        <span className="btn btn-outline btn-sm hidden flex-none md:inline-flex" aria-hidden="true">
-          <Icon name="ticket" size={16} /> Show ticket
-        </span>
-      )}
-      <Icon name="arrowRight" className="flex-none text-faint md:hidden" />
+      <div className="flex min-w-[220px] flex-col justify-between gap-4 border-t border-dashed border-line-2 p-6 sm:border-l sm:border-t-0">
+        <div className="flex flex-col gap-1.5">
+          <span className="eyebrow text-[10px] text-faint">Ticket code</span>
+          <span className="font-mono text-[15px] tracking-[0.08em] text-strong">{t.code}</span>
+          <span className={`flex items-center gap-2 text-[13px] ${past || scanned ? 'text-muted' : 'text-accent'}`}>
+            <span aria-hidden="true" className="h-1.5 w-1.5 flex-none rounded-full bg-current" />
+            {status}
+          </span>
+        </div>
+        {/* TODO(confirm): the design's past rows say "View receipt"; free
+            RSVPs have no order or receipt, so they open the ticket. */}
+        <Link href={href as never} className="btn btn-primary">
+          {past ? 'View ticket' : 'View QR ticket'}
+        </Link>
+      </div>
     </li>
   );
 }

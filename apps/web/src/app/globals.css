@@ -302,6 +302,14 @@
     background: var(--soft);
     color: var(--accent);
   }
+  /* On light, coral on the soft fill is 4.3:1 — just under AA for 14px text —
+     so a selected chip steps down to the deeper accent. */
+  [data-theme='light'] .chip[aria-pressed='true'],
+  [data-theme='light'] .chip[aria-selected='true'],
+  [data-theme='light'] .chip[aria-current='page'],
+  [data-theme='light'] .chip.on {
+    color: var(--accent-ink);
+  }
   .tag {
     display: inline-flex;
     width: fit-content;

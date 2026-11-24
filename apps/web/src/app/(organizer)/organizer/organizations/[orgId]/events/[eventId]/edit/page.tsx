@@ -3,17 +3,21 @@
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Segmented } from '@/components/controls';
 import { EventGalleryEditor } from '@/components/event-gallery-editor';
 import {
   BasicsFields,
   CapacityField,
+  EventPreview,
+  ReviewList,
+  TicketKind,
+  VisibilityChips,
   WhenWhereFields,
   draftFromEvent,
   draftToPayload,
   validateDraft,
   type EventDraft,
 } from '@/components/host/event-form';
+import { StepTabs } from '@/components/host/steps';
 import { Icon } from '@/components/icons';
 import { TicketTypesEditor } from '@/components/ticket-types-editor';
 import { ErrorCard, Skeleton } from '@/components/ui';
@@ -40,6 +44,15 @@ interface OrganizerEvent {
   venue: Venue | null;
 }
 
+const STEPS = ['The basics', 'Tickets', 'Review & publish'];
+
+/** Which fields each step owns, so a failed save opens the right one. */
+const STEP_FIELDS: (keyof EventDraft)[][] = [
+  ['title', 'category', 'summary', 'description', 'coverImageUrl', 'date', 'start', 'end', 'onlineUrl', 'venueName', 'city'],
+  ['capacity'],
+  [],
+];
+
 const STATUS_LABEL: Record<OrganizerEvent['status'], string> = {
   DRAFT: 'Draft',
   SCHEDULED: 'Scheduled',
@@ -52,7 +65,9 @@ export default function EditEventPage() {
   const { orgId, eventId } = useParams<{ orgId: string; eventId: string }>();
   const publishError = useSearchParams().get('publishError') === '1';
   const me = useMe();
-  const orgSlug = me.data?.memberships.find((m) => m.organizationId === orgId)?.slug;
+  const membership = me.data?.memberships.find((m) => m.organizationId === orgId);
+  const orgSlug = membership?.slug;
+  const [step, setStep] = useState(0);
 
   const [event, setEvent] = useState<OrganizerEvent | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -98,6 +113,8 @@ export default function EditEventPage() {
     e.preventDefault();
     if (Object.keys(errors).length) {
       setShowErrors(true);
+      const firstBad = STEP_FIELDS.findIndex((fields) => fields.some((f) => errors[f]));
+      if (firstBad !== -1) setStep(firstBad);
       setMsg({ ok: false, text: 'Fix the highlighted fields, then save.' });
       return;
     }
@@ -134,15 +151,20 @@ export default function EditEventPage() {
     }
   }
 
+  const visibleErrors = showErrors ? errors : {};
+
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex min-w-0 flex-col gap-2">
-          <span className="flex items-center gap-3">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-3">
+          <span className="flex flex-wrap items-center gap-3">
+            <span className="eyebrow text-accent">Edit event</span>
             <span className={live && !ended ? 'tag' : 'tag-muted'}>{ended && !cancelled ? 'Ended' : STATUS_LABEL[event.status]}</span>
             <span className="text-[13px] text-muted">{event.attendeeCount} going</span>
           </span>
-          <h1 className="h1 !text-[40px] [overflow-wrap:anywhere]">{event.title}</h1>
+          <h1 className="text-[34px] leading-[1.1] text-strong [overflow-wrap:anywhere] sm:text-[40px]">
+            {d.title.trim() || event.title}
+          </h1>
         </div>
         <div className="flex flex-wrap gap-2">
           {live && orgSlug && (
@@ -151,7 +173,7 @@ export default function EditEventPage() {
             </Link>
           )}
           <Link href={`${base}/attendees` as never} className="btn btn-outline">
-            <Icon name="users" size={16} /> Attendees
+            Attendees
           </Link>
           {(event.status === 'DRAFT' || event.status === 'SCHEDULED') && !ended && (
             <button type="button" className="btn btn-primary" disabled={pending !== null} onClick={() => void transition('publish')}>
@@ -160,6 +182,8 @@ export default function EditEventPage() {
           )}
         </div>
       </div>
+
+      <StepTabs steps={STEPS} current={step} onSelect={setStep} />
 
       {msg && (
         <p role={msg.ok ? 'status' : 'alert'} className={`panel p-4 text-[14px] ${msg.ok ? 'text-ink-2' : 'text-accent'}`}>
@@ -170,75 +194,101 @@ export default function EditEventPage() {
         <p className="panel p-4 text-[14px] text-body">This event is cancelled and can no longer be edited.</p>
       )}
 
-      <form onSubmit={save} noValidate>
-        <fieldset disabled={cancelled} className="flex flex-col gap-6">
-          <section className="card flex flex-col gap-6 p-6 sm:p-8">
-            <h2 className="text-[22px] text-strong">The basics</h2>
-            <BasicsFields d={d} set={set} errors={showErrors ? errors : {}} />
-          </section>
-          <section className="card flex flex-col gap-6 p-6 sm:p-8">
-            <h2 className="text-[22px] text-strong">When and where</h2>
-            <WhenWhereFields d={d} set={set} errors={showErrors ? errors : {}} disabled={cancelled} />
-          </section>
-          <section className="card flex flex-col gap-6 p-6 sm:p-8">
-            <h2 className="text-[22px] text-strong">Places and visibility</h2>
-            <CapacityField d={d} set={set} errors={showErrors ? errors : {}} />
-            <Segmented
-              label="Who can find it?"
-              value={visibility}
-              onChange={setVisibility}
-              options={[
-                { value: 'public', label: 'Public — listed on Discover' },
-                { value: 'unlisted', label: 'Unlisted — only people with the link' },
-              ]}
-            />
-          </section>
-          {!cancelled && (
-            <div className="glass sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-panel border border-line-2 p-3 pl-5">
-              <span className="text-[13px] text-muted">Changes go live as soon as you save.</span>
-              <button type="submit" className="btn btn-primary" disabled={pending !== null}>
-                {pending === 'save' ? 'Saving…' : 'Save changes'}
-              </button>
-            </div>
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <form onSubmit={save} noValidate>
+            <fieldset disabled={cancelled} className="flex flex-col gap-6">
+              <section className="card flex flex-col gap-6 p-6 sm:p-8">
+                {step === 0 && (
+                  <>
+                    <BasicsFields d={d} set={set} errors={visibleErrors} />
+                    <WhenWhereFields d={d} set={set} errors={visibleErrors} disabled={cancelled} />
+                  </>
+                )}
+                {step === 1 && (
+                  <>
+                    <TicketKind />
+                    <CapacityField d={d} set={set} errors={visibleErrors} />
+                  </>
+                )}
+                {step === 2 && (
+                  <>
+                    <h2 className="text-[22px] text-strong">{live ? 'Live on Ekklesia' : 'Ready to publish?'}</h2>
+                    <ReviewList d={d} />
+                    <VisibilityChips value={visibility} onChange={setVisibility} />
+                  </>
+                )}
+                <div className="rule-x mt-1" />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {step > 0 ? (
+                    <button type="button" className="btn btn-outline btn-lg" onClick={() => setStep(step - 1)}>
+                      Back
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  {step < STEPS.length - 1 && (
+                    <button type="button" className="btn btn-outline btn-lg" onClick={() => setStep(step + 1)}>
+                      {step === 0 ? 'Continue to tickets' : 'Review'}
+                    </button>
+                  )}
+                </div>
+              </section>
+              {!cancelled && (
+                <div className="glass sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-panel border border-line-2 p-3 pl-5">
+                  <span className="text-[13px] text-muted">Changes go live as soon as you save.</span>
+                  <button type="submit" className="btn btn-primary" disabled={pending !== null}>
+                    {pending === 'save' ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
+              )}
+            </fieldset>
+          </form>
+
+          {step === 0 && (
+            <section className="card p-6 sm:p-8">
+              {/* onCoverChange keeps the form in step: promoting a gallery image to
+                  cover otherwise leaves the field above stale, and the next save
+                  would write the old URL back over it. */}
+              <EventGalleryEditor eventId={eventId} coverImageUrl={d.coverImageUrl} onCoverChange={(v) => set('coverImageUrl', v)} />
+            </section>
           )}
-        </fieldset>
-      </form>
 
-      <section className="card p-6 sm:p-8">
-        {/* onCoverChange keeps the form in step: promoting a gallery image to
-            cover otherwise leaves the field above stale, and the next save
-            would write the old URL back over it. */}
-        <EventGalleryEditor eventId={eventId} coverImageUrl={d.coverImageUrl} onCoverChange={(v) => set('coverImageUrl', v)} />
-      </section>
-
-      <section className="card p-6 sm:p-8">
-        <TicketTypesEditor eventId={eventId} disabled={cancelled} />
-      </section>
-
-      {live && !ended && (
-        <section className="card flex flex-col gap-4 p-6 sm:p-8">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-[20px] text-strong">Cancel this event</h2>
-            <p className="text-[14px] text-body">
-              Bookings close and the event page shows it as cancelled. This can&rsquo;t be undone.
-            </p>
-          </div>
-          {confirmCancel ? (
-            <div className="flex flex-wrap gap-3">
-              <button type="button" className="btn btn-primary" disabled={pending !== null} onClick={() => void transition('cancel')}>
-                {pending === 'cancel' ? 'Cancelling…' : 'Yes, cancel the event'}
-              </button>
-              <button type="button" className="btn btn-ghost" onClick={() => setConfirmCancel(false)}>
-                Keep it
-              </button>
-            </div>
-          ) : (
-            <button type="button" className="btn btn-outline self-start" onClick={() => setConfirmCancel(true)}>
-              Cancel event
-            </button>
+          {step === 1 && (
+            <section className="card p-6 sm:p-8">
+              <TicketTypesEditor eventId={eventId} disabled={cancelled} />
+            </section>
           )}
-        </section>
-      )}
+
+          {step === 2 && live && !ended && (
+            <section className="card flex flex-col gap-4 p-6 sm:p-8">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-[20px] text-strong">Cancel this event</h2>
+                <p className="text-[14px] text-body">
+                  Bookings close and the event page shows it as cancelled. This can&rsquo;t be undone.
+                </p>
+              </div>
+              {confirmCancel ? (
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" className="btn btn-primary" disabled={pending !== null} onClick={() => void transition('cancel')}>
+                    {pending === 'cancel' ? 'Cancelling…' : 'Yes, cancel the event'}
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={() => setConfirmCancel(false)}>
+                    Keep it
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className="btn btn-outline self-start" onClick={() => setConfirmCancel(true)}>
+                  Cancel event
+                </button>
+              )}
+            </section>
+          )}
+        </div>
+        <aside className="xl:sticky xl:top-24">
+          <EventPreview d={d} host={membership?.name ?? 'Your organisation'} />
+        </aside>
+      </div>
     </div>
   );
 }

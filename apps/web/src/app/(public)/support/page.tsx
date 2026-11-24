@@ -24,7 +24,7 @@ function Mail() {
  */
 export default function SupportPage() {
   return (
-    <LegalPage title="Support" updated="14 September 2026">
+    <LegalPage eyebrow="Help" title="Support" updated="14 September 2026">
       <p>
         Email <strong><Mail /></strong> and a person will read it. We reply within two working
         days, and faster for anything about safety.

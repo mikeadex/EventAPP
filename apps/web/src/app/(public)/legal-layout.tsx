@@ -8,15 +8,18 @@
 export function LegalPage({
   title,
   updated,
+  eyebrow = 'Legal',
   children,
 }: {
   title: string;
   updated: string;
+  /** "Legal" for policies; support and account pages pass their own. */
+  eyebrow?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="wrap max-w-[824px] pt-16">
-      <span className="eyebrow text-accent">Legal</span>
+    <div className="wrap max-w-[824px] pt-12">
+      <span className="eyebrow text-accent">{eyebrow}</span>
       <h1 className="h1 mt-3">{title}</h1>
       <p className="mt-3 text-[14px] text-faint">Last updated {updated}</p>
       <div className="rule-x my-10" />

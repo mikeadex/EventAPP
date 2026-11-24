@@ -12,6 +12,7 @@ const COLS = [
       { href: '/events', label: 'All events' },
       { href: '/events?category=worship', label: 'Worship' },
       { href: '/events?category=conference', label: 'Conferences' },
+      // TODO(confirm): the design has "Browse hosts" here, once /hosts exists.
       { href: '/events?price=free', label: 'Free events' },
     ],
   },
@@ -21,7 +22,7 @@ const COLS = [
       { href: '/for-churches', label: 'Host on Ekklesia' },
       { href: '/for-churches#features', label: 'Features' },
       { href: '/for-churches#faq', label: 'Host FAQ' },
-      { href: '/organizer', label: 'Host dashboard' },
+      { href: '/sign-in?next=/organizer', label: 'Host sign in' },
     ],
   },
   {
@@ -35,7 +36,8 @@ const COLS = [
   },
 ];
 
-export function StoreBadges() {
+/** `lg` is the home page's app band: 52px tall, 16px label. */
+export function StoreBadges({ size = 'md' }: { size?: 'md' | 'lg' }) {
   return (
     <div className="flex flex-wrap gap-3">
       {[
@@ -45,10 +47,10 @@ export function StoreBadges() {
         <a
           key={b.big}
           href={b.href}
-          className="inline-flex h-12 flex-col justify-center rounded-xl border border-line-2 bg-surface px-4 leading-[1.1] transition-colors hover:border-line-3"
+          className={`inline-flex flex-col justify-center rounded-xl border border-line-2 bg-surface leading-[1.1] transition-colors hover:border-line-3 ${size === 'lg' ? 'h-[52px] px-[18px]' : 'h-12 px-4'}`}
         >
           <span className="text-[10px] text-faint">{b.small}</span>
-          <span className="text-[15px]">{b.big}</span>
+          <span className={size === 'lg' ? 'text-[16px]' : 'text-[15px]'}>{b.big}</span>
         </a>
       ))}
     </div>

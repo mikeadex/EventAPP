@@ -514,6 +514,8 @@ export const TICKET_DETAIL_SELECT = {
   attendeeName: true,
   attendeeEmail: true,
   userId: true,
+  // Tier name and price, for "2 × Volunteer · Free" on the web tickets pages.
+  ticketType: { select: { name: true, priceMinor: true, currency: true } },
   event: {
     select: {
       id: true,

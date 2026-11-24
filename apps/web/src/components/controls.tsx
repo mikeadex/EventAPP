@@ -23,13 +23,14 @@ export function Switch({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative h-[30px] w-[52px] flex-none rounded-full border border-line-2 transition-colors disabled:opacity-50 ${
-        checked ? 'bg-soft' : 'bg-surface-2'
+      className={`relative h-[30px] w-[52px] flex-none rounded-full border transition-colors disabled:opacity-50 ${
+        checked ? 'border-accent bg-accent' : 'border-line-2 bg-surface-2'
       }`}
     >
       <span
         className={`absolute top-[3px] h-[22px] w-[22px] rounded-full transition-[left] duration-200 ${
-          checked ? 'left-[25px] bg-accent' : 'left-[3px] bg-faint'
+          // The design's knob is white on the accent in both themes.
+          checked ? 'left-[25px] bg-white' : 'left-[3px] bg-muted'
         }`}
       />
     </button>
@@ -68,12 +69,17 @@ export function Stepper({
   max,
   onChange,
   label,
+  decLabel,
+  incLabel,
 }: {
   value: number;
   min?: number;
   max: number;
   onChange: (next: number) => void;
   label: string;
+  /** Button names, e.g. "Remove a place" / "Add a place" (the design's wording). */
+  decLabel?: string;
+  incLabel?: string;
 }) {
   return (
     <div className="flex items-center gap-2" role="group" aria-label={label}>
@@ -82,11 +88,11 @@ export function Stepper({
         className="icon-btn !h-9 !w-9 !text-accent"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
-        aria-label={`Fewer — ${label}`}
+        aria-label={decLabel ?? `Fewer — ${label}`}
       >
-        <Icon name="minus" size={16} />
+        <Icon name="minus" size={14} />
       </button>
-      <span className="w-7 text-center text-[16px]" aria-live="polite">
+      <span className="w-6 text-center text-[16px]" aria-live="polite">
         {value}
       </span>
       <button
@@ -94,9 +100,9 @@ export function Stepper({
         className="icon-btn !h-9 !w-9 !text-accent"
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
-        aria-label={`More — ${label}`}
+        aria-label={incLabel ?? `More — ${label}`}
       >
-        <Icon name="plus" size={16} />
+        <Icon name="plus" size={14} />
       </button>
     </div>
   );

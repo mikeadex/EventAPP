@@ -40,7 +40,7 @@ export function Cover({
     >
       <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">
         <g fill="none" stroke={c} strokeOpacity="0.16">
-          {[40, 80, 120, 160, 200, 240].map((r) => (
+          {[40, 80, 120, 160, 200].map((r) => (
             <circle key={r} cx={cx} cy={cy} r={r} />
           ))}
         </g>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useSession } from '@/lib/auth-client';
 import { Stepper } from '@/components/controls';
 import { money } from '@/lib/format';
 import type { TicketTypeData } from '@/lib/types';
@@ -29,6 +30,7 @@ export function BookingPanel({
   const paid = event.tiers.some((t) => t.priceMinor > 0);
   const cap = Math.min(MAX_PER_BOOKING, event.remaining ?? MAX_PER_BOOKING);
   const [qty, setQty] = useState(cap > 0 ? 1 : 0);
+  const { data: session } = useSession();
   const soldOut = event.remaining === 0;
   const closed = event.status === 'CANCELLED' || event.ended;
 
@@ -56,8 +58,8 @@ export function BookingPanel({
   return (
     <aside id="book" aria-label="Book" className="panel p-6 lg:sticky lg:top-24">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[22px] text-strong">{paid ? 'Tickets' : 'Reserve a place'}</h2>
-        {paid && <span className="text-[13px] text-faint">{event.tiers[0]?.currency}</span>}
+        <h2 className="text-[22px] text-strong">{paid ? 'Tickets' : 'Reserve your place'}</h2>
+        <span className="text-[13px] text-faint">{event.tiers[0]?.currency ?? 'GBP'}</span>
       </div>
 
       <ul className="mt-5 flex flex-col gap-3">
@@ -71,7 +73,7 @@ export function BookingPanel({
                   {t.description && <span className="text-[13px] text-muted">{t.description}</span>}
                   <span className="text-[15px] text-accent">{money(t.priceMinor, t.currency)}</span>
                 </div>
-                <span className="text-[13px] text-faint">{left <= 0 ? 'Sold out' : left < 20 ? `${left} left` : ''}</span>
+                <span className="text-[13px] text-faint">{left <= 0 ? 'Sold out' : left <= 10 ? `Only ${left} left` : ''}</span>
               </li>
             );
           })
@@ -84,12 +86,20 @@ export function BookingPanel({
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="text-[16px]">{tierName}</span>
               <span className="text-[15px] text-accent">Free</span>
-              {event.remaining !== null && event.remaining > 0 && event.remaining < 20 && (
+              {event.remaining !== null && event.remaining > 0 && event.remaining <= 10 && (
                 <span className="text-[12px] text-faint">Only {event.remaining} left</span>
               )}
               {soldOut && <span className="text-[12px] text-faint">Sold out</span>}
             </div>
-            <Stepper value={qty} min={soldOut ? 0 : 1} max={cap} onChange={setQty} label={`${tierName} places`} />
+            <Stepper
+              value={qty}
+              min={0}
+              max={cap}
+              onChange={setQty}
+              label={`${tierName} quantity`}
+              decLabel={`Remove one ${tierName}`}
+              incLabel={`Add one ${tierName}`}
+            />
           </li>
         )}
       </ul>
@@ -121,7 +131,7 @@ export function BookingPanel({
             </Link>
           )}
           <p className="mt-4 text-center text-[12px] text-faint">
-            Free to book · cancel any time from Your tickets
+            {session?.user ? 'Free to book · cancel any time from Your tickets' : 'Sign in to confirm — it takes seconds.'}
           </p>
         </>
       )}
@@ -143,11 +153,13 @@ export function MobileBookingBar({ price, spots, closed }: { price: string; spot
             <span className="text-[12px] text-accent">{closed ? 'Bookings closed' : spots}</span>
           </span>
           <a href="#book" className="btn btn-primary !h-12 !px-6">
-            {closed ? 'Details' : price === 'Free' ? 'RSVP' : 'Tickets'}
+            {closed ? 'Details' : price === 'Free' ? 'Reserve a place' : 'Get tickets'}
           </a>
         </div>
       </div>
-      <div className="h-[72px] sm:hidden" aria-hidden="true" />
+      {/* The bar is fixed over the page, so on phones the body gets 72px of
+          room underneath — after the footer, which the layout renders. */}
+      <style>{'@media (max-width: 760px) { body { padding-bottom: 72px; } }'}</style>
     </>
   );
 }

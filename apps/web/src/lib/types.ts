@@ -113,6 +113,8 @@ export interface Ticket {
   checkedInAt: string | null;
   attendeeName: string | null;
   attendeeEmail: string | null;
+  /** Older API builds don't send it; treat as absent. */
+  ticketType?: { name: string; priceMinor: number; currency: string } | null;
   event: {
     id: string;
     slug: string;
@@ -130,14 +132,8 @@ export interface Ticket {
 
 export interface SavedEvent {
   createdAt: string;
-  event: {
-    id: string;
-    slug: string;
-    title: string;
-    startsAt: string;
-    coverImageUrl: string | null;
-    organization: { slug: string; name: string };
-  };
+  /** The same card shape as search results. */
+  event: EventCardData;
 }
 
 export interface OrgEvent {
@@ -161,6 +157,7 @@ export interface Attendee {
   checkedInAt: string | null;
   name: string;
   email: string | null;
+  image?: string | null;
   ticketType: { name: string; priceMinor: number; currency: string } | null;
 }
 

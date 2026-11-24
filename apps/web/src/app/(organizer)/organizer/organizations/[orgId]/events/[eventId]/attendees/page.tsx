@@ -5,10 +5,10 @@ import { useParams } from 'next/navigation';
 import { useMemo, useState, type FormEvent } from 'react';
 import { Field } from '@/components/controls';
 import { Icon } from '@/components/icons';
-import { EmptyState, ErrorCard, Skeleton } from '@/components/ui';
+import { Avatar, EmptyState, ErrorCard, Skeleton } from '@/components/ui';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { checkInCode, describeResult } from '@/lib/check-in';
-import { fmtTime } from '@/lib/format';
+import { fmtDay, fmtDayMonth, fmtTime, plural } from '@/lib/format';
 import type { Attendee, AttendeeList } from '@/lib/types';
 import { useApi } from '@/lib/use-api';
 
@@ -28,7 +28,15 @@ function csvCell(v: string | null | undefined) {
 export default function AttendeesPage() {
   const { orgId, eventId } = useParams<{ orgId: string; eventId: string }>();
   const list = useApi<AttendeeList>(`/v1/events/${eventId}/tickets`);
-  const event = useApi<{ title: string; slug: string }>(`/v1/events/${eventId}`);
+  const event = useApi<{
+    title: string;
+    slug: string;
+    startsAt: string;
+    timezone: string;
+    capacity: number | null;
+    isOnline: boolean;
+    venue: { name: string } | null;
+  }>(`/v1/events/${eventId}`);
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [busy, setBusy] = useState<string | null>(null);
@@ -106,28 +114,49 @@ export default function AttendeesPage() {
     }
   }
 
-  if (list.status === 'error') return <ErrorCard message={list.error} />;
+  if (list.status === 'error')
+    return (
+      <ErrorCard
+        message={list.error}
+        action={
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => list.reload()}>
+            Try again
+          </button>
+        }
+      />
+    );
 
   const total = list.data?.total ?? 0;
   const checkedIn = list.data?.checkedIn ?? 0;
 
+  const ev = event.data;
+  const spotsLeft = ev && ev.capacity !== null ? Math.max(ev.capacity - total, 0) : null;
+
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex min-w-0 flex-col gap-2">
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-3">
           <span className="eyebrow text-accent">Attendees</span>
-          <h1 className="h1 !text-[40px] [overflow-wrap:anywhere]">{event.data?.title ?? 'Attendees'}</h1>
+          <h1 className="text-[34px] leading-[1.1] text-strong [overflow-wrap:anywhere] sm:text-[40px]">
+            {ev?.title ?? 'Attendees'}
+          </h1>
+          {ev && (
+            <p className="text-[15px] text-ink-2">
+              {fmtDay(ev.startsAt, ev.timezone)} · {fmtTime(ev.startsAt, ev.timezone)} ·{' '}
+              {ev.venue?.name ?? (ev.isOnline ? 'Online' : 'Venue to be confirmed')}
+            </p>
+          )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`/organizer/organizations/${orgId}/events/${eventId}/check-in` as never} className="btn btn-primary">
-            <Icon name="scan" size={16} /> Open scanner
-          </Link>
-          <button type="button" className="btn btn-outline" onClick={() => setComposing((v) => !v)} aria-expanded={composing}>
-            <Icon name="megaphone" size={16} /> Message attendees
-          </button>
+        <div className="flex flex-wrap gap-2.5">
           <button type="button" className="btn btn-outline" onClick={exportCsv} disabled={items.length === 0}>
-            <Icon name="download" size={16} /> Export CSV
+            Export CSV
           </button>
+          <button type="button" className="btn btn-outline" onClick={() => setComposing((v) => !v)} aria-expanded={composing}>
+            Message attendees
+          </button>
+          <Link href={`/organizer/organizations/${orgId}/events/${eventId}/check-in` as never} className="btn btn-primary">
+            Open scanner
+          </Link>
         </div>
       </div>
 
@@ -165,32 +194,35 @@ export default function AttendeesPage() {
         </form>
       )}
 
-      <dl className="grid grid-cols-3 gap-4">
-        {[
-          ['Going', total],
-          ['Checked in', checkedIn],
-          ['Not yet', total - checkedIn],
-        ].map(([k, v]) => (
-          <div key={k} className="card flex flex-col gap-2 p-5">
-            <dt className="eyebrow text-[10px] text-faint">{k}</dt>
-            <dd className="text-[30px] leading-none text-strong">{list.data ? v : '—'}</dd>
-          </div>
-        ))}
+      <dl className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
+        <div className="card flex flex-col gap-1.5 p-5">
+          <dt className="eyebrow text-[10px] text-faint">Booked</dt>
+          <dd className="text-[30px] leading-none text-strong">{list.data ? total : '—'}</dd>
+        </div>
+        <div className="card flex flex-col gap-1.5 p-5">
+          <dt className="eyebrow text-[10px] text-faint">Checked in</dt>
+          <dd className="text-[30px] leading-none text-accent">{list.data ? checkedIn : '—'}</dd>
+        </div>
+        <div className="card flex flex-col gap-1.5 p-5">
+          <dt className="eyebrow text-[10px] text-faint">Spots left</dt>
+          <dd className="text-[30px] leading-none text-strong">
+            {!list.data || !ev ? '—' : spotsLeft === null ? <span className="text-[20px]">No limit</span> : spotsLeft}
+          </dd>
+        </div>
       </dl>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="relative flex-1">
+        <label className="field !h-12 flex-1 !rounded-full !border-line !bg-surface">
+          <Icon name="search" size={18} className="flex-none text-muted" />
           <span className="sr-only">Search attendees</span>
-          <Icon name="search" size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-faint" />
           <input
             type="search"
-            className="input pl-11"
-            placeholder="Search by name, email or ticket code"
+            placeholder="Search names, emails or ticket codes"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </label>
-        <div role="tablist" aria-label="Filter attendees" className="flex gap-2">
+        <div role="group" aria-label="Filter attendees" className="flex gap-2">
           {(
             [
               ['all', 'All'],
@@ -198,7 +230,7 @@ export default function AttendeesPage() {
               ['out', 'Not yet'],
             ] as const
           ).map(([v, label]) => (
-            <button key={v} type="button" role="tab" aria-selected={filter === v} className="chip" onClick={() => setFilter(v)}>
+            <button key={v} type="button" aria-pressed={filter === v} className="chip" onClick={() => setFilter(v)}>
               {label}
             </button>
           ))}
@@ -206,48 +238,87 @@ export default function AttendeesPage() {
       </div>
 
       {list.status === 'loading' ? (
-        <Skeleton className="h-64 rounded-card" />
+        <div className="card flex flex-col gap-3 p-5" aria-busy="true">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-11 rounded-xl" />
+          ))}
+        </div>
       ) : items.length === 0 ? (
         <EmptyState icon="users" title="Nobody yet" body="When people reserve a place, they’ll appear here." />
       ) : shown.length === 0 ? (
         <EmptyState icon="search" title="No matches" body="Try a different name or code." />
       ) : (
-        <ul className="card divide-y divide-line" aria-live="polite">
-          {shown.map((a) => {
-            const isIn = a.status === 'CHECKED_IN';
-            return (
-              <li key={a.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="truncate text-[16px] text-strong">{a.name}</span>
-                  <span className="flex flex-wrap gap-x-3 text-[13px] text-muted">
-                    <span className="truncate">{a.email ?? 'No email'}</span>
-                    <span className="font-mono text-faint">{a.code}</span>
-                  </span>
-                  {rowMsg?.id === a.id && (
-                    <span role="alert" className="error-text">
-                      {rowMsg.text}
-                    </span>
-                  )}
-                </div>
-                {isIn ? (
-                  <span className="tag flex-none">
-                    <Icon name="check" size={13} /> In{a.checkedInAt ? ` · ${fmtTime(a.checkedInAt)}` : ''}
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm flex-none self-start sm:self-auto"
-                    disabled={busy !== null}
-                    onClick={() => void admit(a)}
-                    aria-label={`Check in ${a.name}, ticket ${a.code}`}
-                  >
-                    {busy === a.id ? 'Checking in…' : 'Check in'}
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex flex-col gap-3">
+          {/* TODO(confirm): the design's Tickets column ("×2") needs places per
+              booking; the list is one row per ticket with no booking id. */}
+          <div className="card overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-left" aria-live="polite">
+              <thead>
+                <tr className="border-b border-line">
+                  {['Name', 'Ticket', 'Code', 'Booked', 'Status'].map((h, i) => (
+                    <th
+                      key={h}
+                      scope="col"
+                      className={`px-4 py-3 text-[11px] font-normal uppercase tracking-[0.2em] text-faint ${i === 4 ? 'text-right' : ''}`}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((a) => {
+                  const isIn = a.status === 'CHECKED_IN';
+                  return (
+                    <tr key={a.id} className="border-b border-line last:border-b-0">
+                      <td className="px-4 py-3.5 align-middle">
+                        <span className="flex items-center gap-3">
+                          <Avatar name={a.name} src={a.image} size={36} />
+                          <span className="flex min-w-0 flex-col">
+                            <span className="text-[15px] text-strong [overflow-wrap:anywhere]">{a.name}</span>
+                            {a.email && <span className="text-[13px] text-muted [overflow-wrap:anywhere]">{a.email}</span>}
+                            {rowMsg?.id === a.id && (
+                              <span role="alert" className="error-text">
+                                {rowMsg.text}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 align-middle text-[14px] text-ink-2">{a.ticketType?.name ?? 'Place'}</td>
+                      <td className="px-4 py-3.5 align-middle font-mono text-[13px] text-ink-2">{a.code}</td>
+                      <td className="whitespace-nowrap px-4 py-3.5 align-middle text-[14px] text-muted">
+                        {a.issuedAt ? fmtDayMonth(a.issuedAt) : '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-right align-middle">
+                        {isIn ? (
+                          // Check-in is one-way in the API, so this isn't a toggle.
+                          <span className="inline-flex items-center gap-2 text-[14px] text-accent">
+                            <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
+                            In{a.checkedInAt ? ` · ${fmtTime(a.checkedInAt)}` : ''}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            disabled={busy !== null}
+                            onClick={() => void admit(a)}
+                            aria-label={`Check in ${a.name}, ticket ${a.code}`}
+                          >
+                            {busy === a.id ? 'Checking in…' : 'Check in'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[13px] text-faint">
+            Showing {shown.length} of {plural(total, 'ticket')}
+          </p>
+        </div>
       )}
     </div>
   );

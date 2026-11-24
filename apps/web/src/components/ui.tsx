@@ -90,19 +90,26 @@ export function EmptyState({
   title,
   body,
   action,
+  plain = false,
 }: {
   icon?: IconName;
   title: string;
   body?: ReactNode;
   action?: ReactNode;
+  /** The browse pages' variant: a bare 40px icon in `faint`, no ring. */
+  plain?: boolean;
 }) {
   return (
     <div className="card flex flex-col items-center gap-4 px-6 py-20 text-center">
-      <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-line-2 text-accent">
-        <Icon name={icon} size={22} />
-      </span>
+      {plain ? (
+        <Icon name={icon} size={40} className="text-faint" />
+      ) : (
+        <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-line-2 text-accent">
+          <Icon name={icon} size={22} />
+        </span>
+      )}
       <h2 className="text-[22px] text-strong">{title}</h2>
-      {body && <p className="max-w-[380px] text-[15px] leading-relaxed text-body">{body}</p>}
+      {body && <p className="max-w-[360px] text-[15px] leading-relaxed text-body">{body}</p>}
       {action}
     </div>
   );
@@ -121,11 +128,11 @@ export function ErrorCard({ message, action }: { message: string; action?: React
   );
 }
 
-export function BackLink({ href, children }: { href: string; children: ReactNode }) {
+export function BackLink({ href, children, className = 'mb-8' }: { href: string; children: ReactNode; className?: string }) {
   return (
     <Link
       href={href as never}
-      className="mb-8 inline-flex items-center gap-2 text-[14px] text-ink-2 transition-colors hover:text-accent"
+      className={`inline-flex items-center gap-2 text-[14px] text-ink-2 transition-colors hover:text-accent ${className}`}
     >
       <Icon name="arrowLeft" size={16} /> {children}
     </Link>

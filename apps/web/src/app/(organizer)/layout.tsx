@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { HostShell } from '@/components/host/host-shell';
 
@@ -17,6 +18,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
           <HostShell>{children}</HostShell>
         </Suspense>
       </main>
+      <SiteFooter />
     </div>
   );
 }

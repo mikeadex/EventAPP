@@ -23,7 +23,7 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Pro
         title="What’s on"
         intro="Events from churches, ministries and faith communities. Browse freely — you only sign in to RSVP."
       />
-      <div className="grid items-start gap-12 md:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid items-start gap-10 md:grid-cols-[260px_minmax(0,1fr)] md:gap-12">
         <Suspense fallback={null}>
           <DiscoverFilters />
         </Suspense>

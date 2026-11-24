@@ -60,7 +60,7 @@ export default async function EventDetailPage({ params }: { params: Params }) {
   const remaining = event.capacity !== null ? Math.max(0, event.capacity - event.attendeeCount) : null;
   const ended = new Date(event.endsAt).getTime() < Date.now();
   const spots =
-    remaining === null ? 'Open to all' : remaining === 0 ? 'Fully booked' : `${plural(remaining, 'place')} left`;
+    remaining === null ? 'Open to all' : remaining === 0 ? 'Fully booked' : `${plural(remaining, 'spot')} left`;
   const sameDay = fmtDateLong(event.startsAt, tz) === fmtDateLong(event.endsAt, tz);
   const description = (event.description ?? event.summary ?? '').split(/\n{2,}/).filter(Boolean);
   const where = event.venue
@@ -200,6 +200,7 @@ export default async function EventDetailPage({ params }: { params: Params }) {
                 <span className="flex items-center gap-3">
                   <Icon name="clock" className="text-accent" />
                   {fmtTime(event.startsAt, tz)} – {fmtTime(event.endsAt, tz)}
+                  {tz === 'Europe/London' ? ' (UK time)' : ` (${tzName(event.startsAt, tz)})`}
                 </span>
                 <span className="flex items-center gap-3">
                   <Icon name="users" className="text-accent" />
@@ -281,18 +282,30 @@ function Fact({ label, value, sub }: { label: string; value: string; sub: string
   );
 }
 
+/** Short zone name, e.g. "CET", for events outside the UK. */
+function tzName(iso: string, tz: string) {
+  const part = new Intl.DateTimeFormat('en-GB', { timeZone: tz, timeZoneName: 'short' })
+    .formatToParts(new Date(iso))
+    .find((p) => p.type === 'timeZoneName');
+  return part?.value ?? tz;
+}
+
+/** The design's map artwork: a slanted street grid, a road and a pin. */
 function MapPattern() {
   return (
-    <svg aria-hidden="true" className="absolute inset-0 h-full w-full" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice">
-      <g fill="none" stroke="var(--line-2)" strokeWidth="1">
-        <path d="M0 60 Q120 40 200 90 T400 70" />
-        <path d="M0 140 Q140 120 220 160 T400 130" />
-        <path d="M80 0 L120 200" />
-        <path d="M260 0 L230 200" />
-        <path d="M340 0 L380 200" />
+    <svg aria-hidden="true" className="absolute inset-0 h-full w-full" viewBox="0 0 400 200" preserveAspectRatio="none">
+      <g stroke="rgba(var(--accent-rgb), 0.12)" fill="none">
+        <path d="M0 0 L-30 200M36 0 L6 200M72 0 L42 200M108 0 L78 200M144 0 L114 200M180 0 L150 200M216 0 L186 200M252 0 L222 200M288 0 L258 200M324 0 L294 200M360 0 L330 200M396 0 L366 200" />
+        <path d="M0 0 L400 14M0 32 L400 46M0 64 L400 78M0 96 L400 110M0 128 L400 142M0 160 L400 174M0 192 L400 206" />
       </g>
-      <circle cx="235" cy="88" r="7" fill="var(--accent)" />
-      <circle cx="235" cy="88" r="16" fill="none" stroke="var(--line-3)" />
+      <path
+        d="M-10 140 C 80 110, 160 170, 260 120 S 380 60, 420 80"
+        stroke="rgba(var(--accent-rgb), 0.35)"
+        strokeWidth="10"
+        fill="none"
+      />
+      <circle cx="300" cy="62" r="34" fill="rgba(var(--accent-rgb), 0.12)" />
+      <circle cx="300" cy="62" r="7" fill="var(--accent)" />
     </svg>
   );
 }

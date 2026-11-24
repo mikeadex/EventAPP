@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Saved events', robots: { index: fals
 
 export default function SavedPage() {
   return (
-    <div className="wrap py-12">
+    <div className="wrap pt-12">
       <Suspense fallback={null}>
         <SavedList />
       </Suspense>

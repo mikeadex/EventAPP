@@ -2,11 +2,11 @@
 
 import { Field } from '@/components/controls';
 import { Cover } from '@/components/cover';
-import { Icon } from '@/components/icons';
 import { ImageUpload } from '@/components/image-upload';
 import { LocationModePicker, modeOf, type LocationMode } from '@/components/location-mode-picker';
 import { CATEGORIES, categoryOf, type CategoryValue } from '@/lib/categories';
 import { fmtDay, fmtTime } from '@/lib/format';
+import { PressedChips } from './steps';
 
 /** The editable shape of an event, in the units the form works in. */
 export interface EventDraft {
@@ -152,9 +152,10 @@ export function BasicsFields({ d, set, errors = {} }: { d: EventDraft; set: Sett
         value={d.coverImageUrl}
         onChange={(v) => set('coverImageUrl', v)}
         label="Cover image"
-        hint="Landscape works best (1600×900). Without one we make a cover for you."
+        hint="Without one we make a cover for you."
+        variant="cover"
       />
-      <Field label="Event title" error={errors.title}>
+      <Field label="Event name" error={errors.title}>
         {(p) => (
           <input
             {...p}
@@ -168,25 +169,12 @@ export function BasicsFields({ d, set, errors = {} }: { d: EventDraft; set: Sett
           />
         )}
       </Field>
-      <div className="flex flex-col gap-2">
-        <span className="label" id="cat-label">
-          Category
-        </span>
-        <div role="radiogroup" aria-labelledby="cat-label" className="flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              role="radio"
-              aria-checked={d.category === c.value}
-              className={`chip ${d.category === c.value ? 'on' : ''}`}
-              onClick={() => set('category', c.value)}
-            >
-              <Icon name={c.icon} size={15} /> {c.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PressedChips
+        legend="Category"
+        value={d.category}
+        onChange={(v) => set('category', v)}
+        options={CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+      />
       <Field
         label="Short summary"
         hint="One line, shown on event cards."
@@ -196,11 +184,12 @@ export function BasicsFields({ d, set, errors = {} }: { d: EventDraft; set: Sett
           <input {...p} className="input" maxLength={280} value={d.summary} onChange={(e) => set('summary', e.target.value)} />
         )}
       </Field>
-      <Field label="About this event">
+      <Field label="Description">
         {(p) => (
           <textarea
             {...p}
-            className="input min-h-[160px]"
+            className="input min-h-[120px]"
+            rows={4}
             maxLength={10_000}
             placeholder="What to expect, who it’s for, anything people should bring."
             value={d.description}
@@ -225,7 +214,9 @@ export function WhenWhereFields({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-5 sm:grid-cols-[1.4fr_1fr_1fr]">
+      {/* TODO(confirm): the design has a "Repeats weekly" switch; the API has
+          no recurring events. */}
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
         <Field label="Date" error={errors.date}>
           {(p) => <input {...p} type="date" required className="input" value={d.date} onChange={(e) => set('date', e.target.value)} />}
         </Field>
@@ -298,7 +289,7 @@ export function WhenWhereFields({
 
 export function CapacityField({ d, set, errors = {} }: { d: EventDraft; set: Setter; errors?: Errors }) {
   return (
-    <Field label="How many places?" hint="Leave blank for no limit. Bookings close when it’s full." error={errors.capacity}>
+    <Field label="Places available" hint="Leave blank for no limit. Bookings close when it’s full." error={errors.capacity}>
       {(p) => (
         <input
           {...p}
@@ -321,7 +312,7 @@ export function EventPreview({ d, host }: { d: EventDraft; host: string }) {
   const cat = categoryOf(d.category);
   return (
     <div className="flex flex-col gap-3">
-      <span className="eyebrow text-[10px] text-faint">Preview</span>
+      <span className="eyebrow text-[10px] text-faint">How it looks on Discover</span>
       <article className="card overflow-hidden" aria-label="Event card preview">
         <div className="relative aspect-[16/10] bg-surface-2">
           <Cover image={d.coverImageUrl} category={d.category} title={d.title || 'Your event'} />
@@ -337,5 +328,95 @@ export function EventPreview({ d, host }: { d: EventDraft; host: string }) {
         </div>
       </article>
     </div>
+  );
+}
+
+/**
+ * The tickets step's type switch. Only Free is bookable today.
+ * TODO(confirm #2, #3): paid tiers and donation tickets. RSVP refuses any
+ * event with a priced ticket type and there's no checkout or donations API,
+ * so Paid and Donation are shown but can't be chosen.
+ */
+export function TicketKind() {
+  const kinds = [
+    { label: 'Paid', on: false, disabled: true },
+    { label: 'Free', on: true, disabled: false },
+    { label: 'Donation', on: false, disabled: true },
+  ];
+  return (
+    <div className="flex flex-col gap-3">
+      <div role="group" aria-label="Ticket type" className="inline-flex gap-1 self-start rounded-full border border-line p-1">
+        {kinds.map((k) => (
+          <button
+            key={k.label}
+            type="button"
+            aria-pressed={k.on}
+            disabled={k.disabled}
+            title={k.disabled ? 'Not available yet' : undefined}
+            className={`rounded-full px-[18px] py-2 text-[14px] transition-colors disabled:cursor-not-allowed disabled:text-faint ${
+              k.on ? 'bg-soft text-accent-ink' : 'text-ink-2'
+            }`}
+          >
+            {k.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[14px] leading-relaxed text-muted">
+        Free events have no fees. Attendees get a QR ticket just the same. Paid and donation tickets aren&rsquo;t
+        available yet.
+      </p>
+    </div>
+  );
+}
+
+/** "Where" for the review list. */
+export function draftWhere(d: EventDraft) {
+  if (d.mode === 'online') return 'Online';
+  return `${d.venueName || '—'}${d.city ? `, ${d.city}` : ''}${d.mode === 'hybrid' ? ' + online' : ''}`;
+}
+
+/** The review step's summary rows. */
+export function ReviewList({ d }: { d: EventDraft }) {
+  const t = draftTimes(d);
+  const rows: [string, string][] = [
+    ['Event', d.title || '—'],
+    ['Category', categoryOf(d.category).label],
+    [
+      'When',
+      t ? `${fmtDay(t.startsAt.toISOString())} · ${fmtTime(t.startsAt.toISOString())}–${fmtTime(t.endsAt.toISOString())}` : '—',
+    ],
+    ['Where', draftWhere(d)],
+    ['Tickets', d.capacity ? `Free · ${d.capacity} places` : 'Free · no limit'],
+  ];
+  return (
+    <dl className="flex flex-col">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex justify-between gap-6 border-b border-line py-3.5 text-[15px]">
+          <dt className="flex-none text-ink-2">{k}</dt>
+          <dd className="min-w-0 text-right text-ink [overflow-wrap:anywhere]">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+export function VisibilityChips({
+  value,
+  onChange,
+}: {
+  value: 'public' | 'unlisted';
+  onChange: (v: 'public' | 'unlisted') => void;
+}) {
+  return (
+    <PressedChips
+      legend="Visibility"
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: 'public', label: 'Public' },
+        { value: 'unlisted', label: 'Unlisted' },
+      ]}
+      hint={value === 'public' ? 'Shown on Discover and your host page.' : 'Only people with the link can find it.'}
+    />
   );
 }
