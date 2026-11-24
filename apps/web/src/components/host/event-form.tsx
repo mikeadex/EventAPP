@@ -335,9 +335,25 @@ export function EventPreview({ d, host }: { d: EventDraft; host: string }) {
  * The tickets step's type switch. Only Free is bookable today.
  * TODO(confirm #2, #3): paid tiers and donation tickets. RSVP refuses any
  * event with a priced ticket type and there's no checkout or donations API,
- * so Paid and Donation are shown but can't be chosen.
+ * so Paid and Donation are shown but can't be chosen. `freeOnly` (staff
+ * adding events for an unclaimed church) drops the switch altogether. The
+ * payload has no ticket types either way, so the event is always free.
  */
-export function TicketKind() {
+export function TicketKind({ freeOnly = false }: { freeOnly?: boolean } = {}) {
+  if (freeOnly) {
+    // Staff-added (unclaimed) churches: free only, enforced on the API too.
+    // Nothing to choose, so state it rather than show a one-option switch.
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="label">Tickets</span>
+        <p className="text-[15px] text-strong">Free</p>
+        <p className="text-[14px] leading-relaxed text-muted">
+          Churches added by Ekklesia can only have free events until they claim their page. Attendees get a QR ticket
+          just the same.
+        </p>
+      </div>
+    );
+  }
   const kinds = [
     { label: 'Paid', on: false, disabled: true },
     { label: 'Free', on: true, disabled: false },

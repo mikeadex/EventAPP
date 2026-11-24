@@ -506,6 +506,10 @@ textarea.note:focus {
 .adm .chip {
   height: 44px;
 }
+/* The host step pills (components/host/steps.tsx) are 42px; lift them in the console. */
+.adm-steps button {
+  min-height: 44px;
+}
 
 /* ---- List + side panel (Hosts, Users). The panel stacks under the table below 1180px. ---- */
 .hsplit {
