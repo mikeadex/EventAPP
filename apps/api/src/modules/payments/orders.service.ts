@@ -26,15 +26,15 @@ export const RESERVATION_WINDOW_MS = 15 * 60 * 1000;
 /**
  * Platform fee, in basis points, added ON TOP of the ticket price.
  *
- * Two numbers are in play and they disagree, so this is worth stating:
- * `apps/api/.env` already carries `PLATFORM_FEE_BPS=500` (5%), while the
- * design pack's checkout screen shows 3% (£90.00 + £2.70 = £92.70). The
- * default here follows the design; the environment wins where it is set, so
- * today a buyer is charged 5%. Settle which is intended before launch —
- * whichever it is, the Play listing's "no booking fee" copy is wrong.
+ * 300 bp = 3%, decided 2026-11-24 and matching the design pack's checkout
+ * (£90.00 + £2.70 = £92.70). `.env` carried 500 for a while; both now agree,
+ * and production sets nothing, so this default is what governs there.
  *
- * Configurable because it is a commercial decision, not a technical one, and
- * zero is a legitimate value.
+ * This is intended to become an admin setting rather than an environment
+ * variable — a fee should be changeable without a deploy. Until that exists,
+ * the environment overrides this.
+ *
+ * Note the Play listing still says "no booking fee", which 3% is not.
  */
 function platformFeeBps(): number {
   const raw = process.env.PLATFORM_FEE_BPS;
