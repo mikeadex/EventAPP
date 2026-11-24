@@ -1,7 +1,10 @@
 import {
   afterSignIn,
+  afterTwoFactorVerified,
+  clientIp,
+  guardStaffSignIn,
   recordSignInAttempt,
-  refuseLockedSignIn,
+  refuseStaffSession,
   refuseTwoFactorEnable,
   withoutTwoFactorFlag,
   type StaffSignInDb,
@@ -9,6 +12,7 @@ import {
 
 const NOW = new Date('2026-11-24T12:00:00.000Z');
 const MINUTE = 60 * 1000;
+const LOCK_END = new Date(NOW.getTime() + 15 * MINUTE);
 
 type Row = {
   id: string;
@@ -33,30 +37,88 @@ const member: Row = {
   lockedUntil: null,
 };
 
-function mockDb(row: Row | null) {
+type Where = {
+  id?: string;
+  email?: string;
+  failedSignIns?: { lt: number };
+  lockedUntil?: null | { lte: Date };
+};
+type Data = { failedSignIns?: number | { increment: number }; lockedUntil?: Date | null };
+
+/**
+ * One-row in-memory stand-in for prisma.user that honours the conditional
+ * `where` the lockout relies on, applied atomically (JS is single-threaded
+ * between awaits, like a single UPDATE … WHERE in Postgres). `staleReads`
+ * makes findUnique keep returning the row as it was at the start, to prove the
+ * cap does not depend on a fresh read.
+ */
+function fakeDb(initial: Row | null, opts: { staleReads?: boolean } = {}) {
+  let row = initial ? { ...initial } : null;
+  const snapshot = initial ? { ...initial } : null;
+  const matches = (w: Where) => {
+    if (!row) return false;
+    if (w.id !== undefined && w.id !== row.id) return false;
+    if (w.email !== undefined && w.email !== row.email) return false;
+    if (w.failedSignIns && !(row.failedSignIns < w.failedSignIns.lt)) return false;
+    if (w.lockedUntil === null && row.lockedUntil !== null) return false;
+    if (w.lockedUntil && !(row.lockedUntil && row.lockedUntil <= w.lockedUntil.lte)) return false;
+    return true;
+  };
+  const apply = (d: Data) => {
+    if (!row) return;
+    if (typeof d.failedSignIns === 'number') row.failedSignIns = d.failedSignIns;
+    else if (d.failedSignIns) row.failedSignIns += d.failedSignIns.increment;
+    if ('lockedUntil' in d) row.lockedUntil = d.lockedUntil ?? null;
+  };
+  const tick = () => new Promise((r) => setImmediate(r));
   const db = {
     user: {
-      findUnique: jest.fn().mockResolvedValue(row),
-      update: jest.fn().mockResolvedValue(row),
+      findUnique: jest.fn(async ({ where }: { where: Where }) => {
+        await tick();
+        const source = opts.staleReads ? snapshot : row;
+        return source && matches({ id: where.id, email: where.email }) ? { ...source } : null;
+      }),
+      update: jest.fn(async ({ where, data }: { where: Where; data: Data }) => {
+        await tick();
+        if (!matches(where)) throw Object.assign(new Error('not found'), { code: 'P2025' });
+        apply(data);
+        return { ...row! };
+      }),
+      updateMany: jest.fn(async ({ where, data }: { where: Where; data: Data }) => {
+        await tick();
+        if (!matches(where)) return { count: 0 };
+        apply(data);
+        return { count: 1 };
+      }),
     },
     auditLog: { create: jest.fn().mockResolvedValue({}) },
   };
-  return { db, asDb: db as unknown as StaffSignInDb };
+  return { db, asDb: db as unknown as StaffSignInDb, current: () => row };
 }
 
 const headers = new Headers({
-  'x-forwarded-for': '203.0.113.7, 10.0.0.1',
+  'x-forwarded-for': '198.51.100.66, 203.0.113.7',
   'user-agent': 'jest-agent',
 });
 
 describe('non-staff sign-in response unchanged', () => {
-  it('is a no-op for a USER: no lock check, no writes, no audit', async () => {
-    const { db, asDb } = mockDb({ ...member, failedSignIns: 9, lockedUntil: new Date(NOW.getTime() + MINUTE) });
+  it('does no database work at all for an address off the staff domain', async () => {
+    const { db, asDb } = fakeDb(member);
 
-    expect(await refuseLockedSignIn(asDb, member.email, headers, NOW)).toBeNull();
+    expect(await guardStaffSignIn(asDb, member.email, headers, NOW)).toBeNull();
     await afterSignIn(asDb, { email: member.email, outcome: 'failed', headers, now: NOW });
     await afterSignIn(asDb, { email: member.email, outcome: 'ok', headers, now: NOW });
+    await afterTwoFactorVerified(asDb, member, headers);
 
+    expect(db.user.findUnique).not.toHaveBeenCalled();
+    expect(db.user.update).not.toHaveBeenCalled();
+    expect(db.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op for a staff-domain address with no role', async () => {
+    const { db, asDb } = fakeDb({ ...staff, platformRole: 'USER' });
+    expect(await guardStaffSignIn(asDb, staff.email, headers, NOW)).toBeNull();
+    await afterSignIn(asDb, { email: staff.email, outcome: 'failed', headers, now: NOW });
     expect(db.user.update).not.toHaveBeenCalled();
     expect(db.auditLog.create).not.toHaveBeenCalled();
   });
@@ -90,7 +152,7 @@ describe('non-staff sign-in response unchanged', () => {
 
 describe('non-staff cannot enable two-factor', () => {
   it('refuses a USER with 403', async () => {
-    const { asDb } = mockDb(member);
+    const { asDb } = fakeDb(member);
     expect(await refuseTwoFactorEnable(asDb, member.id)).toEqual({
       status: 403,
       body: { code: 'NOT_STAFF' },
@@ -98,118 +160,66 @@ describe('non-staff cannot enable two-factor', () => {
   });
 
   it('refuses a role holder off the staff domain', async () => {
-    const { asDb } = mockDb({ ...member, platformRole: 'PLATFORM_ADMIN' });
+    const { asDb } = fakeDb({ ...member, platformRole: 'PLATFORM_ADMIN' });
     expect((await refuseTwoFactorEnable(asDb, member.id))?.status).toBe(403);
   });
 
   it('refuses a staff-domain address with no role', async () => {
-    const { asDb } = mockDb({ ...staff, platformRole: 'USER' });
+    const { asDb } = fakeDb({ ...staff, platformRole: 'USER' });
     expect((await refuseTwoFactorEnable(asDb, staff.id))?.status).toBe(403);
   });
 
   it('lets staff through', async () => {
-    const { asDb } = mockDb(staff);
+    const { asDb } = fakeDb(staff);
     expect(await refuseTwoFactorEnable(asDb, staff.id)).toBeNull();
   });
 
   it('refuses when no session could be resolved, rather than waving it through', async () => {
-    const { asDb } = mockDb(null);
+    const { asDb } = fakeDb(null);
     expect((await refuseTwoFactorEnable(asDb, undefined))?.status).toBe(403);
   });
 });
 
-describe('recordSignInAttempt', () => {
-  it('locks on the 5th failure within the lock window for 15 minutes', async () => {
-    const { db, asDb } = mockDb({ ...staff, failedSignIns: 4 });
-    const lockedUntil = new Date(NOW.getTime() + 15 * MINUTE);
+describe('lockout', () => {
+  async function wrongPassword(asDb: StaffSignInDb) {
+    const refusal = await guardStaffSignIn(asDb, staff.email, headers, NOW);
+    if (!refusal) await afterSignIn(asDb, { email: staff.email, outcome: 'failed', headers, now: NOW });
+    return refusal;
+  }
 
-    expect(await recordSignInAttempt(asDb, staff.email, false, NOW)).toEqual({
-      locked: true,
-      lockedUntil,
-    });
-    expect(db.user.update).toHaveBeenCalledWith({
-      where: { id: staff.id },
-      data: { failedSignIns: 5, lockedUntil },
+  it('the 5th failure within the lock window locks for 15 minutes; the 6th gets 423', async () => {
+    const { asDb, current } = fakeDb(staff);
+    for (let i = 0; i < 4; i++) expect(await wrongPassword(asDb)).toBeNull();
+    expect(current()).toMatchObject({ failedSignIns: 4, lockedUntil: null });
+
+    expect(await wrongPassword(asDb)).toBeNull();
+    expect(current()).toMatchObject({ failedSignIns: 5, lockedUntil: LOCK_END });
+
+    expect(await wrongPassword(asDb)).toEqual({
+      status: 423,
+      body: { code: 'LOCKED', lockedUntil: LOCK_END.toISOString() },
     });
   });
 
-  it('counts failures below the threshold without locking', async () => {
-    const { db, asDb } = mockDb({ ...staff, failedSignIns: 3 });
-    expect(await recordSignInAttempt(asDb, staff.email, false, NOW)).toEqual({
-      locked: false,
-      lockedUntil: null,
-    });
-    expect(db.user.update).toHaveBeenCalledWith({
-      where: { id: staff.id },
-      data: { failedSignIns: 4, lockedUntil: null },
-    });
-  });
-
-  it('starts a fresh count once an earlier lock has expired', async () => {
-    const { db, asDb } = mockDb({
-      ...staff,
-      failedSignIns: 5,
-      lockedUntil: new Date(NOW.getTime() - MINUTE),
-    });
-    expect(await recordSignInAttempt(asDb, staff.email, false, NOW)).toEqual({
-      locked: false,
-      lockedUntil: null,
-    });
-    expect(db.user.update).toHaveBeenCalledWith({
-      where: { id: staff.id },
-      data: { failedSignIns: 1, lockedUntil: null },
-    });
-  });
-
-  it('does not extend a lock that is still running', async () => {
-    const until = new Date(NOW.getTime() + 5 * MINUTE);
-    const { db, asDb } = mockDb({ ...staff, failedSignIns: 5, lockedUntil: until });
-    expect(await recordSignInAttempt(asDb, staff.email, false, NOW)).toEqual({
-      locked: true,
-      lockedUntil: until,
-    });
-    expect(db.user.update).not.toHaveBeenCalled();
-  });
-
-  it('resets failedSignIns to 0 on success', async () => {
-    const { db, asDb } = mockDb({ ...staff, failedSignIns: 3 });
-    expect(await recordSignInAttempt(asDb, staff.email, true, NOW)).toEqual({
-      locked: false,
-      lockedUntil: null,
-    });
-    expect(db.user.update).toHaveBeenCalledWith({
-      where: { id: staff.id },
-      data: { failedSignIns: 0, lockedUntil: null },
-    });
-  });
-
-  it('never locks a non-staff user', async () => {
-    const { db, asDb } = mockDb({ ...member, failedSignIns: 40 });
-    expect(await recordSignInAttempt(asDb, member.email, false, NOW)).toEqual({
-      locked: false,
-      lockedUntil: null,
-    });
-    expect(db.user.update).not.toHaveBeenCalled();
-  });
-
-  it('looks the address up case-insensitively', async () => {
-    const { db, asDb } = mockDb(staff);
-    await recordSignInAttempt(asDb, '  Ada@EkklesiaEvents.com ', true, NOW);
-    expect(db.user.findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { email: 'ada@ekklesiaevents.com' } }),
+  it('lets at most 5 concurrent attempts through, even when every read is stale', async () => {
+    const { asDb, current } = fakeDb(staff, { staleReads: true });
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () => guardStaffSignIn(asDb, staff.email, headers, NOW)),
     );
+    expect(results.filter((r) => r === null)).toHaveLength(5);
+    expect(results.filter((r) => r?.status === 423)).toHaveLength(7);
+    expect(current()).toMatchObject({ failedSignIns: 5, lockedUntil: LOCK_END });
   });
-});
 
-describe('refuseLockedSignIn', () => {
-  it('answers 423 LOCKED for a locked staff account and audits the attempt', async () => {
+  it('refuses a locked account with 423 and audits the attempt', async () => {
     const until = new Date(NOW.getTime() + 10 * MINUTE);
-    const { db, asDb } = mockDb({ ...staff, failedSignIns: 5, lockedUntil: until });
+    const { db, asDb } = fakeDb({ ...staff, failedSignIns: 5, lockedUntil: until });
 
-    expect(await refuseLockedSignIn(asDb, staff.email, headers, NOW)).toEqual({
+    expect(await guardStaffSignIn(asDb, staff.email, headers, NOW)).toEqual({
       status: 423,
       body: { code: 'LOCKED', lockedUntil: until.toISOString() },
     });
+    expect(db.user.update).not.toHaveBeenCalled();
     expect(db.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         actorUserId: staff.id,
@@ -221,37 +231,76 @@ describe('refuseLockedSignIn', () => {
     });
   });
 
-  it('lets an unlocked or expired staff account through', async () => {
-    const { asDb } = mockDb({ ...staff, lockedUntil: new Date(NOW.getTime() - 1) });
-    expect(await refuseLockedSignIn(asDb, staff.email, headers, NOW)).toBeNull();
+  it('starts a fresh count once an earlier lock has expired', async () => {
+    const { asDb, current } = fakeDb({
+      ...staff,
+      failedSignIns: 5,
+      lockedUntil: new Date(NOW.getTime() - MINUTE),
+    });
+    expect(await guardStaffSignIn(asDb, staff.email, headers, NOW)).toBeNull();
+    expect(current()).toMatchObject({ failedSignIns: 1, lockedUntil: null });
   });
 
-  it('ignores a missing or non-string email', async () => {
-    const { db, asDb } = mockDb(staff);
-    expect(await refuseLockedSignIn(asDb, undefined, headers, NOW)).toBeNull();
-    expect(db.user.findUnique).not.toHaveBeenCalled();
-  });
-});
+  it('success resets failedSignIns to 0 (and clears a lock taken by the 5th try)', async () => {
+    const { asDb, current } = fakeDb({ ...staff, failedSignIns: 4 });
+    expect(await guardStaffSignIn(asDb, staff.email, headers, NOW)).toBeNull();
+    expect(current()).toMatchObject({ failedSignIns: 5, lockedUntil: LOCK_END });
 
-describe('afterSignIn audit', () => {
-  it('writes staff.signin with IP and user agent on success', async () => {
-    const { db, asDb } = mockDb(staff);
-    await afterSignIn(asDb, { email: staff.email, outcome: 'ok', headers, now: NOW });
-    expect(db.auditLog.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        actorUserId: staff.id,
-        action: 'staff.signin',
-        metadata: { twoFactorPending: false },
-        targetType: 'User',
-        targetId: staff.id,
-        ipAddress: '203.0.113.7',
-        userAgent: 'jest-agent',
-      }),
+    expect(await recordSignInAttempt(asDb, staff.email, true, NOW)).toEqual({
+      locked: false,
+      lockedUntil: null,
+    });
+    expect(current()).toMatchObject({ failedSignIns: 0, lockedUntil: null });
+  });
+
+  it('recordSignInAttempt reports the lock after the 5th failure', async () => {
+    const { asDb } = fakeDb({ ...staff, failedSignIns: 4 });
+    await guardStaffSignIn(asDb, staff.email, headers, NOW);
+    expect(await recordSignInAttempt(asDb, staff.email, false, NOW)).toEqual({
+      locked: true,
+      lockedUntil: LOCK_END,
     });
   });
 
-  it('writes staff.signin.failed and reports the lock on the 5th failure', async () => {
-    const { db, asDb } = mockDb({ ...staff, failedSignIns: 4 });
+  it('never locks a non-staff user', async () => {
+    const { db, asDb } = fakeDb({ ...member, platformRole: 'PLATFORM_ADMIN' });
+    for (let i = 0; i < 8; i++) expect(await wrongPassword(asDb)).toBeNull();
+    expect(await recordSignInAttempt(asDb, member.email, false, NOW)).toEqual({
+      locked: false,
+      lockedUntil: null,
+    });
+    expect(db.user.update).not.toHaveBeenCalled();
+  });
+
+  it('looks the address up case-insensitively', async () => {
+    const { db, asDb } = fakeDb(staff);
+    await recordSignInAttempt(asDb, '  Ada@EkklesiaEvents.com ', true, NOW);
+    expect(db.user.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { email: 'ada@ekklesiaevents.com' } }),
+    );
+  });
+});
+
+describe('sign-in audit', () => {
+  it('writes staff.signin { step: password } with IP and user agent on success', async () => {
+    const { db, asDb } = fakeDb(staff);
+    await afterSignIn(asDb, { email: staff.email, outcome: 'ok', headers, now: NOW });
+    expect(db.auditLog.create).toHaveBeenCalledWith({
+      data: {
+        actorUserId: staff.id,
+        action: 'staff.signin',
+        targetType: 'User',
+        targetId: staff.id,
+        metadata: { step: 'password' },
+        ipAddress: '203.0.113.7',
+        userAgent: 'jest-agent',
+      },
+    });
+  });
+
+  it('writes staff.signin.failed with the count and lock on the 5th failure', async () => {
+    const { db, asDb } = fakeDb({ ...staff, failedSignIns: 4 });
+    await guardStaffSignIn(asDb, staff.email, headers, NOW);
     await afterSignIn(asDb, { email: staff.email, outcome: 'failed', headers, now: NOW });
     expect(db.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -259,16 +308,98 @@ describe('afterSignIn audit', () => {
         metadata: {
           reason: 'bad_credentials',
           failedSignIns: 5,
-          lockedUntil: new Date(NOW.getTime() + 15 * MINUTE).toISOString(),
+          lockedUntil: LOCK_END.toISOString(),
         },
       }),
     });
   });
 
+  it('writes staff.signin { step: two-factor } after a code is verified', async () => {
+    const { db, asDb } = fakeDb(staff);
+    await afterTwoFactorVerified(asDb, staff, headers);
+    expect(db.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'staff.signin',
+        metadata: { step: 'two-factor' },
+        actorUserId: staff.id,
+      }),
+    });
+  });
+
   it('does nothing for outcomes that are neither success nor bad credentials', async () => {
-    const { db, asDb } = mockDb(staff);
+    const { db, asDb } = fakeDb(staff);
     await afterSignIn(asDb, { email: staff.email, outcome: 'other', headers, now: NOW });
     expect(db.user.findUnique).not.toHaveBeenCalled();
     expect(db.auditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('clientIp', () => {
+  it('prefers x-vercel-forwarded-for', () => {
+    const h = new Headers({
+      'x-vercel-forwarded-for': '192.0.2.1',
+      'x-real-ip': '192.0.2.2',
+      'x-forwarded-for': '6.6.6.6, 192.0.2.3',
+    });
+    expect(clientIp(h)).toBe('192.0.2.1');
+  });
+  it('then x-real-ip', () => {
+    expect(clientIp(new Headers({ 'x-real-ip': '192.0.2.2', 'x-forwarded-for': '6.6.6.6' }))).toBe(
+      '192.0.2.2',
+    );
+  });
+  it('then the right-most x-forwarded-for entry, never the client-supplied left-most', () => {
+    expect(clientIp(new Headers({ 'x-forwarded-for': '6.6.6.6, 10.0.0.1, 192.0.2.3' }))).toBe(
+      '192.0.2.3',
+    );
+  });
+  it('is undefined with none of them', () => {
+    expect(clientIp(new Headers())).toBeUndefined();
+    expect(clientIp(undefined)).toBeUndefined();
+  });
+});
+
+describe('staff sessions only from the staff sign-in routes', () => {
+  const via = (path: string | undefined, currentSessionUserId?: string) => ({
+    userId: staff.id,
+    path,
+    currentSessionUserId,
+  });
+
+  it.each(['/callback/:id', '/one-time-token/verify', '/verify-email', undefined])(
+    'refuses a staff session created via %s',
+    async (path) => {
+      const { asDb } = fakeDb(staff);
+      expect(await refuseStaffSession(asDb, via(path))).toEqual({
+        status: 403,
+        body: { code: 'USE_STAFF_SIGN_IN' },
+      });
+    },
+  );
+
+  it('allows a non-staff session via the same social path', async () => {
+    const { asDb } = fakeDb(member);
+    expect(
+      await refuseStaffSession(asDb, { userId: member.id, path: '/callback/:id', currentSessionUserId: undefined }),
+    ).toBeNull();
+  });
+
+  it.each(['/sign-in/email', '/two-factor/verify-totp', '/two-factor/verify-backup-code'])(
+    'allows staff via %s without a database read',
+    async (path) => {
+      const { db, asDb } = fakeDb(staff);
+      expect(await refuseStaffSession(asDb, via(path))).toBeNull();
+      expect(db.user.findUnique).not.toHaveBeenCalled();
+    },
+  );
+
+  it('allows rotating a session the caller already holds for the same account', async () => {
+    const { asDb } = fakeDb(staff);
+    expect(await refuseStaffSession(asDb, via('/change-password', staff.id))).toBeNull();
+  });
+
+  it('does not treat someone else’s session as a rotation', async () => {
+    const { asDb } = fakeDb(staff);
+    expect((await refuseStaffSession(asDb, via('/change-password', 'u_other')))?.status).toBe(403);
   });
 });

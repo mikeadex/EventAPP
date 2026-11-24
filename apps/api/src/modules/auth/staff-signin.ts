@@ -5,8 +5,10 @@ import { isStaffEmail } from '../../common/staff.js';
  * Staff sign-in protection, applied from Better Auth hooks in auth.ts.
  *
  * Everything here acts only on staff accounts — a platform role *and* an
- * address on the staff domain. For anyone else every function is a no-op, so
- * the mobile app's sign-in (same endpoint, bearer tokens) is untouched.
+ * address on the staff domain. For anyone else every function is a no-op, and
+ * the sign-in hooks return before touching the database when the address is
+ * not on the staff domain, so the mobile app's sign-in (same endpoint, bearer
+ * tokens) is untouched.
  *
  * Kept free of Better Auth imports: better-auth is ESM-only and this API is
  * CommonJS, so auth.ts turns a `Refusal` into Better Auth's APIError.
@@ -15,9 +17,20 @@ import { isStaffEmail } from '../../common/staff.js';
 export const MAX_FAILED_SIGN_INS = 5;
 export const LOCK_DURATION_MS = 15 * 60 * 1000;
 
+/**
+ * The only routes that may create a session for a staff account: the
+ * password step (which the twoFactor plugin turns into a code step once
+ * 2-step is on) and the two code checks that finish it.
+ */
+export const STAFF_SESSION_PATHS: readonly string[] = [
+  '/sign-in/email',
+  '/two-factor/verify-totp',
+  '/two-factor/verify-backup-code',
+];
+
 /** The slice of Prisma these hooks use, so tests can hand in a mock. */
 export type StaffSignInDb = {
-  user: Pick<PrismaClient['user'], 'findUnique' | 'update'>;
+  user: Pick<PrismaClient['user'], 'findUnique' | 'update' | 'updateMany'>;
   auditLog: Pick<PrismaClient['auditLog'], 'create'>;
 };
 
@@ -47,7 +60,9 @@ const staffSelect = {
 
 type StaffRow = Prisma.UserGetPayload<{ select: typeof staffSelect }>;
 
-async function findStaff(db: StaffSignInDb, email: string): Promise<StaffRow | null> {
+/** Staff row for an address, or null. Never queries for an off-domain address. */
+async function findStaffByEmail(db: StaffSignInDb, email: unknown): Promise<StaffRow | null> {
+  if (typeof email !== 'string' || !isStaffEmail(email)) return null;
   const user = (await db.user.findUnique({
     where: { email: email.trim().toLowerCase() },
     select: staffSelect,
@@ -55,66 +70,44 @@ async function findStaff(db: StaffSignInDb, email: string): Promise<StaffRow | n
   return user && isStaffAccount(user) ? user : null;
 }
 
-function isLocked(user: StaffRow, now: Date): user is StaffRow & { lockedUntil: Date } {
+async function findStaffById(db: StaffSignInDb, id: string): Promise<StaffRow | null> {
+  const user = (await db.user.findUnique({ where: { id }, select: staffSelect })) as StaffRow | null;
+  return user && isStaffAccount(user) ? user : null;
+}
+
+function isLocked(user: { lockedUntil: Date | null }, now: Date): boolean {
   return user.lockedUntil !== null && user.lockedUntil > now;
 }
 
-async function applyAttempt(
-  db: StaffSignInDb,
-  user: StaffRow,
-  ok: boolean,
-  now: Date,
-): Promise<{ locked: boolean; lockedUntil: Date | null; failedSignIns: number }> {
-  if (ok) {
-    await db.user.update({
-      where: { id: user.id },
-      data: { failedSignIns: 0, lockedUntil: null },
-    });
-    return { locked: false, lockedUntil: null, failedSignIns: 0 };
-  }
-  // Still locked: the before-hook normally refuses first, but never extend a lock.
-  if (isLocked(user, now)) {
-    return { locked: true, lockedUntil: user.lockedUntil, failedSignIns: user.failedSignIns };
-  }
-  // A lock that has run out starts a fresh count of attempts.
-  const failedSignIns = (user.lockedUntil ? 0 : user.failedSignIns) + 1;
-  const lockedUntil =
-    failedSignIns >= MAX_FAILED_SIGN_INS ? new Date(now.getTime() + LOCK_DURATION_MS) : null;
-  await db.user.update({ where: { id: user.id }, data: { failedSignIns, lockedUntil } });
-  return { locked: lockedUntil !== null, lockedUntil, failedSignIns };
+function isNotFound(err: unknown): boolean {
+  return (err as { code?: unknown } | null)?.code === 'P2025';
 }
 
 /**
- * Count a staff sign-in attempt: success clears the counter, the 5th
- * consecutive failure locks the account for 15 minutes. Non-staff: no-op.
+ * Client IP for the audit log. The left-most X-Forwarded-For entry is
+ * whatever the client sent, so it is never trusted: Vercel's own header first,
+ * then X-Real-IP, then the right-most X-Forwarded-For entry (the one our
+ * nearest proxy appended).
  */
-export async function recordSignInAttempt(
-  db: StaffSignInDb,
-  email: string,
-  ok: boolean,
-  now: Date,
-): Promise<{ locked: boolean; lockedUntil: Date | null }> {
-  const user = await findStaff(db, email);
-  if (!user) return { locked: false, lockedUntil: null };
-  const { locked, lockedUntil } = await applyAttempt(db, user, ok, now);
-  return { locked, lockedUntil };
-}
-
-/** Same extraction as AuditLogService, from the fetch Headers Better Auth hands hooks. */
-function requestMeta(headers: Headers | undefined) {
-  const forwarded = headers?.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return {
-    ipAddress: forwarded || headers?.get('x-real-ip') || undefined,
-    userAgent: headers?.get('user-agent') ?? undefined,
-  };
+export function clientIp(headers: Headers | undefined): string | undefined {
+  const vercel = headers?.get('x-vercel-forwarded-for')?.split(',')[0]?.trim();
+  if (vercel) return vercel;
+  const real = headers?.get('x-real-ip')?.trim();
+  if (real) return real;
+  const forwarded = headers
+    ?.get('x-forwarded-for')
+    ?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return forwarded?.[forwarded.length - 1] || undefined;
 }
 
 async function audit(
   db: StaffSignInDb,
-  user: StaffRow,
+  user: { id: string },
   action: 'staff.signin' | 'staff.signin.failed',
   headers: Headers | undefined,
-  metadata?: Prisma.InputJsonValue,
+  metadata: Prisma.InputJsonValue,
 ) {
   await db.auditLog.create({
     data: {
@@ -123,53 +116,161 @@ async function audit(
       targetType: 'User',
       targetId: user.id,
       metadata,
-      ...requestMeta(headers),
+      ipAddress: clientIp(headers),
+      userAgent: headers?.get('user-agent') ?? undefined,
     },
   });
 }
 
-/** Before `/sign-in/email`: a locked staff account gets 423 and the attempt is audited. */
-export async function refuseLockedSignIn(
+async function refuseLocked(
+  db: StaffSignInDb,
+  user: StaffRow,
+  headers: Headers | undefined,
+  now: Date,
+): Promise<Refusal> {
+  // Between the 5th reservation and its lock being written, lockedUntil can
+  // still read null; the lock it is about to get is now + 15 minutes.
+  const lockedUntil =
+    user.lockedUntil && user.lockedUntil > now
+      ? user.lockedUntil
+      : new Date(now.getTime() + LOCK_DURATION_MS);
+  await audit(db, user, 'staff.signin.failed', headers, { reason: 'locked' });
+  return { status: 423, body: { code: 'LOCKED', lockedUntil: lockedUntil.toISOString() } };
+}
+
+/**
+ * Before `/sign-in/email`: reserve one of the 5 attempts, atomically.
+ *
+ * The reservation is a conditional increment (`failedSignIns < 5` and not
+ * locked), so concurrent wrong passwords cannot get more than 5 tries between
+ * them — a stale read cannot let a 6th through. The attempt that takes the
+ * 5th slot locks the account for 15 minutes; a correct password then clears
+ * it (afterSignIn). A locked account, or one with no slot left, gets 423.
+ */
+export async function guardStaffSignIn(
   db: StaffSignInDb,
   email: unknown,
   headers: Headers | undefined,
   now: Date,
 ): Promise<Refusal | null> {
-  if (typeof email !== 'string' || !email) return null;
-  const user = await findStaff(db, email);
-  if (!user || !isLocked(user, now)) return null;
-  await audit(db, user, 'staff.signin.failed', headers, { reason: 'locked' });
-  return { status: 423, body: { code: 'LOCKED', lockedUntil: user.lockedUntil.toISOString() } };
+  const user = await findStaffByEmail(db, email);
+  if (!user) return null;
+  if (isLocked(user, now)) return refuseLocked(db, user, headers, now);
+
+  // A lock that has run out starts a fresh count. Conditional on the lock
+  // still being the expired one, so concurrent resets cannot undo a reservation.
+  if (user.lockedUntil) {
+    await db.user.updateMany({
+      where: { id: user.id, lockedUntil: { lte: now } },
+      data: { failedSignIns: 0, lockedUntil: null },
+    });
+  }
+
+  let reserved: { failedSignIns: number };
+  try {
+    reserved = await db.user.update({
+      where: { id: user.id, failedSignIns: { lt: MAX_FAILED_SIGN_INS }, lockedUntil: null },
+      data: { failedSignIns: { increment: 1 } },
+      select: { failedSignIns: true },
+    });
+  } catch (err) {
+    if (!isNotFound(err)) throw err;
+    const current = (await db.user.findUnique({
+      where: { id: user.id },
+      select: staffSelect,
+    })) as StaffRow | null;
+    return refuseLocked(db, current ?? user, headers, now);
+  }
+
+  if (reserved.failedSignIns >= MAX_FAILED_SIGN_INS) {
+    await db.user.update({
+      where: { id: user.id },
+      data: { lockedUntil: new Date(now.getTime() + LOCK_DURATION_MS) },
+    });
+  }
+  return null;
 }
 
-/** After `/sign-in/email`: count the attempt and audit it, for staff only. */
+/**
+ * Settle a staff sign-in attempt that guardStaffSignIn already reserved:
+ * success clears the counter and any lock; a failure keeps its reserved slot
+ * (the 5th one has already locked the account). Non-staff: no-op.
+ */
+export async function recordSignInAttempt(
+  db: StaffSignInDb,
+  email: string,
+  ok: boolean,
+  now: Date,
+): Promise<{ locked: boolean; lockedUntil: Date | null }> {
+  const user = await findStaffByEmail(db, email);
+  if (!user) return { locked: false, lockedUntil: null };
+  return settle(db, user, ok, now);
+}
+
+async function settle(db: StaffSignInDb, user: StaffRow, ok: boolean, now: Date) {
+  if (ok) {
+    await db.user.update({
+      where: { id: user.id },
+      data: { failedSignIns: 0, lockedUntil: null },
+    });
+    return { locked: false, lockedUntil: null };
+  }
+  return { locked: isLocked(user, now), lockedUntil: isLocked(user, now) ? user.lockedUntil : null };
+}
+
+/** After `/sign-in/email`: settle the attempt and audit it, for staff only. */
 export async function afterSignIn(
   db: StaffSignInDb,
-  input: {
-    email: unknown;
-    outcome: SignInOutcome;
-    headers: Headers | undefined;
-    now: Date;
-    /** Password accepted but the 2-step code is still to come. */
-    twoFactorPending?: boolean;
-  },
+  input: { email: unknown; outcome: SignInOutcome; headers: Headers | undefined; now: Date },
 ): Promise<void> {
   const { email, outcome, headers, now } = input;
-  if (outcome === 'other' || typeof email !== 'string' || !email) return;
-  const user = await findStaff(db, email);
+  // 'other' (unverified address, malformed body) keeps its reserved slot:
+  // cheaper to be conservative than to refund under concurrency.
+  if (outcome === 'other') return;
+  const user = await findStaffByEmail(db, email);
   if (!user) return;
-  const result = await applyAttempt(db, user, outcome === 'ok', now);
+  const result = await settle(db, user, outcome === 'ok', now);
   if (outcome === 'ok') {
-    await audit(db, user, 'staff.signin', headers, {
-      twoFactorPending: input.twoFactorPending ?? false,
-    });
+    await audit(db, user, 'staff.signin', headers, { step: 'password' });
   } else {
     await audit(db, user, 'staff.signin.failed', headers, {
       reason: 'bad_credentials',
-      failedSignIns: result.failedSignIns,
+      failedSignIns: user.failedSignIns,
       lockedUntil: result.lockedUntil?.toISOString() ?? null,
     });
   }
+}
+
+/** After a successful `/two-factor/verify-totp` or `/verify-backup-code`: audit staff. */
+export async function afterTwoFactorVerified(
+  db: StaffSignInDb,
+  user: { id: string; email: string },
+  headers: Headers | undefined,
+): Promise<void> {
+  if (!isStaffEmail(user.email)) return;
+  const staff = await findStaffById(db, user.id);
+  if (!staff) return;
+  await audit(db, staff, 'staff.signin', headers, { step: 'two-factor' });
+}
+
+/**
+ * Before any session is created (Better Auth `databaseHooks.session.create`):
+ * a staff account gets a session only through the staff sign-in routes, so
+ * Google/Microsoft, email-verification auto sign-in or any other route cannot
+ * skip the code, the lockout or the audit.
+ *
+ * Rotating a session the caller already holds for the same account (password
+ * change, 2-step disable/setup) is not a new sign-in and is allowed — refusing
+ * it would leave those endpoints half-applied.
+ */
+export async function refuseStaffSession(
+  db: StaffSignInDb,
+  input: { userId: string; path: string | undefined; currentSessionUserId: string | undefined },
+): Promise<Refusal | null> {
+  if (input.path && STAFF_SESSION_PATHS.includes(input.path)) return null;
+  if (input.currentSessionUserId && input.currentSessionUserId === input.userId) return null;
+  const staff = await findStaffById(db, input.userId);
+  return staff ? { status: 403, body: { code: 'USE_STAFF_SIGN_IN' } } : null;
 }
 
 /**

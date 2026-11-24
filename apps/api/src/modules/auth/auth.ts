@@ -6,7 +6,9 @@ import { verifyEmailTemplate } from '../email/templates/verify-email.js';
 import { buildSocialProviders } from './social-providers.js';
 import {
   afterSignIn,
-  refuseLockedSignIn,
+  afterTwoFactorVerified,
+  guardStaffSignIn,
+  refuseStaffSession,
   refuseTwoFactorEnable,
   withoutTwoFactorFlag,
   type SignInOutcome,
@@ -223,13 +225,15 @@ async function createAuth() {
       before: createAuthMiddleware(async (ctx) => {
         let refusal = null;
         if (ctx.path === '/sign-in/email') {
-          refusal = await refuseLockedSignIn(prisma, ctx.body?.email, ctx.headers, new Date());
+          refusal = await guardStaffSignIn(prisma, ctx.body?.email, ctx.headers, new Date());
         } else if (ctx.path === '/two-factor/enable') {
           // This hook runs before the bearer plugin turns `Authorization:
           // Bearer` into a session cookie, so a mobile-style request would look
           // signed out here. Apply the bearer plugin's own conversion first, so
           // this check resolves exactly the session the endpoint will.
-          const viaBearer = await bearerPlugin.hooks.before[0]?.handler(ctx);
+          // Optional all the way down: if the plugin ever changes shape this
+          // resolves no session and the gate refuses (deny by default).
+          const viaBearer = await bearerPlugin.hooks?.before?.[0]?.handler?.(ctx);
           const headers = viaBearer?.context?.headers ?? ctx.headers;
           const session = await getSessionFromCtx({ ...ctx, headers });
           refusal = await refuseTwoFactorEnable(prisma, session?.user.id);
@@ -241,6 +245,15 @@ async function createAuth() {
         // Sign-up answers with the same user object; keep it as it was too.
         if (ctx.path === '/sign-up/email' && returned && !isAPIError(returned)) {
           return ctx.json(withoutTwoFactorFlag(returned as Record<string, unknown>));
+        }
+        if (
+          (ctx.path === '/two-factor/verify-totp' ||
+            ctx.path === '/two-factor/verify-backup-code') &&
+          ctx.context.newSession &&
+          !isAPIError(returned)
+        ) {
+          await afterTwoFactorVerified(prisma, ctx.context.newSession.user, ctx.headers);
+          return;
         }
         if (ctx.path !== '/sign-in/email') return;
         let outcome: SignInOutcome = 'other';
@@ -258,7 +271,6 @@ async function createAuth() {
           outcome,
           headers: ctx.headers,
           now: new Date(),
-          twoFactorPending: ctx.context.newSession?.user.twoFactorEnabled === true,
         });
         // Keep the sign-in body exactly as it was before the twoFactor plugin
         // (withoutTwoFactorFlag). A 2-step redirect is built by the plugin's own
@@ -267,6 +279,23 @@ async function createAuth() {
           return ctx.json(withoutTwoFactorFlag(returned as Record<string, unknown>));
         }
       }),
+    },
+    // A staff account gets a session only from the staff sign-in routes —
+    // never from Google/Microsoft, email-verification auto sign-in or any
+    // other path that would skip the code step. See refuseStaffSession.
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session, endpointCtx) => {
+            const refusal = await refuseStaffSession(prisma, {
+              userId: session.userId,
+              path: endpointCtx?.path,
+              currentSessionUserId: endpointCtx?.context.session?.user.id,
+            });
+            if (refusal) throw new APIError(refusal.status, refusal.body);
+          },
+        },
+      },
     },
     // Only providers whose credentials are present; see social-providers.ts.
     socialProviders: buildSocialProviders(),
