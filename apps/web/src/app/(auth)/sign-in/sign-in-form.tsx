@@ -19,6 +19,9 @@ export function SignInForm() {
   const [step, setStep] = useState<Step>('start');
   const [email, setEmail] = useState(params.get('email') ?? '');
   const [password, setPassword] = useState('');
+  // On by default, matching what sign-in always did (a 30-day session). Off
+  // gives a session that ends when the browser closes — for shared computers.
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   // Set only for EMAIL_NOT_VERIFIED, so the offer to resend appears exactly
@@ -54,7 +57,7 @@ export function SignInForm() {
     setUnverified(false);
     setResent(false);
     setMaybeSocial(false);
-    const res = await signIn.email({ email: email.trim(), password });
+    const res = await signIn.email({ email: email.trim(), password, rememberMe: remember });
     if (res.error) {
       setPending(false);
       const code = (res.error as { code?: string }).code;
@@ -86,6 +89,20 @@ export function SignInForm() {
 
   const signUpHref = `/sign-up${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`;
 
+  const terms = (
+    <p className="mt-7 text-center text-[12px] leading-relaxed text-faint">
+      By continuing you agree to our{' '}
+      <Link href="/terms" className="underline">
+        Terms
+      </Link>{' '}
+      and{' '}
+      <Link href="/privacy" className="underline">
+        Privacy Policy
+      </Link>
+      .
+    </p>
+  );
+
   if (step === 'start') {
     return (
       <div>
@@ -114,6 +131,9 @@ export function SignInForm() {
               Continue with email
             </button>
           </form>
+          {/* TODO(confirm): the design offers "Email me a sign-in code instead".
+              The API has no email-code sign-in (Better Auth's emailOTP plugin
+              isn't enabled), so it's left out until that exists. */}
           <p className="mt-2 text-center text-[14px] text-ink-2">
             New here?{' '}
             <Link href={signUpHref as never} className="text-accent">
@@ -121,6 +141,7 @@ export function SignInForm() {
             </Link>
           </p>
         </div>
+        {terms}
       </div>
     );
   }
@@ -189,6 +210,15 @@ export function SignInForm() {
           </button>
         )}
         {resent && <p className="text-[14px] text-body">Confirmation email sent — check your inbox.</p>}
+        <label className="flex items-center gap-2.5 text-[14px] text-ink-2">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            className="h-[18px] w-[18px] accent-[var(--accent)]"
+          />
+          Keep me signed in on this device
+        </label>
         <button type="submit" disabled={pending} className="btn btn-primary btn-lg">
           {pending ? 'Signing in…' : 'Sign in'}
         </button>
@@ -199,6 +229,7 @@ export function SignInForm() {
           </Link>
         </p>
       </form>
+      {terms}
     </div>
   );
 }
