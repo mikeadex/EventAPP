@@ -29,7 +29,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.ekklesiaevents.com",
         "EXPO_PUBLIC_WEB_URL": "https://ekklesiaevents.com",
-        "COREPACK_INTEGRITY_KEYS": "0"
+        "COREPACK_INTEGRITY_KEYS": "0",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51UfIWa2LQsExVjz9r5KWCcbq77AKRv8k7M9rNaaICC8ojfpc3See8lixhr0F3Q9yWpKydBIBDujJhqm0PBv9hWgl00JUOLU8tl"
       },
       "node": "22.14.0"
     },
@@ -44,7 +45,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.ekklesiaevents.com",
         "EXPO_PUBLIC_WEB_URL": "https://ekklesiaevents.com",
-        "COREPACK_INTEGRITY_KEYS": "0"
+        "COREPACK_INTEGRITY_KEYS": "0",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51UfIWa2LQsExVjz9r5KWCcbq77AKRv8k7M9rNaaICC8ojfpc3See8lixhr0F3Q9yWpKydBIBDujJhqm0PBv9hWgl00JUOLU8tl"
       },
       "node": "22.14.0",
       "ios": {
