@@ -78,6 +78,7 @@ export class PlatformRoleGuard implements CanActivate {
     if (!row || row.deletedAt) throw new UnauthorizedException();
 
     const blocked = staffBlockReason(row);
+    if (blocked === 'NOT_STAFF') throw new ForbiddenException('Not available');
     if (blocked) throw new ForbiddenException({ code: blocked });
 
     const held = RANK[row.platformRole] ?? 0;

@@ -53,6 +53,12 @@ describe('PlatformRoleGuard', () => {
       ForbiddenException,
     );
   });
+  it('refuses a plain USER with the vague message and no code', async () => {
+    const err = await run({ ...staff, platformRole: 'USER' }).catch((e) => e);
+    expect(err).toBeInstanceOf(ForbiddenException);
+    expect(err.getResponse()).toMatchObject({ message: 'Not available' });
+    expect(err.getResponse()).not.toHaveProperty('code');
+  });
   it('refuses with the block reason code', async () => {
     await expect(
       run({ ...staff, email: 'a@gmail.com', platformRole: 'PLATFORM_ADMIN' }),

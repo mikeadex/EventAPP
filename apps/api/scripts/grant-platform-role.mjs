@@ -28,6 +28,7 @@
 import { PrismaClient } from '@prisma/client';
 
 const ROLES = ['USER', 'PLATFORM_SUPPORT', 'PLATFORM_MODERATOR', 'PLATFORM_ADMIN', 'PLATFORM_FINANCE'];
+// Keep in step with apps/api/src/common/staff.ts (STAFF_DOMAIN, isStaffEmail).
 const STAFF_DOMAIN = 'ekklesiaevents.com';
 const isStaffEmail = (e) => e.trim().toLowerCase().endsWith(`@${STAFF_DOMAIN}`);
 
@@ -87,38 +88,38 @@ try {
     console.log(off.length ? 'Staff-role accounts outside the staff domain:' : 'None outside the staff domain.');
     for (const r of off) console.log(`  ${r.email}  ${r.platformRole}`);
   } else {
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, email: true, name: true, platformRole: true, emailVerified: true },
-  });
-
-  if (!user) {
-    console.error(`No account with that email on this database.`);
-    console.error(`Sign up at the website or in the app first, then re-run this.`);
-    process.exitCode = 1;
-  } else if (user.platformRole === role) {
-    console.log(`Already ${role}. Nothing to do.`);
-  } else if (dryRun) {
-    console.log(`Would change ${user.platformRole} -> ${role}.`);
-  } else {
-    await prisma.user.update({ where: { id: user.id }, data: { platformRole: role } });
-    // Written by hand rather than through AuditLogService: this runs outside
-    // Nest, and a role change is exactly the kind of thing that should be
-    // answerable later.
-    await prisma.auditLog.create({
-      data: {
-        actorUserId: user.id,
-        action: 'user.platform_role.grant',
-        targetType: 'user',
-        targetId: user.id,
-        metadata: { from: user.platformRole, to: role, via: 'grant-platform-role script' },
-      },
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, name: true, platformRole: true, emailVerified: true },
     });
-    console.log(`Done. ${user.email} is now ${role} (was ${user.platformRole}).`);
-    if (!user.emailVerified) {
-      console.log(`Note: this account's email is not verified.`);
+
+    if (!user) {
+      console.error(`No account with that email on this database.`);
+      console.error(`Sign up at the website or in the app first, then re-run this.`);
+      process.exitCode = 1;
+    } else if (user.platformRole === role) {
+      console.log(`Already ${role}. Nothing to do.`);
+    } else if (dryRun) {
+      console.log(`Would change ${user.platformRole} -> ${role}.`);
+    } else {
+      await prisma.user.update({ where: { id: user.id }, data: { platformRole: role } });
+      // Written by hand rather than through AuditLogService: this runs outside
+      // Nest, and a role change is exactly the kind of thing that should be
+      // answerable later.
+      await prisma.auditLog.create({
+        data: {
+          actorUserId: user.id,
+          action: 'user.platform_role.grant',
+          targetType: 'user',
+          targetId: user.id,
+          metadata: { from: user.platformRole, to: role, via: 'grant-platform-role script' },
+        },
+      });
+      console.log(`Done. ${user.email} is now ${role} (was ${user.platformRole}).`);
+      if (!user.emailVerified) {
+        console.log(`Note: this account's email is not verified.`);
+      }
     }
-  }
   }
 } finally {
   await prisma.$disconnect();
