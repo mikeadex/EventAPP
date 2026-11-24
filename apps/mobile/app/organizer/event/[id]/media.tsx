@@ -172,7 +172,7 @@ export default function MediaScreen() {
     }
   }
 
-  if (error) return <ErrorState message={error} onRetry={() => void load()} />;
+  if (error) return <ErrorState scheme="light" message={error} onRetry={() => void load()} />;
 
   return (
     <KeyboardAvoidingView
@@ -232,7 +232,7 @@ export default function MediaScreen() {
         {items === null ? (
           <ActivityIndicator style={{ marginTop: spacing[6] }} color={color.ink[500]} />
         ) : items.length === 0 ? (
-          <EmptyState
+          <EmptyState scheme="light"
             icon="images-outline"
             title="No photos yet"
             message="Add pictures from a previous event so people know what to expect."

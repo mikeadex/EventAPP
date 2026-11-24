@@ -49,13 +49,13 @@ export default function OrganizerHomeScreen() {
       </View>
 
       {error ? (
-        <ErrorState message={error} onRetry={() => router.replace('/organizer')} />
+        <ErrorState scheme="light" message={error} onRetry={() => router.replace('/organizer')} />
       ) : !items ? (
         <View style={styles.center}>
           <ActivityIndicator color={color.ink[900]} />
         </View>
       ) : items.length === 0 ? (
-        <EmptyState
+        <EmptyState scheme="light"
           icon="business-outline"
           title="Not hosting yet"
           message="Set up your host profile to publish events, sell tickets and check people in."

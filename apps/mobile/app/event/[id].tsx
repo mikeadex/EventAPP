@@ -399,18 +399,18 @@ export default function EventDetailScreen() {
     return (
       <View style={styles.c}>
         <StatusBar style="light" />
-        <Skeleton tone="dark" style={{ width: '100%', height: HERO_H, borderRadius: 0 }} />
+        <Skeleton style={{ width: '100%', height: HERO_H, borderRadius: 0 }} />
         <View style={{ padding: spacing[5], gap: spacing[3] }}>
-          <Skeleton tone="dark" style={{ height: 30, width: '72%' }} />
-          <Skeleton tone="dark" style={{ height: 16, width: '45%' }} />
+          <Skeleton style={{ height: 30, width: '72%' }} />
+          <Skeleton style={{ height: 16, width: '45%' }} />
           <View style={{ flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] }}>
-            <Skeleton tone="dark" style={{ flex: 1, height: 56 }} />
-            <Skeleton tone="dark" style={{ flex: 1, height: 56 }} />
-            <Skeleton tone="dark" style={{ flex: 1, height: 56 }} />
+            <Skeleton style={{ flex: 1, height: 56 }} />
+            <Skeleton style={{ flex: 1, height: 56 }} />
+            <Skeleton style={{ flex: 1, height: 56 }} />
           </View>
-          <Skeleton tone="dark" style={{ height: 14, width: '38%', marginTop: spacing[4] }} />
-          <Skeleton tone="dark" style={{ height: 14, width: '92%' }} />
-          <Skeleton tone="dark" style={{ height: 14, width: '80%' }} />
+          <Skeleton style={{ height: 14, width: '38%', marginTop: spacing[4] }} />
+          <Skeleton style={{ height: 14, width: '92%' }} />
+          <Skeleton style={{ height: 14, width: '80%' }} />
         </View>
       </View>
     );

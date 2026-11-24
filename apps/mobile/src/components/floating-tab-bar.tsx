@@ -1,7 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, theme, palette } from '@ekklesia/ui/tokens';
+import { Text } from '@/components/text';
+import { ACTIVE_BORDER, ACTIVE_FILL, CONTROL_BORDER } from '@/components/ui';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -34,9 +36,14 @@ const LABELS: Record<string, string> = {
 };
 
 /**
- * Floating pill tab bar — white rounded capsule that hovers above content. The
- * focused tab expands into a dark pill showing icon + label; the rest are
- * icon-only. (Signature pattern from the reference designs.)
+ * Floating pill tab bar — a raised capsule hovering above the content. The
+ * focused tab expands into an accent-tinted pill showing icon + label; the
+ * rest are icon-only.
+ *
+ * The refresh inverts it: the capsule was white with a near-black active pill,
+ * and is now the dark surface with a coral wash behind a half-strength coral
+ * edge — the same `ACTIVE_FILL` / `ACTIVE_BORDER` pair every other selected
+ * control on the refreshed screens uses.
  */
 export function FloatingTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
@@ -72,9 +79,13 @@ export function FloatingTabBar({ state, navigation }: TabBarProps) {
               <Ionicons
                 name={focused ? base : (`${base}-outline` as IoniconName)}
                 size={20}
-                color={focused ? color.ink[0] : color.ink[400]}
+                color={focused ? theme.dark.accent : theme.dark.textSecondary}
               />
-              {focused ? <Text style={styles.label}>{LABELS[route.name]}</Text> : null}
+              {focused ? (
+                <Text variant="footnote" style={styles.label}>
+                  {LABELS[route.name]}
+                </Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -95,17 +106,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[1],
-    backgroundColor: color.ink[0],
+    backgroundColor: theme.dark.surface,
     borderRadius: radius.full,
     paddingVertical: spacing[2],
     paddingHorizontal: spacing[2],
     borderWidth: 1,
-    borderColor: color.ink[100],
+    borderColor: CONTROL_BORDER,
+    // Against a near-black ground a soft shadow does nothing, so the lift
+    // comes from the border and a tighter, darker drop instead.
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.44,
+    shadowRadius: 18,
+    elevation: 10,
   },
   item: {
     flexDirection: 'row',
@@ -117,13 +130,11 @@ const styles = StyleSheet.create({
   },
   itemActive: {
     width: 'auto',
-    paddingHorizontal: spacing[4],
+    paddingHorizontal: 18,
     gap: spacing[2],
-    backgroundColor: color.ink[900],
+    backgroundColor: ACTIVE_FILL,
+    borderWidth: 1,
+    borderColor: ACTIVE_BORDER,
   },
-  label: {
-    color: color.ink[0],
-    fontWeight: fontWeight.semibold,
-    fontSize: fontSize.sm,
-  },
+  label: { color: palette.coral[400] },
 });

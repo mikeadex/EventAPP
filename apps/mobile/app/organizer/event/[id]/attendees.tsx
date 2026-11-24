@@ -163,13 +163,13 @@ export default function AttendeesScreen() {
       ) : null}
 
       {error && !list ? (
-        <ErrorState message={error} onRetry={() => void load()} />
+        <ErrorState scheme="light" message={error} onRetry={() => void load()} />
       ) : !list ? (
         <View style={styles.center}>
           <ActivityIndicator color={color.ink[900]} />
         </View>
       ) : list.items.length === 0 ? (
-        <EmptyState icon="people-outline" title="Nobody yet" message="Registrations will appear here." />
+        <EmptyState scheme="light" icon="people-outline" title="Nobody yet" message="Registrations will appear here." />
       ) : (
         <ScrollView
           contentContainerStyle={{

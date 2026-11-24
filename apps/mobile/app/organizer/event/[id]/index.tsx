@@ -205,7 +205,7 @@ export default function OrganizerEventScreen() {
   if (loadError) {
     return (
       <View style={[styles.c, { paddingTop: insets.top + spacing[2] }]}>
-        <ErrorState message={loadError} onRetry={() => void load()} />
+        <ErrorState scheme="light" message={loadError} onRetry={() => void load()} />
       </View>
     );
   }

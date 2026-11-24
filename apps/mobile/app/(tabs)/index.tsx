@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { color, spacing, radius, theme, palette, radiusExtra, fontFamily } from '@ekklesia/ui/tokens';
-import { Scrim as GradientScrim, scrimPreset } from '@/components/scrim';
+import { Scrim as GradientScrim, scrimPreset } from '@/components/gradient';
 import { Text } from '@/components/text';
 import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
@@ -81,7 +81,7 @@ function HeartButton({
         <Ionicons
           name={saved ? 'heart' : 'heart-outline'}
           size={18}
-          color={saved ? color.ink[900] : color.ink[0]}
+          color={saved ? palette.coral[300] : palette.warm[50]}
         />
       </Animated.View>
     </Pressable>
@@ -600,11 +600,19 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(20,20,20,0.4)',
+    backgroundColor: 'rgba(13,10,11,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heartSaved: { backgroundColor: color.ink[0] },
+  // The design pack draws no save button, so this follows the refresh's own
+  // selected-control pair rather than inventing a third treatment: a wash of
+  // accent behind a half-strength accent edge.
+  heartSaved: {
+    backgroundColor: 'rgba(249,142,128,0.2)',
+    borderColor: 'rgba(249,142,128,0.6)',
+  },
   cardHeart: { position: 'absolute', top: spacing[3], right: spacing[3] },
   cardHeartSm: { position: 'absolute', top: spacing[2], right: spacing[2], width: 30, height: 30, borderRadius: 15 },
   heroHeart: { position: 'absolute', right: PAD, bottom: PAD, width: 44, height: 44, borderRadius: 22 },
@@ -640,11 +648,13 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: 'rgba(20,20,20,0.45)',
+    backgroundColor: 'rgba(13,10,11,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroAvatarText: { fontFamily: fontFamily.body, fontSize: 16, color: palette.warm[0] },
+  heroAvatarText: { fontFamily: fontFamily.body, fontSize: 15, color: palette.coral[400] },
   heroBody: { padding: PAD, paddingRight: 64 },
   // Outlined, not filled: the refresh states actions and tags are a 1px
   // accent line on transparent rather than a flood of colour.
@@ -761,9 +771,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing[3],
     left: spacing[3],
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,227,222,0.4)',
+    backgroundColor: palette.coral[800],
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: radius.full,

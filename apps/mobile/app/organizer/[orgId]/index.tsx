@@ -109,13 +109,13 @@ export default function OrgDashboardScreen() {
       </View>
 
       {error && !events ? (
-        <ErrorState message={error} onRetry={() => void load()} />
+        <ErrorState scheme="light" message={error} onRetry={() => void load()} />
       ) : !events ? (
         <View style={styles.center}>
           <ActivityIndicator color={color.ink[900]} />
         </View>
       ) : events.length === 0 ? (
-        <EmptyState
+        <EmptyState scheme="light"
           icon="calendar-outline"
           title="No events yet"
           message="Create your first event and publish it when you're ready."

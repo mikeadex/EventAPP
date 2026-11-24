@@ -1,19 +1,16 @@
 import { useCallback, useState } from 'react';
-import {
-  FlatList,
-  Image,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { FlatList, Image, RefreshControl, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { Ionicons } from '@expo/vector-icons';
+import { spacing, theme, radiusExtra } from '@ekklesia/ui/tokens';
 import { useSession } from '@/lib/auth-client';
 import { api } from '@/lib/api';
 import { EmptyState, ErrorState, ListSkeleton, LoadingState } from '@/components/states';
+import { Text } from '@/components/text';
+import { Card, ScreenHeader } from '@/components/ui';
+
+const BAR_CLEARANCE = 110;
 
 interface SavedEntry {
   createdAt: string;
@@ -27,9 +24,51 @@ interface SavedEntry {
   };
 }
 
+/**
+ * The handoff lays these out as a landscape row — a 92px square thumbnail
+ * beside the text — rather than the full-width cover the screen used before.
+ * It fits roughly twice as many on screen, which is the point of a list you
+ * come back to.
+ */
+function SavedCard({ entry }: { entry: SavedEntry }) {
+  const { event } = entry;
+  const d = new Date(event.startsAt);
+  return (
+    <Card
+      style={styles.card}
+      onPress={() =>
+        router.push({
+          pathname: '/event/[id]',
+          params: { id: event.id, orgSlug: event.organization.slug, eventSlug: event.slug },
+        })
+      }
+    >
+      {event.coverImageUrl ? (
+        <Image source={{ uri: event.coverImageUrl }} style={styles.thumb} />
+      ) : (
+        <View style={[styles.thumb, styles.thumbFallback]}>
+          <Ionicons name="calendar-outline" size={26} color={theme.dark.textMuted} />
+        </View>
+      )}
+      <View style={styles.body}>
+        <Text variant="overline" tone="accent" style={styles.when}>
+          {d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} ·{' '}
+          {d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+        </Text>
+        <Text variant="subtitle" tone="onPhoto" numberOfLines={2} style={styles.title}>
+          {event.title}
+        </Text>
+        <Text variant="label" tone="secondary" numberOfLines={1}>
+          {event.organization.name}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={theme.dark.textMuted} />
+    </Card>
+  );
+}
+
 export default function SavedScreen() {
   const insets = useSafeAreaInsets();
-  const topPad = { paddingTop: insets.top + spacing[2] };
   const { data: session, isPending: sessionPending } = useSession();
   const [items, setItems] = useState<SavedEntry[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,9 +102,11 @@ export default function SavedScreen() {
     setRefreshing(false);
   }, [fetchSaved]);
 
+  const top = { paddingTop: insets.top };
+
   if (sessionPending) {
     return (
-      <View style={[styles.c, topPad]}>
+      <View style={[styles.screen, top]}>
         <LoadingState />
       </View>
     );
@@ -73,8 +114,8 @@ export default function SavedScreen() {
 
   if (!session?.user) {
     return (
-      <View style={[styles.c, topPad]}>
-        <Text style={styles.h}>Saved</Text>
+      <View style={[styles.screen, top]}>
+        <ScreenHeader title="Saved" />
         <EmptyState
           icon="heart-outline"
           title="Sign in to save events"
@@ -86,30 +127,35 @@ export default function SavedScreen() {
     );
   }
 
+  const count = items?.length ?? 0;
+
   return (
-    <View style={[styles.c, topPad]}>
-      <Text style={styles.h}>Saved</Text>
+    <View style={[styles.screen, top]}>
+      <ScreenHeader
+        title="Saved"
+        subtitle={items === null ? undefined : count === 1 ? '1 event' : `${count} events`}
+      />
       {items === null ? (
         error ? (
           <ErrorState message={error} onRetry={fetchSaved} />
         ) : (
-          <ListSkeleton rows={3} height={120} />
+          <View style={styles.list}>
+            <ListSkeleton rows={4} height={116} />
+          </View>
         )
       ) : (
         <FlatList
           data={items}
           keyExtractor={(it) => it.event.id}
           contentContainerStyle={
-            items.length === 0
-              ? { flexGrow: 1 }
-              : { paddingTop: spacing[4], paddingBottom: 110 }
+            items.length === 0 ? { flexGrow: 1 } : [styles.list, { paddingBottom: BAR_CLEARANCE }]
           }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={color.brand[600]}
-              colors={[color.brand[600]]}
+              tintColor={theme.dark.accent}
+              colors={[theme.dark.accent]}
             />
           }
           ListEmptyComponent={
@@ -117,39 +163,11 @@ export default function SavedScreen() {
               icon="heart-outline"
               title="Nothing saved yet"
               message="Tap the heart on an event to keep track of it here."
+              actionLabel="Find events"
+              onAction={() => router.push('/')}
             />
           }
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.card}
-              onPress={() =>
-                router.push({
-                  pathname: '/event/[id]',
-                  params: {
-                    id: item.event.id,
-                    orgSlug: item.event.organization.slug,
-                    eventSlug: item.event.slug,
-                  },
-                })
-              }
-            >
-              {item.event.coverImageUrl && (
-                <Image source={{ uri: item.event.coverImageUrl }} style={styles.cover} />
-              )}
-              <View style={{ padding: spacing[3] }}>
-                <Text style={styles.date}>
-                  {new Date(item.event.startsAt).toLocaleString(undefined, {
-                    day: 'numeric',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-                <Text style={styles.title}>{item.event.title}</Text>
-                <Text style={styles.muted}>{item.event.organization.name}</Text>
-              </View>
-            </Pressable>
-          )}
+          renderItem={({ item }) => <SavedCard entry={item} />}
         />
       )}
     </View>
@@ -157,26 +175,19 @@ export default function SavedScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[50], padding: spacing[4] },
-  h: { fontSize: fontSize['3xl'], fontWeight: fontWeight.bold, color: color.ink[900] },
-  muted: { color: color.ink[400], marginTop: spacing[1] },
+  screen: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
+  list: { paddingHorizontal: spacing[5], gap: spacing[4] },
   card: {
-    backgroundColor: color.ink[0],
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    marginBottom: spacing[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 12,
   },
-  cover: { width: '100%', height: 140, backgroundColor: color.ink[100] },
-  date: {
-    fontSize: fontSize.xs,
-    color: color.brand[600],
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  title: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: color.ink[900],
-    marginTop: spacing[1],
-  },
+  thumb: { width: 92, height: 92, borderRadius: 12, backgroundColor: theme.dark.surfaceRaised },
+  thumbFallback: { alignItems: 'center', justifyContent: 'center' },
+  body: { flex: 1, gap: 7, justifyContent: 'center' },
+  // 0.18em at 11px, per the handoff — slightly tighter than the 0.2em the
+  // `overline` variant carries by default.
+  when: { letterSpacing: 1.98 },
+  title: { lineHeight: 22 },
 });

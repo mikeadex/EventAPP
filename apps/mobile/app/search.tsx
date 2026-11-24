@@ -225,10 +225,10 @@ export default function SearchScreen() {
 
       {loading ? (
         <View style={{ paddingHorizontal: spacing[5] }}>
-          <ListSkeleton rows={4} height={84} />
+          <ListSkeleton scheme="light" rows={4} height={84} />
         </View>
       ) : error ? (
-        <ErrorState message={error} onRetry={load} />
+        <ErrorState scheme="light" message={error} onRetry={load} />
       ) : (
         <FlatList
           data={items}
@@ -237,7 +237,7 @@ export default function SearchScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: spacing[5], paddingBottom: spacing[10] }}
           ListEmptyComponent={
-            <EmptyState
+            <EmptyState scheme="light"
               icon={hasActiveFilter ? 'search-outline' : 'compass-outline'}
               title={hasActiveFilter ? 'No matches' : 'Find your next event'}
               message={

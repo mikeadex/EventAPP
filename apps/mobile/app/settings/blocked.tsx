@@ -56,7 +56,7 @@ export default function BlockedScreen() {
     }
   }
 
-  if (error) return <ErrorState message={error} onRetry={() => void load()} />;
+  if (error) return <ErrorState scheme="light" message={error} onRetry={() => void load()} />;
 
   return (
     <View style={[styles.c, { paddingTop: insets.top + spacing[2] }]}>
@@ -71,7 +71,7 @@ export default function BlockedScreen() {
         {items === null ? (
           <ActivityIndicator color={color.ink[500]} style={{ marginTop: spacing[8] }} />
         ) : items.length === 0 ? (
-          <EmptyState
+          <EmptyState scheme="light"
             icon="ban-outline"
             title="Nothing blocked"
             message="Hosts and people you block won't appear in your feed. You can block a host from their page."
