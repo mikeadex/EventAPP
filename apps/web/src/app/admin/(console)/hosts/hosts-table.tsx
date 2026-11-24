@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAdminMe } from '@/components/admin/admin-me';
+import { useUrlSearch } from '@/components/admin/use-url-search';
 import { Icon } from '@/components/icons';
 import { adminApi, canModerate } from '@/lib/admin-api';
 import { fmtDateShort, initials, plural } from '@/lib/format';
@@ -26,44 +26,18 @@ type Load<T> = { state: 'loading' } | { state: 'ok'; data: T } | { state: 'error
 
 export function HostsTable() {
   const me = useAdminMe();
-  const router = useRouter();
-  const pathname = usePathname();
-  const search = useSearchParams();
+  const { search, q, draft, setDraft, setParam } = useUrlSearch();
 
   const statusParam = search.get('status');
   const status: StatusKey = STATUSES.some((s) => s.key === statusParam) ? (statusParam as StatusKey) : 'all';
   const kindParam = search.get('kind')?.toUpperCase();
   const kind = KINDS.includes(kindParam as HostKind) ? (kindParam as HostKind) : null;
-  const q = search.get('q') ?? '';
 
-  const [draft, setDraft] = useState(q);
   const [rows, setRows] = useState<Load<HostRow[]>>({ state: 'loading' });
   const [all, setAll] = useState<HostRow[] | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   /** Ignores a slow answer to an older search that lands after a newer one. */
   const latest = useRef(0);
-
-  const setParam = useCallback(
-    (key: string, value: string | null) => {
-      const next = new URLSearchParams(search.toString());
-      if (value) next.set(key, value);
-      else next.delete(key);
-      const qs = next.toString();
-      router.replace((qs ? `${pathname}?${qs}` : pathname) as never, { scroll: false });
-    },
-    [pathname, router, search],
-  );
-
-  // Keep the box in step when the URL changes from outside (back/forward),
-  // without trimming what is being typed ("hope " stays "hope ").
-  useEffect(() => setDraft((d) => (d.trim() === q ? d : q)), [q]);
-
-  // Search as you type, written to ?q= once typing pauses.
-  useEffect(() => {
-    if (draft.trim() === q) return;
-    const t = setTimeout(() => setParam('q', draft.trim() || null), 300);
-    return () => clearTimeout(t);
-  }, [draft, q, setParam]);
 
   const loadRows = useCallback(async () => {
     const params = new URLSearchParams({ status });

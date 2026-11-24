@@ -16,6 +16,7 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   tone = 'default',
   busy = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: {
@@ -26,6 +27,8 @@ export function ConfirmDialog({
   cancelLabel?: string;
   tone?: 'bad' | 'default';
   busy?: boolean;
+  /** Keeps Confirm off until the body's own input is valid (e.g. a required reason). */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -73,7 +76,7 @@ export function ConfirmDialog({
               type="button"
               className={tone === 'bad' ? 'btn btn-bad' : 'btn btn-primary'}
               onClick={onConfirm}
-              disabled={busy}
+              disabled={busy || confirmDisabled}
               aria-busy={busy || undefined}
             >
               {confirmLabel}

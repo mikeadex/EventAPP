@@ -5,8 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useAdminMe } from '@/components/admin/admin-me';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
+import { booked, eventStatus, isUpcoming, type EventStatus } from '@/components/admin/event-shared';
 import { KpiCard } from '@/components/admin/kpi-card';
-import { StatusPill, type StatusTone } from '@/components/admin/status-pill';
+import { StatusPill } from '@/components/admin/status-pill';
 import { Tabs } from '@/components/admin/tabs';
 import { Icon } from '@/components/icons';
 import { adminApi, canModerate } from '@/lib/admin-api';
@@ -23,8 +24,6 @@ import {
   type VerificationStatus,
 } from '../host-shared';
 import { ContactDialog } from './contact-dialog';
-
-type EventStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'CANCELLED' | 'COMPLETED';
 
 interface HostEvent {
   id: string;
@@ -60,29 +59,6 @@ interface HostDetail {
 }
 
 type Load = { state: 'loading' } | { state: 'ok'; host: HostDetail } | { state: 'missing' } | { state: 'error' };
-
-function isUpcoming(e: HostEvent, now: number) {
-  return e.status === 'PUBLISHED' && new Date(e.endsAt).getTime() >= now;
-}
-
-function eventStatus(e: HostEvent, now: number): [StatusTone, string] {
-  switch (e.status) {
-    case 'PUBLISHED':
-      return isUpcoming(e, now) ? ['ok', 'Live'] : ['default', 'Ended'];
-    case 'COMPLETED':
-      return ['default', 'Ended'];
-    case 'CANCELLED':
-      return ['bad', 'Unpublished'];
-    case 'SCHEDULED':
-      return ['default', 'Scheduled'];
-    default:
-      return ['default', 'Draft'];
-  }
-}
-
-function booked(e: HostEvent) {
-  return e.capacity ? `${e.attendeeCount} / ${e.capacity}` : String(e.attendeeCount);
-}
 
 /** Drafts have no public page; everything else opens by direct link (cancelled included). */
 function EventTitle({ host, e }: { host: HostDetail; e: HostEvent }) {
