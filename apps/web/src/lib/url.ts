@@ -7,7 +7,9 @@ export function safeNext(next: string | null | undefined, fallback = '/') {
   if (!next || !next.startsWith('/') || next.startsWith('//') || /[\\\x00-\x1f]/.test(next)) return fallback;
   try {
     const u = new URL(next, 'https://x.invalid');
-    if (u.origin !== 'https://x.invalid') return fallback;
+    // Check the normalised result too: `/.//evil.com` passes the raw checks
+    // but resolves to the path `//evil.com`, which a browser reads as a host.
+    if (u.origin !== 'https://x.invalid' || u.pathname.startsWith('//') || u.pathname.includes('\\')) return fallback;
     return u.pathname + u.search + u.hash;
   } catch {
     return fallback;

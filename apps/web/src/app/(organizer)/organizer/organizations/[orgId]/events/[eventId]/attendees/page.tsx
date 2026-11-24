@@ -16,7 +16,10 @@ type Filter = 'all' | 'in' | 'out';
 const ANNOUNCE_MAX = 500;
 
 function csvCell(v: string | null | undefined) {
-  const s = v ?? '';
+  let s = v ?? '';
+  // Attendee names are typed by the public. A leading = + - @ makes a
+  // spreadsheet treat the cell as a formula, so neutralise it.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
