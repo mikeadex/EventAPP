@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { canPickImages, pickImages, uploadImage } from '@/lib/upload';
 import { showToast } from '@/components/toast';
 
@@ -77,7 +77,7 @@ export function CoverPhotoField({
               disabled={disabled || busy}
               onPress={() => void choose()}
             >
-              <Ionicons name="swap-horizontal" size={15} color={color.ink[900]} />
+              <Ionicons name="swap-horizontal" size={15} color={theme.dark.textPrimary} />
               <Text style={styles.pillText}>Change</Text>
             </Pressable>
             <Pressable
@@ -86,7 +86,7 @@ export function CoverPhotoField({
               onPress={() => onChange(null)}
               accessibilityLabel="Remove cover photo"
             >
-              <Ionicons name="trash-outline" size={15} color={color.ink[900]} />
+              <Ionicons name="trash-outline" size={15} color={theme.dark.textPrimary} />
               <Text style={styles.pillText}>Remove</Text>
             </Pressable>
           </View>
@@ -101,12 +101,12 @@ export function CoverPhotoField({
         >
           {busy ? (
             <>
-              <ActivityIndicator color={color.ink[500]} />
+              <ActivityIndicator color={theme.dark.textSecondary} />
               <Text style={styles.placeholderText}>Uploading…</Text>
             </>
           ) : (
             <>
-              <Ionicons name="image-outline" size={26} color={color.ink[400]} />
+              <Ionicons name="image-outline" size={26} color={theme.dark.textMuted} />
               <Text style={styles.placeholderText}>Add a cover photo</Text>
               <Text style={styles.placeholderSub}>Optional, but it makes a real difference</Text>
             </>
@@ -120,33 +120,33 @@ export function CoverPhotoField({
 const styles = StyleSheet.create({
   label: {
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: color.ink[900],
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
     marginBottom: spacing[1],
   },
-  hint: { fontSize: fontSize.xs, color: color.ink[400], marginBottom: spacing[2] },
+  hint: { fontSize: fontSize.xs, color: theme.dark.textMuted, marginBottom: spacing[2] },
   placeholder: {
     height: 150,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderStyle: 'dashed',
-    backgroundColor: color.ink[50],
+    backgroundColor: theme.dark.surface,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[1],
   },
   placeholderText: {
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: color.ink[600],
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textSecondary,
   },
-  placeholderSub: { fontSize: fontSize.xs, color: color.ink[400] },
+  placeholderSub: { fontSize: fontSize.xs, color: theme.dark.textMuted },
   preview: {
     height: 150,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surfaceRaised,
     justifyContent: 'flex-end',
   },
   previewActions: {
@@ -158,14 +158,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[1],
-    backgroundColor: color.ink[0],
+    backgroundColor: theme.dark.backgroundDeep,
     borderRadius: radius.full,
     paddingVertical: spacing[2],
     paddingHorizontal: spacing[3],
   },
   pillText: {
     fontSize: fontSize.xs,
-    fontWeight: fontWeight.medium,
-    color: color.ink[900],
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
   },
 });

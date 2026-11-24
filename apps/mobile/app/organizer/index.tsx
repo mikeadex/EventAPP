@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { api } from '@/lib/api';
 import { EmptyState, ErrorState } from '@/components/states';
 
@@ -42,20 +42,20 @@ export default function OrganizerHomeScreen() {
     <View style={[styles.c, { paddingTop: insets.top + spacing[2] }]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.h}>Manage</Text>
         <View style={styles.backBtn} />
       </View>
 
       {error ? (
-        <ErrorState scheme="light" message={error} onRetry={() => router.replace('/organizer')} />
+        <ErrorState message={error} onRetry={() => router.replace('/organizer')} />
       ) : !items ? (
         <View style={styles.center}>
-          <ActivityIndicator color={color.ink[900]} />
+          <ActivityIndicator color={theme.dark.textPrimary} />
         </View>
       ) : items.length === 0 ? (
-        <EmptyState scheme="light"
+        <EmptyState
           icon="business-outline"
           title="Not hosting yet"
           message="Set up your host profile to publish events, sell tickets and check people in."
@@ -71,13 +71,13 @@ export default function OrganizerHomeScreen() {
               onPress={() => router.push(`/organizer/${m.organizationId}`)}
             >
               <View style={styles.cardIcon}>
-                <Ionicons name="business" size={18} color={color.ink[900]} />
+                <Ionicons name="business" size={18} color={theme.dark.textPrimary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>{m.name}</Text>
                 <Text style={styles.cardSub}>{m.role.toLowerCase().replace('_', ' ')}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={color.ink[300]} />
+              <Ionicons name="chevron-forward" size={18} color={theme.dark.textMuted} />
             </Pressable>
           ))}
         </ScrollView>
@@ -87,7 +87,7 @@ export default function OrganizerHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[2],
   },
   backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  h: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  h: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -105,16 +105,16 @@ const styles = StyleSheet.create({
     padding: spacing[4],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: color.ink[100],
+    borderColor: theme.dark.borderSubtle,
   },
   cardIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  cardSub: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 2, textTransform: 'capitalize' },
+  cardTitle: { fontSize: fontSize.base, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  cardSub: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2, textTransform: 'capitalize' },
 });

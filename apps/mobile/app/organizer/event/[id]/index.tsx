@@ -14,7 +14,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { api, describeApiError } from '@/lib/api';
 import { locationMode } from '@/lib/event-location';
 import { ErrorState } from '@/components/states';
@@ -205,14 +205,14 @@ export default function OrganizerEventScreen() {
   if (loadError) {
     return (
       <View style={[styles.c, { paddingTop: insets.top + spacing[2] }]}>
-        <ErrorState scheme="light" message={loadError} onRetry={() => void load()} />
+        <ErrorState message={loadError} onRetry={() => void load()} />
       </View>
     );
   }
   if (!event) {
     return (
       <View style={[styles.c, styles.center]}>
-        <ActivityIndicator color={color.ink[900]} />
+        <ActivityIndicator color={theme.dark.textPrimary} />
       </View>
     );
   }
@@ -226,7 +226,7 @@ export default function OrganizerEventScreen() {
     >
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.h}>{event.status.toLowerCase()}</Text>
         <View style={styles.backBtn} />
@@ -244,29 +244,29 @@ export default function OrganizerEventScreen() {
           style={styles.attendeesBtn}
           onPress={() => router.push(`/organizer/event/${id}/attendees`)}
         >
-          <Ionicons name="people-outline" size={18} color={color.ink[0]} />
+          <Ionicons name="people-outline" size={18} color={palette.coral[200]} />
           <Text style={styles.attendeesText}>
             {event.attendeeCount} going · check people in
           </Text>
-          <Ionicons name="chevron-forward" size={18} color={color.ink[0]} />
+          <Ionicons name="chevron-forward" size={18} color={palette.coral[200]} />
         </Pressable>
 
         <Pressable
           style={styles.announceBtn}
           onPress={() => router.push(`/organizer/event/${id}/media`)}
         >
-          <Ionicons name="images-outline" size={18} color={color.ink[900]} />
+          <Ionicons name="images-outline" size={18} color={theme.dark.textPrimary} />
           <Text style={styles.announceText}>Photos and video</Text>
-          <Ionicons name="chevron-forward" size={18} color={color.ink[400]} />
+          <Ionicons name="chevron-forward" size={18} color={theme.dark.textMuted} />
         </Pressable>
 
         <Pressable
           style={styles.announceBtn}
           onPress={() => router.push(`/organizer/event/${id}/announce`)}
         >
-          <Ionicons name="megaphone-outline" size={18} color={color.ink[900]} />
+          <Ionicons name="megaphone-outline" size={18} color={theme.dark.textPrimary} />
           <Text style={styles.announceText}>Message attendees</Text>
-          <Ionicons name="chevron-forward" size={18} color={color.ink[400]} />
+          <Ionicons name="chevron-forward" size={18} color={theme.dark.textMuted} />
         </Pressable>
 
         {cancelled ? (
@@ -308,7 +308,7 @@ export default function OrganizerEventScreen() {
                   onPress={() => void removeTicketType(t)}
                   style={{ opacity: t.sold > 0 ? 0.3 : 1 }}
                 >
-                  <Ionicons name="trash-outline" size={18} color={color.ink[700]} />
+                  <Ionicons name="trash-outline" size={18} color={theme.dark.textSecondary} />
                 </Pressable>
               </View>
             ))}
@@ -320,7 +320,7 @@ export default function OrganizerEventScreen() {
                 value={ttName}
                 onChangeText={setTtName}
                 placeholder="Name (e.g. Standard)"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
               />
               <View style={{ flexDirection: 'row', gap: spacing[3] }}>
@@ -328,7 +328,7 @@ export default function OrganizerEventScreen() {
                   value={ttPrice}
                   onChangeText={setTtPrice}
                   placeholder="Price"
-                  placeholderTextColor={color.ink[300]}
+                  placeholderTextColor={theme.dark.textMuted}
                   style={[styles.input, { flex: 1 }]}
                   keyboardType="decimal-pad"
                 />
@@ -336,7 +336,7 @@ export default function OrganizerEventScreen() {
                   value={ttQty}
                   onChangeText={setTtQty}
                   placeholder="Quantity"
-                  placeholderTextColor={color.ink[300]}
+                  placeholderTextColor={theme.dark.textMuted}
                   style={[styles.input, { flex: 1 }]}
                   keyboardType="number-pad"
                 />
@@ -392,7 +392,7 @@ export default function OrganizerEventScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
@@ -406,72 +406,72 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    color: color.ink[500],
+    color: theme.dark.textSecondary,
   },
   announceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     padding: spacing[4],
   },
-  announceText: { flex: 1, fontSize: fontSize.base, color: color.ink[900], fontWeight: fontWeight.medium },
+  announceText: { flex: 1, fontSize: fontSize.base, color: theme.dark.textPrimary },
   attendeesBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     borderRadius: radius.lg,
     padding: spacing[4],
   },
-  attendeesText: { flex: 1, color: color.ink[0], fontWeight: fontWeight.semibold },
+  attendeesText: { flex: 1, color: palette.coral[200] },
   notice: {
     padding: spacing[4],
     borderRadius: radius.md,
-    backgroundColor: color.ink[50],
-    color: color.ink[600],
+    backgroundColor: theme.dark.surface,
+    color: theme.dark.textSecondary,
     fontSize: fontSize.sm,
   },
-  divider: { height: 1, backgroundColor: color.ink[100] },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  sectionHint: { fontSize: fontSize.sm, color: color.ink[500], marginTop: 4 },
+  divider: { height: 1, backgroundColor: theme.dark.surfaceRaised },
+  sectionTitle: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  sectionHint: { fontSize: fontSize.sm, color: theme.dark.textSecondary, marginTop: 4 },
   ttRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     padding: spacing[4],
     borderWidth: 1,
-    borderColor: color.ink[100],
+    borderColor: theme.dark.borderSubtle,
     borderRadius: radius.md,
   },
-  ttName: { fontSize: fontSize.base, fontWeight: fontWeight.medium, color: color.ink[900] },
-  ttSub: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 2 },
+  ttName: { fontSize: fontSize.base, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  ttSub: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2 },
   ttForm: { gap: spacing[3], marginTop: spacing[3] },
   input: {
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
     fontSize: fontSize.base,
-    color: color.ink[900],
+    color: theme.dark.textPrimary,
   },
   primaryBtn: {
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
     alignItems: 'center',
   },
-  primaryBtnText: { color: color.ink[0], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
+  primaryBtnText: { color: palette.coral[200], fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
   secondaryBtn: {
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
     alignItems: 'center',
     marginTop: spacing[3],
   },
-  secondaryBtnText: { color: color.ink[900], fontWeight: fontWeight.medium, fontSize: fontSize.base },
+  secondaryBtnText: { color: theme.dark.textPrimary, fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
 });

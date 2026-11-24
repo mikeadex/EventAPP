@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { DateField, TimeField } from './date-time-fields';
 import { CoverPhotoField } from './cover-photo-field';
 import type { LocationMode } from '@/lib/event-location';
@@ -203,7 +203,7 @@ export function EventForm({
           value={value.title}
           onChangeText={(t) => set('title', t)}
           placeholder="Sunday Gathering"
-          placeholderTextColor={color.ink[300]}
+          placeholderTextColor={theme.dark.textMuted}
           style={styles.input}
           editable={!disabled}
           maxLength={140}
@@ -215,7 +215,7 @@ export function EventForm({
           value={value.summary}
           onChangeText={(t) => set('summary', t)}
           placeholder="Weekly worship and teaching"
-          placeholderTextColor={color.ink[300]}
+          placeholderTextColor={theme.dark.textMuted}
           style={styles.input}
           editable={!disabled}
           maxLength={280}
@@ -227,7 +227,7 @@ export function EventForm({
           value={value.description}
           onChangeText={(t) => set('description', t)}
           placeholder="What should people expect?"
-          placeholderTextColor={color.ink[300]}
+          placeholderTextColor={theme.dark.textMuted}
           style={[styles.input, styles.multiline]}
           editable={!disabled}
           multiline
@@ -294,7 +294,7 @@ export function EventForm({
                 <Ionicons
                   name={m.icon}
                   size={16}
-                  color={on ? color.ink[0] : color.ink[600]}
+                  color={on ? palette.coral[200] : theme.dark.textSecondary}
                 />
                 <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{m.label}</Text>
               </Pressable>
@@ -310,7 +310,7 @@ export function EventForm({
             value={value.onlineUrl}
             onChangeText={(t) => set('onlineUrl', t)}
             placeholder="https://…"
-            placeholderTextColor={color.ink[300]}
+            placeholderTextColor={theme.dark.textMuted}
             style={styles.input}
             editable={!disabled}
             autoCapitalize="none"
@@ -326,7 +326,7 @@ export function EventForm({
               value={value.venueName}
               onChangeText={(t) => set('venueName', t)}
               placeholder="Main Hall"
-              placeholderTextColor={color.ink[300]}
+              placeholderTextColor={theme.dark.textMuted}
               style={styles.input}
               editable={!disabled}
             />
@@ -336,7 +336,7 @@ export function EventForm({
               value={value.addressLine1}
               onChangeText={(t) => set('addressLine1', t)}
               placeholder="2 Chapel Road"
-              placeholderTextColor={color.ink[300]}
+              placeholderTextColor={theme.dark.textMuted}
               style={styles.input}
               editable={!disabled}
             />
@@ -348,7 +348,7 @@ export function EventForm({
                   value={value.city}
                   onChangeText={(t) => set('city', t)}
                   placeholder="Leeds"
-                  placeholderTextColor={color.ink[300]}
+                  placeholderTextColor={theme.dark.textMuted}
                   style={styles.input}
                   editable={!disabled}
                 />
@@ -360,7 +360,7 @@ export function EventForm({
                   value={value.postalCode}
                   onChangeText={(t) => set('postalCode', t)}
                   placeholder="LS1 4AB"
-                  placeholderTextColor={color.ink[300]}
+                  placeholderTextColor={theme.dark.textMuted}
                   style={styles.input}
                   editable={!disabled}
                   autoCapitalize="characters"
@@ -376,7 +376,7 @@ export function EventForm({
           value={value.capacity}
           onChangeText={(t) => set('capacity', t)}
           placeholder="No limit"
-          placeholderTextColor={color.ink[300]}
+          placeholderTextColor={theme.dark.textMuted}
           style={styles.input}
           editable={!disabled}
           keyboardType="number-pad"
@@ -405,31 +405,31 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  hint: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 2 },
+  label: { fontSize: fontSize.sm, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  hint: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2 },
   input: {
     marginTop: spacing[2],
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
     fontSize: fontSize.base,
-    color: color.ink[900],
-    backgroundColor: color.ink[0],
+    color: theme.dark.textPrimary,
+    backgroundColor: theme.dark.surface,
   },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[2] },
   chip: {
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.full,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
   },
-  chipOn: { backgroundColor: color.ink[900], borderColor: color.ink[900] },
-  chipText: { fontSize: fontSize.xs, color: color.ink[700], textTransform: 'capitalize' },
-  chipTextOn: { color: color.ink[0] },
+  chipOn: { backgroundColor: 'rgba(249,142,128,0.14)', borderColor: 'rgba(249,142,128,0.55)' },
+  chipText: { fontSize: fontSize.xs, color: theme.dark.textSecondary, textTransform: 'capitalize' },
+  chipTextOn: { color: palette.coral[200] },
   segmented: {
     flexDirection: 'row',
     gap: spacing[2],
@@ -443,17 +443,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[1],
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.full,
     paddingVertical: spacing[3],
   },
-  segmentOn: { backgroundColor: color.ink[900], borderColor: color.ink[900] },
-  segmentText: { fontSize: fontSize.sm, color: color.ink[700] },
-  segmentTextOn: { color: color.ink[0], fontWeight: fontWeight.semibold },
+  segmentOn: { backgroundColor: 'rgba(249,142,128,0.14)', borderColor: 'rgba(249,142,128,0.55)' },
+  segmentText: { fontSize: fontSize.sm, color: theme.dark.textSecondary },
+  segmentTextOn: { color: palette.coral[200] },
   venueBox: {
     gap: spacing[4],
     padding: spacing[4],
     borderRadius: radius.lg,
-    backgroundColor: color.ink[50],
+    backgroundColor: theme.dark.surface,
   },
 });

@@ -11,7 +11,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { api, describeApiError } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import {
@@ -61,7 +61,7 @@ export default function NewEventScreen() {
     >
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.h}>New event</Text>
         <View style={styles.backBtn} />
@@ -97,7 +97,7 @@ export default function NewEventScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -106,20 +106,20 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[2],
   },
   backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  h: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  h: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
   primaryBtn: {
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
     alignItems: 'center',
   },
-  primaryBtnText: { color: color.ink[0], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
+  primaryBtnText: { color: palette.coral[200], fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
   secondaryBtn: {
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
     alignItems: 'center',
   },
-  secondaryBtnText: { color: color.ink[900], fontWeight: fontWeight.medium, fontSize: fontSize.base },
+  secondaryBtnText: { color: theme.dark.textPrimary, fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
 });

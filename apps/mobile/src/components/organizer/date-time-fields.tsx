@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 
 /**
  * Date and time pickers built from plain React Native.
@@ -94,7 +94,7 @@ export function DateField({
         <Text style={[styles.fieldText, !selected && styles.placeholder]}>
           {readableDate(value) ?? 'Choose a date'}
         </Text>
-        <Ionicons name="calendar-outline" size={18} color={color.ink[400]} />
+        <Ionicons name="calendar-outline" size={18} color={theme.dark.textMuted} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -105,7 +105,7 @@ export function DateField({
                 hitSlop={10}
                 onPress={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))}
               >
-                <Ionicons name="chevron-back" size={22} color={color.ink[900]} />
+                <Ionicons name="chevron-back" size={22} color={theme.dark.textPrimary} />
               </Pressable>
               <Text style={styles.monthLabel}>
                 {MONTHS[view.getMonth()]} {view.getFullYear()}
@@ -114,7 +114,7 @@ export function DateField({
                 hitSlop={10}
                 onPress={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))}
               >
-                <Ionicons name="chevron-forward" size={22} color={color.ink[900]} />
+                <Ionicons name="chevron-forward" size={22} color={theme.dark.textPrimary} />
               </Pressable>
             </View>
 
@@ -201,7 +201,7 @@ export function TimeField({
         style={[styles.field, disabled && styles.fieldDisabled]}
       >
         <Text style={[styles.fieldText, !value && styles.placeholder]}>{value || 'Choose'}</Text>
-        <Ionicons name="time-outline" size={18} color={color.ink[400]} />
+        <Ionicons name="time-outline" size={18} color={theme.dark.textMuted} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -244,37 +244,39 @@ export function TimeField({
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  label: { fontSize: fontSize.sm, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
   field: {
     marginTop: spacing[2],
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
   },
   fieldDisabled: { opacity: 0.5 },
-  fieldText: { fontSize: fontSize.base, color: color.ink[900] },
-  placeholder: { color: color.ink[300] },
+  fieldText: { fontSize: fontSize.base, color: theme.dark.textPrimary },
+  placeholder: { color: theme.dark.textMuted },
 
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(13,10,11,0.62)',
     justifyContent: 'center',
     padding: spacing[5],
   },
   sheet: {
-    backgroundColor: color.ink[0],
-    borderRadius: radius['2xl'],
+    backgroundColor: theme.dark.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.18)',
+    borderRadius: radiusExtra.sheet,
     padding: spacing[5],
   },
   sheetTitle: {
     fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    color: color.ink[900],
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
     textAlign: 'center',
     marginBottom: spacing[3],
   },
@@ -284,13 +286,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing[4],
   },
-  monthLabel: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  monthLabel: { fontSize: fontSize.base, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
   weekRow: { flexDirection: 'row' },
   weekday: {
     flex: 1,
     textAlign: 'center',
     fontSize: fontSize.xs,
-    color: color.ink[400],
+    color: theme.dark.textMuted,
     marginBottom: spacing[2],
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
@@ -301,31 +303,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.full,
   },
-  cellOn: { backgroundColor: color.ink[900] },
-  cellText: { fontSize: fontSize.base, color: color.ink[900] },
-  cellTextOn: { color: color.ink[0], fontWeight: fontWeight.semibold },
-  cellToday: { fontWeight: fontWeight.bold, textDecorationLine: 'underline' },
+  cellOn: { backgroundColor: 'rgba(249,142,128,0.14)' },
+  cellText: { fontSize: fontSize.base, color: theme.dark.textPrimary },
+  cellTextOn: { color: palette.coral[200] },
+  cellToday: { fontFamily: 'Alata_400Regular', textDecorationLine: 'underline' },
   sheetActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: spacing[4],
   },
   ghostBtn: { paddingVertical: spacing[2], paddingHorizontal: spacing[3] },
-  ghostBtnText: { color: color.ink[700], fontWeight: fontWeight.medium },
+  ghostBtnText: { color: theme.dark.textSecondary },
 
   columns: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 220 },
   column: { width: 84 },
-  colon: { fontSize: fontSize.xl, color: color.ink[400], paddingHorizontal: spacing[2] },
+  colon: { fontSize: fontSize.xl, color: theme.dark.textMuted, paddingHorizontal: spacing[2] },
   option: { paddingVertical: spacing[3], alignItems: 'center', borderRadius: radius.md },
-  optionOn: { backgroundColor: color.ink[900] },
-  optionText: { fontSize: fontSize.base, color: color.ink[900] },
-  optionTextOn: { color: color.ink[0], fontWeight: fontWeight.semibold },
+  optionOn: { backgroundColor: 'rgba(249,142,128,0.14)' },
+  optionText: { fontSize: fontSize.base, color: theme.dark.textPrimary },
+  optionTextOn: { color: palette.coral[200] },
   doneBtn: {
     marginTop: spacing[4],
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     borderRadius: radius.full,
     paddingVertical: spacing[3],
     alignItems: 'center',
   },
-  doneBtnText: { color: color.ink[0], fontWeight: fontWeight.semibold },
+  doneBtnText: { color: palette.coral[200] },
 });

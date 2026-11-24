@@ -15,12 +15,14 @@ import { Text } from '@/components/text';
 /**
  * Loading, empty and error states.
  *
- * `scheme` defaults to **dark**, the refresh's default ground. Screens that
- * have not been migrated yet pass `scheme="light"` explicitly; each of those
- * can drop the prop as its screen lands, and the light branch goes when the
- * last one has. (It was the other way round before the refresh — the old
- * `tone` prop on Skeleton is this, renamed, so all four components say it the
- * same way.)
+ * `scheme` defaults to **dark**, the refresh's default ground.
+ *
+ * Nothing passes `scheme="light"` any more — the whole app is on the dark
+ * theme. The light branch is kept because the design pack specifies a light
+ * variant of every screen and this is where it will be needed; until then it
+ * is dead, and a caller that sets it on a dark screen gets near-black text on
+ * a near-black ground. That happened: the organiser screens kept the prop
+ * after being migrated, and their empty states rendered all but invisible.
  */
 
 // ─── Skeleton pulse ──────────────────────────────────────────────────────────

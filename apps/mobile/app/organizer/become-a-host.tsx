@@ -12,7 +12,7 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { api, ApiError, describeApiError } from '@/lib/api';
 import { showToast } from '@/components/toast';
 
@@ -136,7 +136,7 @@ export default function BecomeAHostScreen() {
           hitSlop={8}
           style={styles.backBtn}
         >
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.h}>Become a host</Text>
         <View style={styles.backBtn} />
@@ -179,7 +179,7 @@ export default function BecomeAHostScreen() {
                       <Ionicons
                         name={on ? 'radio-button-on' : 'radio-button-off'}
                         size={20}
-                        color={on ? color.ink[900] : color.ink[300]}
+                        color={on ? theme.dark.accent : theme.dark.textMuted}
                       />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.choiceLabel}>{k.label}</Text>
@@ -196,7 +196,7 @@ export default function BecomeAHostScreen() {
                 value={name}
                 onChangeText={onNameChange}
                 placeholder="Grace Community Church"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 maxLength={120}
@@ -216,7 +216,7 @@ export default function BecomeAHostScreen() {
                   setSlug(v.toLowerCase().replace(/\s+/g, '-'));
                 }}
                 placeholder="grace-community-church"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 autoCapitalize="none"
@@ -260,7 +260,7 @@ export default function BecomeAHostScreen() {
                 value={addressLine1}
                 onChangeText={setAddressLine1}
                 placeholder="2 Chapel Road"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 maxLength={200}
@@ -272,7 +272,7 @@ export default function BecomeAHostScreen() {
                 value={city}
                 onChangeText={setCity}
                 placeholder="Leeds"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 maxLength={120}
@@ -284,7 +284,7 @@ export default function BecomeAHostScreen() {
                 value={postalCode}
                 onChangeText={setPostalCode}
                 placeholder="LS1 4AB"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 autoCapitalize="characters"
@@ -306,7 +306,7 @@ export default function BecomeAHostScreen() {
                 value={contactName}
                 onChangeText={setContactName}
                 placeholder="Jane Smith"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 maxLength={120}
@@ -318,7 +318,7 @@ export default function BecomeAHostScreen() {
                 value={contactEmail}
                 onChangeText={setContactEmail}
                 placeholder="jane@yourchurch.org"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 autoCapitalize="none"
@@ -332,7 +332,7 @@ export default function BecomeAHostScreen() {
                 value={contactPhone}
                 onChangeText={setContactPhone}
                 placeholder="07700 900000"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 keyboardType="phone-pad"
@@ -345,7 +345,7 @@ export default function BecomeAHostScreen() {
                 value={websiteUrl}
                 onChangeText={setWebsiteUrl}
                 placeholder="https://yourchurch.org"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 autoCapitalize="none"
@@ -359,7 +359,7 @@ export default function BecomeAHostScreen() {
                 value={shortDescription}
                 onChangeText={setShortDescription}
                 placeholder="A family church in the heart of Leeds"
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={styles.input}
                 editable={!pending}
                 maxLength={280}
@@ -379,7 +379,7 @@ export default function BecomeAHostScreen() {
                   'kids’ groups during the service, and someone on the door who’ll ' +
                   'happily show you around.'
                 }
-                placeholderTextColor={color.ink[300]}
+                placeholderTextColor={theme.dark.textMuted}
                 style={[styles.input, styles.multiline]}
                 editable={!pending}
                 multiline
@@ -429,7 +429,7 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -438,71 +438,71 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[2],
   },
   backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  h: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  h: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
   progress: {
     flexDirection: 'row',
     gap: spacing[2],
     paddingHorizontal: spacing[5],
     marginTop: spacing[2],
   },
-  progressBar: { flex: 1, height: 3, borderRadius: 2, backgroundColor: color.ink[100] },
-  progressBarOn: { backgroundColor: color.ink[900] },
+  progressBar: { flex: 1, height: 3, borderRadius: 2, backgroundColor: theme.dark.surfaceRaised },
+  progressBarOn: { backgroundColor: 'rgba(249,142,128,0.14)' },
   stepLabel: {
     paddingHorizontal: spacing[5],
     marginTop: spacing[2],
     fontSize: fontSize.xs,
-    color: color.ink[500],
+    color: theme.dark.textSecondary,
   },
-  intro: { fontSize: fontSize.base, color: color.ink[600], lineHeight: 22 },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  hint: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 2 },
-  error: { fontSize: fontSize.xs, color: color.ink[900], marginTop: spacing[2] },
+  intro: { fontSize: fontSize.base, color: theme.dark.textSecondary, lineHeight: 22 },
+  label: { fontSize: fontSize.sm, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  hint: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2 },
+  error: { fontSize: fontSize.xs, color: theme.dark.textPrimary, marginTop: spacing[2] },
   multiline: { minHeight: 140 },
   counter: {
     marginTop: spacing[1],
     fontSize: fontSize.xs,
-    color: color.ink[400],
+    color: theme.dark.textMuted,
     textAlign: 'right',
   },
   input: {
     marginTop: spacing[2],
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
     fontSize: fontSize.base,
-    color: color.ink[900],
+    color: theme.dark.textPrimary,
   },
   choice: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.lg,
     padding: spacing[4],
   },
-  choiceOn: { borderColor: color.ink[900] },
-  choiceLabel: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  choiceHint: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 2 },
+  choiceOn: { borderColor: 'rgba(249,142,128,0.55)' },
+  choiceLabel: { fontSize: fontSize.base, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  choiceHint: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2 },
   chips: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[3] },
   chip: {
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.full,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[2],
   },
-  chipOn: { backgroundColor: color.ink[900], borderColor: color.ink[900] },
-  chipText: { fontSize: fontSize.sm, color: color.ink[700] },
-  chipTextOn: { color: color.ink[0] },
+  chipOn: { backgroundColor: 'rgba(249,142,128,0.14)', borderColor: 'rgba(249,142,128,0.55)' },
+  chipText: { fontSize: fontSize.sm, color: theme.dark.textSecondary },
+  chipTextOn: { color: palette.coral[200] },
   primaryBtn: {
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
     alignItems: 'center',
   },
-  primaryBtnText: { color: color.ink[0], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
-  footnote: { fontSize: fontSize.xs, color: color.ink[500], lineHeight: 18 },
+  primaryBtnText: { color: palette.coral[200], fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
+  footnote: { fontSize: fontSize.xs, color: theme.dark.textSecondary, lineHeight: 18 },
 });

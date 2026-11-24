@@ -12,7 +12,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { api, describeApiError } from '@/lib/api';
 import { showToast } from '@/components/toast';
 
@@ -67,7 +67,7 @@ export default function AnnounceScreen() {
     >
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="close" size={24} color={color.ink[900]} />
+          <Ionicons name="close" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.title}>Message attendees</Text>
       </View>
@@ -91,7 +91,7 @@ export default function AnnounceScreen() {
               setConfirming(false);
             }}
             placeholder="Doors open at 6pm, not 6.30 — sorry for the change!"
-            placeholderTextColor={color.ink[300]}
+            placeholderTextColor={theme.dark.textMuted}
             style={styles.input}
             multiline
             maxLength={MAX}
@@ -108,7 +108,7 @@ export default function AnnounceScreen() {
             disabled={!canSend}
             onPress={() => void send()}
           >
-            <Ionicons name="paper-plane" size={18} color={color.ink[0]} />
+            <Ionicons name="paper-plane" size={18} color={palette.coral[200]} />
             <Text style={styles.sendText}>{pending ? 'Sending…' : 'Tap again to send'}</Text>
           </Pressable>
         ) : (
@@ -126,7 +126,7 @@ export default function AnnounceScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -134,27 +134,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
     paddingBottom: spacing[3],
   },
-  title: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  blurb: { fontSize: fontSize.sm, color: color.ink[500], lineHeight: 20 },
+  title: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  blurb: { fontSize: fontSize.sm, color: theme.dark.textSecondary, lineHeight: 20 },
   input: {
     minHeight: 140,
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     padding: spacing[3],
     fontSize: fontSize.base,
-    color: color.ink[900],
+    color: theme.dark.textPrimary,
   },
-  count: { marginTop: spacing[2], fontSize: fontSize.xs, color: color.ink[400], textAlign: 'right' },
+  count: { marginTop: spacing[2], fontSize: fontSize.xs, color: theme.dark.textMuted, textAlign: 'right' },
   send: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[2],
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
   },
-  confirm: { backgroundColor: color.danger },
-  sendText: { color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  confirm: { backgroundColor: 'rgba(217,86,74,0.18)', borderColor: 'rgba(217,86,74,0.5)' },
+  sendText: { color: palette.coral[200], fontSize: fontSize.base },
 });

@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { checkInTicket } from '@/lib/check-in';
 
 /**
@@ -57,7 +57,7 @@ export default function ScanScreen() {
   if (!permission.granted) {
     return (
       <View style={[styles.c, styles.center, { paddingTop: insets.top }]}>
-        <Ionicons name="camera-outline" size={40} color={color.ink[400]} />
+        <Ionicons name="camera-outline" size={40} color={theme.dark.textMuted} />
         <Text style={styles.permTitle}>Camera access needed</Text>
         <Text style={styles.permBody}>
           Ekklesia uses the camera to scan attendee tickets. Nothing is recorded — the
@@ -84,7 +84,7 @@ export default function ScanScreen() {
 
       <View style={[styles.top, { paddingTop: insets.top + spacing[2] }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.close}>
-          <Ionicons name="close" size={24} color={color.ink[0]} />
+          <Ionicons name="close" size={24} color={palette.coral[200]} />
         </Pressable>
         <Text style={styles.topText}>Scan tickets</Text>
       </View>
@@ -97,7 +97,7 @@ export default function ScanScreen() {
             <Ionicons
               name={outcome.ok ? 'checkmark-circle' : 'alert-circle'}
               size={22}
-              color={outcome.ok ? color.ink[900] : color.ink[0]}
+              color={outcome.ok ? theme.dark.accent : '#D9A9A2'}
             />
             <Text style={[styles.bannerText, outcome.ok && styles.bannerTextOk]}>
               {outcome.text}
@@ -117,21 +117,26 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', padding: spacing[6], gap: spacing[3] },
   permTitle: {
     fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: color.ink[0],
+    fontFamily: 'Alata_400Regular',
+    color: palette.coral[200],
     marginTop: spacing[2],
   },
-  permBody: { fontSize: fontSize.sm, color: color.ink[300], textAlign: 'center' },
+  permBody: { fontSize: fontSize.sm, color: theme.dark.textMuted, textAlign: 'center' },
+  // The accent treatment, not a surface fill. The generic mapping gave this
+  // the screen's own near-black, so the one action that makes the scanner
+  // work looked like the disabled one next to it.
   primary: {
     marginTop: spacing[4],
-    backgroundColor: color.ink[0],
-    paddingVertical: spacing[3],
+    backgroundColor: 'rgba(249,142,128,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.55)',
+    paddingVertical: 15,
     paddingHorizontal: spacing[6],
     borderRadius: radius.full,
   },
-  primaryText: { color: color.ink[900], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
+  primaryText: { color: palette.coral[200], fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
   secondary: { marginTop: spacing[2], padding: spacing[2] },
-  secondaryText: { color: color.ink[300], fontSize: fontSize.sm },
+  secondaryText: { color: theme.dark.textMuted, fontSize: fontSize.sm },
   top: {
     position: 'absolute',
     top: 0,
@@ -145,7 +150,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   close: { padding: spacing[1] },
-  topText: { color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  topText: { color: palette.coral[200], fontSize: fontSize.base },
   reticle: {
     position: 'absolute',
     alignSelf: 'center',
@@ -176,9 +181,9 @@ const styles = StyleSheet.create({
   // told apart by hue — `success` and `danger` are both near-black. They are
   // inverted against each other instead: at a door this is read at arm's length
   // and often outdoors, and a wrong call means turning someone away.
-  ok: { backgroundColor: color.ink[0] },
-  bad: { backgroundColor: color.ink[900] },
-  bannerText: { flex: 1, color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.medium },
-  bannerTextOk: { color: color.ink[900] },
-  hint: { color: color.ink[300], fontSize: fontSize.sm, textAlign: 'center' },
+  ok: { backgroundColor: theme.dark.backgroundDeep },
+  bad: { backgroundColor: 'rgba(249,142,128,0.14)' },
+  bannerText: { flex: 1, color: palette.coral[200], fontSize: fontSize.base },
+  bannerTextOk: { color: theme.dark.textPrimary },
+  hint: { color: theme.dark.textMuted, fontSize: fontSize.sm, textAlign: 'center' },
 });

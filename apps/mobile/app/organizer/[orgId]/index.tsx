@@ -11,7 +11,7 @@ import {
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { api } from '@/lib/api';
 import { EmptyState, ErrorState } from '@/components/states';
 
@@ -85,7 +85,7 @@ export default function OrgDashboardScreen() {
     <View style={[styles.c, { paddingTop: insets.top + spacing[2] }]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.h}>Your events</Text>
         <View style={styles.headerActions}>
@@ -95,7 +95,7 @@ export default function OrgDashboardScreen() {
             style={styles.backBtn}
             accessibilityLabel="Edit your organisation"
           >
-            <Ionicons name="business-outline" size={21} color={color.ink[900]} />
+            <Ionicons name="business-outline" size={21} color={theme.dark.textPrimary} />
           </Pressable>
           <Pressable
             onPress={() => router.push(`/organizer/event/new?orgId=${orgId}`)}
@@ -103,19 +103,19 @@ export default function OrgDashboardScreen() {
             style={styles.backBtn}
             accessibilityLabel="Create event"
           >
-            <Ionicons name="add" size={26} color={color.ink[900]} />
+            <Ionicons name="add" size={26} color={theme.dark.textPrimary} />
           </Pressable>
         </View>
       </View>
 
       {error && !events ? (
-        <ErrorState scheme="light" message={error} onRetry={() => void load()} />
+        <ErrorState message={error} onRetry={() => void load()} />
       ) : !events ? (
         <View style={styles.center}>
-          <ActivityIndicator color={color.ink[900]} />
+          <ActivityIndicator color={theme.dark.textPrimary} />
         </View>
       ) : events.length === 0 ? (
-        <EmptyState scheme="light"
+        <EmptyState
           icon="calendar-outline"
           title="No events yet"
           message="Create your first event and publish it when you're ready."
@@ -126,18 +126,32 @@ export default function OrgDashboardScreen() {
         <ScrollView
           contentContainerStyle={{ padding: spacing[5], paddingBottom: insets.bottom + spacing[8] }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => void load('refresh')} tintColor={color.ink[400]} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => void load('refresh')} tintColor={theme.dark.textMuted} />
           }
         >
           {verification === 'PENDING' || verification === 'UNVERIFIED' ? (
-            <View style={styles.verifyBanner}>
-              <Ionicons name="shield-outline" size={18} color={color.ink[600]} />
-              <Text style={styles.verifyText}>
-                {verification === 'PENDING'
-                  ? 'We’re reviewing your host details. You can publish events in the meantime.'
-                  : 'Add your contact and address details to get verified.'}
-              </Text>
-            </View>
+            /* UNVERIFIED is a prompt, so it goes somewhere — it used to name a
+               task with no way to start it. PENDING is purely informational
+               (the review is ours to do), so it stays a plain notice. */
+            verification === 'UNVERIFIED' ? (
+              <Pressable
+                style={({ pressed }) => [styles.verifyBanner, styles.verifyAction, pressed && { opacity: 0.8 }]}
+                onPress={() => router.push(`/organizer/${orgId}/edit`)}
+              >
+                <Ionicons name="shield-outline" size={18} color={theme.dark.accent} />
+                <Text style={[styles.verifyText, styles.verifyActionText]}>
+                  Add your contact and address details to get verified.
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={theme.dark.accent} />
+              </Pressable>
+            ) : (
+              <View style={styles.verifyBanner}>
+                <Ionicons name="shield-outline" size={18} color={theme.dark.textSecondary} />
+                <Text style={styles.verifyText}>
+                  We’re reviewing your host details. You can publish events in the meantime.
+                </Text>
+              </View>
+            )
           ) : null}
 
           <Section title="Live" events={live} orgId={orgId!} />
@@ -195,7 +209,7 @@ function Section({
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
@@ -206,22 +220,32 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
-  h: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  h: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
   verifyBanner: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: spacing[3],
     padding: spacing[4],
-    borderRadius: radius.lg,
-    backgroundColor: color.ink[50],
+    borderRadius: 14,
+    backgroundColor: theme.dark.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.14)',
     marginBottom: spacing[5],
   },
-  verifyText: { flex: 1, fontSize: fontSize.sm, color: color.ink[600], lineHeight: 19 },
+  // The actionable one carries the refresh's "this wants you" treatment. On
+  // the plain surface it read as disabled, which is the wrong signal for the
+  // one step standing between a host and being verified.
+  verifyAction: {
+    backgroundColor: 'rgba(249,142,128,0.09)',
+    borderColor: 'rgba(249,142,128,0.42)',
+  },
+  verifyText: { flex: 1, fontSize: fontSize.sm, color: theme.dark.textSecondary, lineHeight: 21 },
+  verifyActionText: { color: palette.coral[200] },
   sectionTitle: {
     fontSize: fontSize.xs,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: color.ink[400],
+    color: theme.dark.textMuted,
     marginBottom: spacing[3],
   },
   card: {
@@ -231,19 +255,19 @@ const styles = StyleSheet.create({
     padding: spacing[4],
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: color.ink[100],
+    borderColor: theme.dark.borderSubtle,
   },
-  cardTitle: { fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  cardSub: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 2 },
+  cardTitle: { fontSize: fontSize.base, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  cardSub: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2 },
   badge: {
     borderRadius: radius.full,
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surfaceRaised,
     paddingHorizontal: spacing[3],
     paddingVertical: 4,
   },
   badgeText: {
     fontSize: fontSize.xs,
-    color: color.ink[600],
+    color: theme.dark.textSecondary,
     textTransform: 'capitalize',
   },
 });

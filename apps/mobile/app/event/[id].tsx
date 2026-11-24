@@ -19,7 +19,7 @@ import * as ExpoCalendar from 'expo-calendar';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, radius, fontSize, fontWeight, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { Text } from '@/components/text';
 import { Divider, Scrim, scrimPreset } from '@/components/gradient';
 import { CARD_BORDER } from '@/components/ui';
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     paddingHorizontal: spacing[5],
   },
-  backChipText: { color: theme.dark.accent, fontWeight: fontWeight.medium },
+  backChipText: { color: theme.dark.accent, fontFamily: 'Alata_400Regular' },
 
   hero: { width: '100%', backgroundColor: theme.dark.surface, position: 'relative' },
   heroFallback: { alignItems: 'center', justifyContent: 'center' },

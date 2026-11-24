@@ -14,7 +14,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { api, describeApiError } from '@/lib/api';
 import { pickImages, uploadImage, canPickImages } from '@/lib/upload';
 import { showToast } from '@/components/toast';
@@ -172,7 +172,7 @@ export default function MediaScreen() {
     }
   }
 
-  if (error) return <ErrorState scheme="light" message={error} onRetry={() => void load()} />;
+  if (error) return <ErrorState message={error} onRetry={() => void load()} />;
 
   return (
     <KeyboardAvoidingView
@@ -181,7 +181,7 @@ export default function MediaScreen() {
     >
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.title}>Photos and video</Text>
       </View>
@@ -198,10 +198,10 @@ export default function MediaScreen() {
         {canPickImages() && (
           <Pressable style={styles.addBtn} disabled={busy} onPress={() => void addPhotos()}>
             {busy ? (
-              <ActivityIndicator color={color.ink[0]} />
+              <ActivityIndicator color={palette.coral[200]} />
             ) : (
               <>
-                <Ionicons name="images-outline" size={18} color={color.ink[0]} />
+                <Ionicons name="images-outline" size={18} color={palette.coral[200]} />
                 <Text style={styles.addBtnText}>Add photos</Text>
               </>
             )}
@@ -213,7 +213,7 @@ export default function MediaScreen() {
             value={videoUrl}
             onChangeText={setVideoUrl}
             placeholder="Paste a YouTube or Vimeo link"
-            placeholderTextColor={color.ink[300]}
+            placeholderTextColor={theme.dark.textMuted}
             style={styles.videoInput}
             autoCapitalize="none"
             autoCorrect={false}
@@ -230,9 +230,9 @@ export default function MediaScreen() {
         </View>
 
         {items === null ? (
-          <ActivityIndicator style={{ marginTop: spacing[6] }} color={color.ink[500]} />
+          <ActivityIndicator style={{ marginTop: spacing[6] }} color={theme.dark.textSecondary} />
         ) : items.length === 0 ? (
-          <EmptyState scheme="light"
+          <EmptyState
             icon="images-outline"
             title="No photos yet"
             message="Add pictures from a previous event so people know what to expect."
@@ -253,12 +253,12 @@ export default function MediaScreen() {
                       <Image source={{ uri: m.thumbnailUrl }} style={styles.thumb} />
                     ) : (
                       <View style={[styles.thumb, styles.thumbFallback]}>
-                        <Ionicons name="videocam" size={20} color={color.ink[400]} />
+                        <Ionicons name="videocam" size={20} color={theme.dark.textMuted} />
                       </View>
                     )}
                     {m.kind === 'VIDEO' && (
                       <View style={styles.playBadge}>
-                        <Ionicons name="play" size={12} color={color.ink[0]} />
+                        <Ionicons name="play" size={12} color={palette.coral[200]} />
                       </View>
                     )}
                   </Pressable>
@@ -279,7 +279,7 @@ export default function MediaScreen() {
                       hitSlop={8}
                       style={i === 0 && { opacity: 0.3 }}
                     >
-                      <Ionicons name="chevron-up" size={20} color={color.ink[600]} />
+                      <Ionicons name="chevron-up" size={20} color={theme.dark.textSecondary} />
                     </Pressable>
                     <Pressable
                       onPress={() => void move(i, 1)}
@@ -287,10 +287,10 @@ export default function MediaScreen() {
                       hitSlop={8}
                       style={i === items.length - 1 && { opacity: 0.3 }}
                     >
-                      <Ionicons name="chevron-down" size={20} color={color.ink[600]} />
+                      <Ionicons name="chevron-down" size={20} color={theme.dark.textSecondary} />
                     </Pressable>
                     <Pressable onPress={() => void remove(m.id)} hitSlop={8}>
-                      <Ionicons name="trash-outline" size={18} color={color.ink[600]} />
+                      <Ionicons name="trash-outline" size={18} color={theme.dark.textSecondary} />
                     </Pressable>
                   </View>
                 </View>
@@ -304,7 +304,7 @@ export default function MediaScreen() {
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -312,48 +312,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
     paddingBottom: spacing[3],
   },
-  title: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
-  blurb: { fontSize: fontSize.sm, color: color.ink[500], lineHeight: 20 },
+  title: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  blurb: { fontSize: fontSize.sm, color: theme.dark.textSecondary, lineHeight: 20 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[2],
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
   },
-  addBtnText: { color: color.ink[0], fontSize: fontSize.base, fontWeight: fontWeight.semibold },
+  addBtnText: { color: palette.coral[200], fontSize: fontSize.base },
   videoRow: { flexDirection: 'row', gap: spacing[2] },
   videoInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
     fontSize: fontSize.sm,
-    color: color.ink[900],
+    color: theme.dark.textPrimary,
   },
   videoBtn: {
     justifyContent: 'center',
     paddingHorizontal: spacing[4],
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: color.ink[900],
+    borderColor: 'rgba(249,142,128,0.55)',
   },
-  videoBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  videoBtnText: { fontSize: fontSize.sm, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.md,
     padding: spacing[2],
   },
   thumbWrap: { width: 56, height: 56 },
-  thumb: { width: 56, height: 56, borderRadius: radius.sm, backgroundColor: color.ink[100] },
+  thumb: { width: 56, height: 56, borderRadius: radius.sm, backgroundColor: theme.dark.surfaceRaised },
   thumbFallback: { alignItems: 'center', justifyContent: 'center' },
   playBadge: {
     position: 'absolute',
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rowBody: { flex: 1, minWidth: 0 },
-  rowTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: color.ink[900] },
-  rowHint: { fontSize: fontSize.xs, color: color.ink[500], marginTop: 2 },
+  rowTitle: { fontSize: fontSize.sm, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  rowHint: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingRight: spacing[2] },
 });

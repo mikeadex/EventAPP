@@ -14,7 +14,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
 import { api, describeApiError } from '@/lib/api';
 import { showToast } from '@/components/toast';
 import { ErrorState } from '@/components/states';
@@ -144,14 +144,14 @@ export default function EditOrganizationScreen() {
   if (loadError) {
     return (
       <View style={[styles.c, { paddingTop: insets.top + spacing[2] }]}>
-        <ErrorState scheme="light" message={loadError} onRetry={() => void load()} />
+        <ErrorState message={loadError} onRetry={() => void load()} />
       </View>
     );
   }
   if (!org) {
     return (
       <View style={[styles.c, styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator color={color.ink[900]} />
+        <ActivityIndicator color={theme.dark.textPrimary} />
       </View>
     );
   }
@@ -163,7 +163,7 @@ export default function EditOrganizationScreen() {
     >
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={color.ink[900]} />
+          <Ionicons name="chevron-back" size={24} color={theme.dark.textPrimary} />
         </Pressable>
         <Text style={styles.h}>Your organisation</Text>
         <View style={styles.backBtn} />
@@ -188,11 +188,11 @@ export default function EditOrganizationScreen() {
             {logoUrl ? (
               <Image source={{ uri: logoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             ) : (
-              <Ionicons name="business-outline" size={28} color={color.ink[400]} />
+              <Ionicons name="business-outline" size={28} color={theme.dark.textMuted} />
             )}
             {uploading ? (
               <View style={[StyleSheet.absoluteFill, styles.logoBusy]}>
-                <ActivityIndicator color={color.ink[0]} />
+                <ActivityIndicator color={palette.coral[200]} />
               </View>
             ) : null}
           </Pressable>
@@ -225,7 +225,7 @@ export default function EditOrganizationScreen() {
             value={shortDescription}
             onChangeText={setShortDescription}
             placeholder="A church in east London"
-            placeholderTextColor={color.ink[300]}
+            placeholderTextColor={theme.dark.textMuted}
             style={styles.input}
             editable={!pending}
             maxLength={280}
@@ -237,7 +237,7 @@ export default function EditOrganizationScreen() {
             value={description}
             onChangeText={setDescription}
             placeholder="Who you are and what you do."
-            placeholderTextColor={color.ink[300]}
+            placeholderTextColor={theme.dark.textMuted}
             style={[styles.input, styles.multiline]}
             editable={!pending}
             multiline
@@ -250,7 +250,7 @@ export default function EditOrganizationScreen() {
             value={websiteUrl}
             onChangeText={setWebsiteUrl}
             placeholder="https://"
-            placeholderTextColor={color.ink[300]}
+            placeholderTextColor={theme.dark.textMuted}
             style={styles.input}
             editable={!pending}
             autoCapitalize="none"
@@ -271,7 +271,7 @@ export default function EditOrganizationScreen() {
           onPress={() => void save()}
         >
           {pending ? (
-            <ActivityIndicator color={color.ink[0]} />
+            <ActivityIndicator color={palette.coral[200]} />
           ) : (
             <Text style={styles.btnText}>Save changes</Text>
           )}
@@ -300,7 +300,7 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[0] },
+  c: { flex: 1, backgroundColor: theme.dark.backgroundDeep },
   center: { alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
@@ -310,14 +310,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[2],
   },
   backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  h: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: color.ink[900] },
+  h: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
 
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   logo: {
     width: 72,
     height: 72,
     borderRadius: radius.lg,
-    backgroundColor: color.ink[100],
+    backgroundColor: theme.dark.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -327,42 +327,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: color.ink[900] },
-  logoHint: { fontSize: fontSize.xs, color: color.ink[400], marginTop: 2 },
+  logoTitle: { fontSize: fontSize.sm, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  logoHint: { fontSize: fontSize.xs, color: theme.dark.textMuted, marginTop: 2 },
   remove: {
     fontSize: fontSize.xs,
-    color: color.ink[500],
-    fontWeight: fontWeight.medium,
+    color: theme.dark.textSecondary,
+    fontFamily: 'Alata_400Regular',
     marginTop: spacing[1],
   },
 
   label: {
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: color.ink[900],
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
     marginBottom: spacing[1],
   },
-  hint: { fontSize: fontSize.xs, color: color.ink[400], marginBottom: spacing[2] },
+  hint: { fontSize: fontSize.xs, color: theme.dark.textMuted, marginBottom: spacing[2] },
   input: {
-    backgroundColor: color.ink[0],
-    borderRadius: radius.md,
+    backgroundColor: theme.dark.surface,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
     fontSize: fontSize.base,
-    color: color.ink[900],
+    color: theme.dark.textPrimary,
   },
   multiline: { minHeight: 110, textAlignVertical: 'top' },
-  inputDisabled: { backgroundColor: color.ink[50] },
-  inputDisabledText: { fontSize: fontSize.base, color: color.ink[400] },
+  inputDisabled: { backgroundColor: theme.dark.surface },
+  inputDisabledText: { fontSize: fontSize.base, color: theme.dark.textMuted },
 
   btn: {
-    backgroundColor: color.ink[900],
+    backgroundColor: 'rgba(249,142,128,0.14)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
     alignItems: 'center',
     marginTop: spacing[2],
   },
-  btnText: { color: color.ink[0], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
+  btnText: { color: palette.coral[200], fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
 });
