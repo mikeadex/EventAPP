@@ -32,7 +32,7 @@ Changeable any time without submitting a build, so use it for whatever is
 current.
 
 ```
-Find services, conferences, youth nights, small groups and community events near you — and RSVP in seconds. Every event is free to browse and free to attend.
+Find services, conferences, youth nights, small groups and community events near you — and book in seconds. Browsing is always free, and most events are too.
 ```
 
 ## Keywords (100)
@@ -64,7 +64,7 @@ BOOK A PLACE IN SECONDS
 • Get a reminder before it starts, and a notification if anything changes
 • Cancel in a tap if your plans change, so your place goes to someone else
 
-Every event on Ekklesia is free. No payment, no card details, no booking fee.
+Most events are free. Where a host charges, you pay securely in the app and we add a 3% booking fee shown before you pay. Card details go straight to Stripe — Ekklesia never sees or stores them.
 
 RUNNING EVENTS? PUBLISH THEM HERE
 • Create a listing with photos and video from previous events
@@ -91,7 +91,7 @@ user-generated-content app, so say where they are rather than letting them
 hunt.
 
 ```
-Ekklesia lists free events run by churches, ministries and community organisations in the UK.
+Ekklesia lists free and paid events run by churches, ministries and community organisations in the UK.
 
 DEMO ACCOUNT
 Please use the credentials in Test Information. That account owns a demo organisation with a published event, so both the attendee and the organiser side can be exercised from one login.
@@ -107,7 +107,7 @@ ACCOUNT DELETION (guideline 5.1.1(v))
 Settings > Delete account. Also available without the app at https://ekklesiaevents.com/delete-account
 
 PAYMENTS
-None. Every event is free. No payment is taken and no card details are collected anywhere in the app.
+Most events are free to attend. Hosts may also sell tickets, which are admission to real-world events — physical goods and services under guideline 3.1.3(e), so they are paid for outside in-app purchase. Payment is handled entirely by Stripe: the app presents Stripe's own payment sheet and no card details reach our servers. Ekklesia adds a 3% booking fee, shown before the buyer confirms.
 
 PUBLISHER
 This app is published by Michael Adeleye on behalf of Ekklesia Events (David Taribo), who operates the service. Written authorisation is available on request.
@@ -160,10 +160,10 @@ Play does not index it for ranking, but it is the line that decides whether
 anyone taps through.
 
 ```
-Church and community events near you — free to browse, free to attend.
+Church and community events near you — find one, book a place, turn up.
 ```
 
-70 characters.
+71 characters.
 
 ## Full description (4000)
 
@@ -180,4 +180,26 @@ renders plain text only; the bullets are literal `•` characters and survive.
 | Privacy policy | `https://ekklesiaevents.com/privacy` |
 | Account deletion URL | `https://ekklesiaevents.com/delete-account` |
 | Contains ads | No |
-| In-app purchases | No |
+| In-app purchases | No — see below |
+
+### In-app purchases: why this is still "No"
+
+Both stores treat admission to a real-world event as physical goods and
+services, not digital content: Apple guideline 3.1.3(e), and Play's rule that
+payments for physical goods must NOT use Play Billing. Tickets are therefore
+paid for through Stripe rather than StoreKit or Play Billing, and the app sells
+no digital content at all. This is the same model Eventbrite and Ticketmaster
+use.
+
+**Confirm this before submitting** rather than taking it from here. Ticking it
+wrongly in either direction is a review rejection, and Play in particular may
+populate the field from your Play Billing products rather than from the answer
+you give.
+
+### Data safety — needs an answer it did not need before
+
+Paid tickets mean the app now collects **Financial info › Purchase history**:
+orders, amounts and ticket records are stored against an account. Card numbers
+are not — those never leave Stripe — but the purchase itself is ours and must
+be declared. The Data Safety form was filled in when every event was free, so
+this section is now out of date and has to be revisited.
