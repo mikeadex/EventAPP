@@ -5,12 +5,14 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
+  
   TextInput,
   View,
 } from 'react-native';
 import { router, Link } from 'expo-router';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, theme } from '@ekklesia/ui/tokens';
+import { Text } from '@/components/text';
+import { authStyles } from '@/components/auth-styles';
 import { signIn, sendVerificationEmail } from '@/lib/auth-client';
 import { SocialSignIn } from '@/components/social-sign-in';
 import { PasswordInput } from '@/components/password-input';
@@ -67,11 +69,11 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.c}
+      style={authStyles.c}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.h}>Welcome back</Text>
-      <Text style={styles.m}>Sign in to RSVP and save events.</Text>
+      <Text variant="display" tone="onPhoto" style={authStyles.h}>Welcome back</Text>
+      <Text variant="bodyLg" tone="secondary" style={authStyles.m}>Sign in to RSVP and save events.</Text>
 
       <TextInput
         placeholder="Email"
@@ -85,8 +87,8 @@ export default function SignInScreen() {
         autoComplete="email"
         value={email}
         onChangeText={setEmail}
-        style={styles.input}
-        placeholderTextColor={color.ink[300]}
+        style={authStyles.input}
+        placeholderTextColor={theme.dark.textMuted}
       />
       <PasswordInput
         placeholder="Password"
@@ -95,72 +97,41 @@ export default function SignInScreen() {
         onChangeText={setPassword}
       />
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text variant="label" style={authStyles.error}>{error}</Text>}
       {maybeSocial && (
-        <Text style={styles.hint}>
+        <Text variant="label" style={authStyles.hint}>
           If you created this account with one of the buttons below, sign in that way —
           those accounts don&rsquo;t have a password.
         </Text>
       )}
       {unverified && !resent && (
-        <Pressable onPress={() => void resend()} disabled={pending} style={styles.resend}>
-          <Text style={styles.link}>Resend confirmation email</Text>
+        <Pressable onPress={() => void resend()} disabled={pending} style={authStyles.resend}>
+          <Text variant="label" style={authStyles.link}>Resend confirmation email</Text>
         </Pressable>
       )}
-      {resent && <Text style={styles.sent}>Confirmation email sent — check your inbox.</Text>}
+      {resent && <Text variant="label" style={authStyles.sent}>Confirmation email sent — check your inbox.</Text>}
 
-      <Link href="/auth/forgot-password" style={styles.forgot}>
-        <Text style={styles.link}>Forgot password?</Text>
+      <Link href="/auth/forgot-password" style={authStyles.forgot}>
+        <Text variant="label" style={authStyles.link}>Forgot password?</Text>
       </Link>
 
-      <Pressable style={styles.btn} onPress={submit} disabled={pending}>
+      <Pressable style={authStyles.btn} onPress={submit} disabled={pending}>
         {pending ? (
-          <ActivityIndicator color={color.ink[0]} />
+          <ActivityIndicator color={theme.dark.accent} />
         ) : (
-          <Text style={styles.btnText}>Sign in</Text>
+          <Text variant="bodyLg" style={authStyles.btnText}>Sign in</Text>
         )}
       </Pressable>
 
       <SocialSignIn onSignedIn={() => router.replace('/(tabs)')} />
 
       <View style={{ marginTop: spacing[6], flexDirection: 'row' }}>
-        <Text style={styles.muted}>New here? </Text>
+        <Text variant="label" style={authStyles.muted}>New here? </Text>
         <Link href={'/auth/sign-up' as never}>
-          <Text style={styles.link}>Create an account</Text>
+          <Text variant="label" style={authStyles.link}>Create an account</Text>
         </Link>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[50], padding: spacing[6], justifyContent: 'center' },
-  h: { fontSize: fontSize['3xl'], fontWeight: fontWeight.bold, color: color.ink[900] },
-  m: { color: color.ink[500], marginTop: spacing[1], marginBottom: spacing[6] },
-  input: {
-    backgroundColor: color.ink[0],
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: color.ink[200],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[3],
-    marginBottom: spacing[3],
-    fontSize: fontSize.base,
-    color: color.ink[900],
-  },
-  error: { color: color.danger, marginBottom: spacing[3], fontSize: fontSize.sm },
-  hint: { color: color.ink[500], marginBottom: spacing[3], fontSize: fontSize.sm, lineHeight: 19 },
-  resend: { marginBottom: spacing[3] },
-  sent: { color: color.ink[500], marginBottom: spacing[3], fontSize: fontSize.sm },
-  forgot: { alignSelf: 'flex-end', marginBottom: spacing[4] },
-  btn: {
-    backgroundColor: color.brand[600],
-    paddingVertical: spacing[3],
-    borderRadius: radius.md,
-    alignItems: 'center',
-    marginTop: spacing[2],
-  },
-  btnText: { color: color.ink[0], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
-  muted: { color: color.ink[500] },
-  link: { color: color.brand[600], fontWeight: fontWeight.medium },
-});

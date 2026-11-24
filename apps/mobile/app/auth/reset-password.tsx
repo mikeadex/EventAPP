@@ -5,13 +5,15 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
+  
   TextInput,
   View,
 } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, theme, palette } from '@ekklesia/ui/tokens';
+import { Text } from '@/components/text';
+import { authStyles } from '@/components/auth-styles';
 import { PasswordInput } from '@/components/password-input';
 import { resetPassword } from '@/lib/auth-client';
 
@@ -53,16 +55,16 @@ export default function ResetPasswordScreen() {
 
   if (invalidLink) {
     return (
-      <View style={[styles.c, styles.center]}>
-        <Ionicons name="alert-circle-outline" size={48} color={color.danger} />
-        <Text style={styles.h}>Link expired</Text>
-        <Text style={[styles.m, { textAlign: 'center' }]}>
+      <View style={[authStyles.c, authStyles.center]}>
+        <Ionicons name="alert-circle-outline" size={48} color={palette.coral[500]} />
+        <Text variant="display" tone="onPhoto" style={authStyles.h}>Link expired</Text>
+        <Text style={[authStyles.m, { textAlign: 'center' }]}>
           This password reset link is invalid or has expired. Request a fresh one
           to continue.
         </Text>
         <Link href="/auth/forgot-password" asChild>
-          <Pressable style={[styles.btn, { marginTop: spacing[6] }]}>
-            <Text style={styles.btnText}>Request a new link</Text>
+          <Pressable style={[authStyles.btn, { marginTop: spacing[6] }]}>
+            <Text variant="bodyLg" style={authStyles.btnText}>Request a new link</Text>
           </Pressable>
         </Link>
       </View>
@@ -71,11 +73,11 @@ export default function ResetPasswordScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.c}
+      style={authStyles.c}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.h}>Set a new password</Text>
-      <Text style={styles.m}>Choose a strong password you don&apos;t use elsewhere.</Text>
+      <Text variant="display" tone="onPhoto" style={authStyles.h}>Set a new password</Text>
+      <Text variant="bodyLg" tone="secondary" style={authStyles.m}>Choose a strong password you don&apos;t use elsewhere.</Text>
 
       <PasswordInput
         placeholder={`New password (${MIN_PASSWORD}+ chars)`}
@@ -90,47 +92,20 @@ export default function ResetPasswordScreen() {
         onChangeText={setConfirm}
       />
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text variant="label" style={authStyles.error}>{error}</Text>}
 
       <Pressable
-        style={styles.btn}
+        style={authStyles.btn}
         onPress={submit}
         disabled={pending || !password || !confirm}
       >
         {pending ? (
-          <ActivityIndicator color={color.ink[0]} />
+          <ActivityIndicator color={theme.dark.accent} />
         ) : (
-          <Text style={styles.btnText}>Reset password</Text>
+          <Text variant="bodyLg" style={authStyles.btnText}>Reset password</Text>
         )}
       </Pressable>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: color.ink[50], padding: spacing[6], justifyContent: 'center' },
-  center: { alignItems: 'center', gap: spacing[2] },
-  h: { fontSize: fontSize['3xl'], fontWeight: fontWeight.bold, color: color.ink[900] },
-  m: { color: color.ink[500], marginTop: spacing[1], marginBottom: spacing[6] },
-  input: {
-    backgroundColor: color.ink[0],
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: color.ink[200],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[3],
-    marginBottom: spacing[3],
-    fontSize: fontSize.base,
-    color: color.ink[900],
-  },
-  error: { color: color.danger, marginBottom: spacing[3], fontSize: fontSize.sm },
-  btn: {
-    backgroundColor: color.brand[600],
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[6],
-    borderRadius: radius.md,
-    alignItems: 'center',
-    marginTop: spacing[2],
-  },
-  btnText: { color: color.ink[0], fontWeight: fontWeight.semibold, fontSize: fontSize.base },
-});

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize, fontWeight } from '@ekklesia/ui/tokens';
+import { spacing, radius, fontSize, theme, palette } from '@ekklesia/ui/tokens';
 import { fetchSocialProviders, signInWithProvider } from '@/lib/social-auth';
 import { showToast } from '@/components/toast';
 
@@ -81,7 +81,7 @@ export function SocialSignIn({ onSignedIn }: { onSignedIn: () => void }) {
           onPress={() => void go(id)}
           style={[styles.btn, pending !== null && { opacity: 0.6 }]}
         >
-          <Ionicons name={ICONS[id] ?? 'globe-outline'} size={18} color={color.ink[900]} />
+          <Ionicons name={ICONS[id] ?? 'globe-outline'} size={18} color={theme.dark.textPrimary} />
           <Text style={styles.btnText}>
             {pending === id ? 'Opening…' : LABELS[id] ?? `Continue with ${id}`}
           </Text>
@@ -94,17 +94,22 @@ export function SocialSignIn({ onSignedIn }: { onSignedIn: () => void }) {
 const styles = StyleSheet.create({
   wrap: { gap: spacing[3], marginTop: spacing[6] },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  rule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: color.ink[200] },
-  dividerText: { fontSize: fontSize.xs, color: color.ink[400], textTransform: 'uppercase' },
+  rule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(249,142,128,0.22)' },
+  dividerText: {
+    fontSize: 12,
+    letterSpacing: 2.16,
+    color: palette.warm[550],
+    textTransform: 'uppercase',
+  },
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[2],
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     borderRadius: radius.full,
     paddingVertical: spacing[4],
   },
-  btnText: { fontSize: fontSize.base, color: color.ink[900], fontWeight: fontWeight.medium },
+  btnText: { fontSize: fontSize.base, color: theme.dark.textPrimary },
 });

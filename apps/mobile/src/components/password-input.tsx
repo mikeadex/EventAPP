@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { color, spacing, radius, fontSize } from '@ekklesia/ui/tokens';
+import { spacing, theme } from '@ekklesia/ui/tokens';
 
 export interface PasswordInputProps
   extends Omit<TextInputProps, 'secureTextEntry' | 'style'> {
@@ -44,7 +44,7 @@ export function PasswordInput({
   return (
     <View style={[styles.box, containerStyle]}>
       <TextInput
-        placeholderTextColor={color.ink[300]}
+        placeholderTextColor={theme.dark.textMuted}
         autoCapitalize="none"
         autoCorrect={false}
         textContentType={purpose === 'new' ? 'newPassword' : 'password'}
@@ -65,7 +65,7 @@ export function PasswordInput({
         <Ionicons
           name={visible ? 'eye-off-outline' : 'eye-outline'}
           size={20}
-          color={color.ink[400]}
+          color={theme.dark.textMuted}
         />
       </Pressable>
     </View>
@@ -73,21 +73,25 @@ export function PasswordInput({
 }
 
 const styles = StyleSheet.create({
+  // Matches `authStyles.input` — this is the field directly under the email
+  // one on every auth screen, and a white box beside a dark one is the most
+  // visible possible way to get that wrong.
   box: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: color.ink[0],
-    borderRadius: radius.md,
+    backgroundColor: theme.dark.surface,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: color.ink[200],
+    borderColor: 'rgba(249,142,128,0.22)',
     marginBottom: spacing[3],
   },
   field: {
     flex: 1,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[3],
-    fontSize: fontSize.base,
-    color: color.ink[900],
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    fontSize: 16,
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
   },
-  toggle: { paddingHorizontal: spacing[3], paddingVertical: spacing[3] },
+  toggle: { paddingHorizontal: 16, paddingVertical: 15 },
 });
