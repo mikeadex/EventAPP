@@ -27,6 +27,8 @@ function makeFakes(opts: {
   endsAt?: Date;
   capacity?: number | null;
   attendeeCount?: number;
+  /** null = the organiser cannot receive payouts. */
+  payableAccount?: string | null;
 }) {
   const types = opts.types.map((t) => ({ ...t }));
   const event = {
@@ -91,7 +93,11 @@ function makeFakes(opts: {
   };
   const audit = { write: async () => undefined };
 
-  const svc = new OrdersService(prisma as never, audit as never);
+  const connect = {
+    payableAccountFor: async () =>
+      opts.payableAccount === undefined ? 'acct_live' : opts.payableAccount,
+  };
+  const svc = new OrdersService(prisma as never, audit as never, connect as never);
   return { svc, types, event, createdOrders, createdTickets };
 }
 
@@ -243,6 +249,17 @@ describe('OrdersService.create', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('refuses to sell when the organiser cannot receive payouts', async () => {
+    // Otherwise the money is taken onto the platform with no route onward:
+    // a host's unfinished onboarding becomes our liability and the buyer's
+    // problem. Nothing is reserved either — the refusal comes first.
+    const { svc, types } = makeFakes({ types: [base], payableAccount: null });
+    await expect(
+      svc.create('user1', { eventId: 'evt1', items: [{ ticketTypeId: 'tt1', quantity: 1 }] }),
+    ).rejects.toThrow(/payouts/i);
+    expect(types[0]!.sold).toBe(0);
+  });
+
   it('reserves tickets rather than issuing them', async () => {
     const { svc, createdTickets } = makeFakes({ types: [base] });
     await svc.create('user1', {
@@ -308,7 +325,11 @@ describe('OrdersService.releaseExpired', () => {
           ticket: { updateMany: async () => ({ count: 4 }) },
         }),
     };
-    const svc = new OrdersService(prisma as never, { write: async () => undefined } as never);
+    const svc = new OrdersService(
+      prisma as never,
+      { write: async () => undefined } as never,
+      { payableAccountFor: async () => 'acct_live' } as never,
+    );
     return { svc, ticketTypes, event };
   }
 

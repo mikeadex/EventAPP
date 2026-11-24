@@ -16,6 +16,7 @@ function makeFakes(opts: {
   orderUserId?: string | null;
   intentId?: string | null;
   createdAt?: Date;
+  payableAccount?: string | null;
 }) {
   const order = {
     id: 'ord1',
@@ -89,7 +90,11 @@ function makeFakes(opts: {
     },
   };
 
-  const svc = new PaymentsService(prisma as never, stripe as never, {
+  const connect = {
+    payableAccountFor: async () =>
+      opts.payableAccount === undefined ? 'acct_live' : opts.payableAccount,
+  };
+  const svc = new PaymentsService(prisma as never, stripe as never, connect as never, {
     write: async () => undefined,
   } as never);
 
@@ -171,6 +176,15 @@ describe('PaymentsService.createIntentForOrder', () => {
     const { svc } = makeFakes({ orderStatus: 'PAID' });
     await expect(svc.createIntentForOrder('user1', 'ord1')).rejects.toBeInstanceOf(
       ConflictException,
+    );
+  });
+
+  it('refuses to open an intent when the organiser can no longer be paid', async () => {
+    // An account can be restricted during the reservation window, after the
+    // order was created against a healthy one.
+    const { svc } = makeFakes({ intentId: null, payableAccount: null });
+    await expect(svc.createIntentForOrder('user1', 'ord1')).rejects.toThrow(
+      /cannot receive payments/i,
     );
   });
 

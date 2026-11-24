@@ -11,6 +11,7 @@ import type { Prisma } from '@prisma/client';
 import { randomId } from '../../common/random-id.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditLogService } from '../../common/audit-log.service.js';
+import { ConnectService } from './connect.service.js';
 
 /**
  * How long a PENDING order holds its inventory.
@@ -67,6 +68,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditLogService,
+    private readonly connect: ConnectService,
   ) {}
 
   /**
@@ -110,6 +112,18 @@ export class OrdersService {
       }
       if (event.endsAt <= new Date()) {
         throw new ForbiddenException('Event has ended');
+      }
+
+      // Refuse before holding anything. An organisation that cannot receive
+      // payouts cannot sell paid tickets: the alternative is taking money we
+      // have no way to forward, which turns a host's unfinished onboarding
+      // into our liability and the buyer's problem. Free events are not
+      // affected — RSVP never touches Stripe.
+      const destination = await this.connect.payableAccountFor(event.organizationId);
+      if (!destination) {
+        throw new ForbiddenException(
+          'This host has not finished setting up payouts, so tickets cannot be sold yet.',
+        );
       }
 
       const types = await tx.ticketType.findMany({

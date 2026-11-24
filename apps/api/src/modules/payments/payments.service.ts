@@ -11,6 +11,7 @@ import type Stripe from 'stripe';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditLogService } from '../../common/audit-log.service.js';
 import { StripeService } from './stripe.service.js';
+import { ConnectService } from './connect.service.js';
 import { RESERVATION_WINDOW_MS } from './orders.service.js';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
+    private readonly connect: ConnectService,
     private readonly audit: AuditLogService,
   ) {}
 
@@ -73,13 +75,78 @@ export class PaymentsService {
       }
     }
 
-    const intent = await this.stripe.client.paymentIntents.create(
+    // Where the money is going. Null means the organiser cannot be paid, and
+    // the order should never have been created — `OrdersService` checks the
+    // same thing first. Checked again here because this is the call that
+    // actually moves money, and an order can sit for its whole reservation
+    // window while an account is restricted underneath it.
+    const destination = await this.connect.payableAccountFor(order.organizationId);
+    if (!destination) {
+      throw new ConflictException(
+        'This host cannot receive payments right now, so the order cannot be paid. ' +
+          'Nothing has been charged.',
+      );
+    }
+
+    let intent: Stripe.PaymentIntent;
+    try {
+      intent = await this.createIntent(order, destination);
+    } catch (err) {
+      // Our `payoutStatus` column is a cache of Stripe's view and can lag it —
+      // an account can lose a capability after the order was created. Stripe
+      // says so in its own vocabulary ("needs the following capabilities
+      // enabled: transfers"), which means nothing to a buyer. Translate it,
+      // and correct the column so the next person is refused earlier.
+      const message = (err as Error)?.message ?? '';
+      if (/capabilit|destination account/i.test(message)) {
+        this.logger.error(
+          `Order ${order.id}: destination ${destination} cannot receive transfers — ` +
+            `marking the organisation as not payable. (${message})`,
+        );
+        await this.prisma.organization
+          .update({ where: { id: order.organizationId }, data: { payoutStatus: 'ONBOARDING' } })
+          .catch(() => undefined);
+        throw new ConflictException(
+          'This host cannot receive payments yet, so the order cannot be paid. ' +
+            'Nothing has been charged.',
+        );
+      }
+      throw err;
+    }
+
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: { status: 'AWAITING_PAYMENT', stripePaymentIntentId: intent.id },
+    });
+
+    return this.intentResponse(intent, order.totalMinor, order.currency);
+  }
+
+  /** The PaymentIntent itself, split out so the caller can translate failures. */
+  private createIntent(
+    order: {
+      id: string;
+      totalMinor: number;
+      platformFeeMinor: number;
+      currency: string;
+      organizationId: string;
+      event: { id: string; title: string };
+    },
+    destination: string,
+  ) {
+    return this.stripe.client.paymentIntents.create(
       {
         amount: order.totalMinor,
         currency: order.currency.toLowerCase(),
         // Lets Stripe present Apple Pay / Google Pay where available, which is
         // what the design's checkout sheet shows.
         automatic_payment_methods: { enabled: true },
+        // A destination charge: the whole amount is taken on the platform and
+        // the ticket money is transferred to the organiser, leaving only the
+        // platform fee behind. Without this every payment stayed in the
+        // platform account with no route onward — taken correctly and stuck.
+        transfer_data: { destination },
+        application_fee_amount: order.platformFeeMinor,
         metadata: {
           orderId: order.id,
           eventId: order.event.id,
@@ -92,13 +159,6 @@ export class PaymentsService {
       // intent rather than creating a twin.
       { idempotencyKey: `order_intent_${order.id}` },
     );
-
-    await this.prisma.order.update({
-      where: { id: order.id },
-      data: { status: 'AWAITING_PAYMENT', stripePaymentIntentId: intent.id },
-    });
-
-    return this.intentResponse(intent, order.totalMinor, order.currency);
   }
 
   private intentResponse(intent: Stripe.PaymentIntent, amountMinor: number, currency: string) {

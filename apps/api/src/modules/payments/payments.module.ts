@@ -20,6 +20,10 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { StripeService } from './stripe.service.js';
 import { OrdersService } from './orders.service.js';
 import { PaymentsService } from './payments.service.js';
+import { ConnectService } from './connect.service.js';
+import { OrgMembershipGuard } from '../../common/org-membership.guard.js';
+import { OrgScope, RequirePermissions } from '../../common/decorators.js';
+import { Permission } from '@ekklesia/shared';
 
 @Controller()
 class OrdersController {
@@ -65,6 +69,36 @@ class OrdersController {
   }
 }
 
+/**
+ * Payout setup. Scoped to the organisation and gated on the payout
+ * permission, because an account link is a credential: whoever opens it can
+ * finish onboarding as that organisation.
+ */
+@Controller('organizations/:orgId/connect')
+@UseGuards(OrgMembershipGuard)
+@OrgScope('param:orgId')
+class ConnectController {
+  constructor(private readonly connect: ConnectService) {}
+
+  @Get('status')
+  @RequirePermissions(Permission.PAYOUT_VIEW)
+  status(@Param('orgId') orgId: string) {
+    return this.connect.status(orgId);
+  }
+
+  @Post('onboard')
+  @RequirePermissions(Permission.PAYOUT_MANAGE)
+  onboard(@Param('orgId') orgId: string, @Req() req: AuthedRequest) {
+    // Stripe rejects anything that is not http(s) — a custom scheme like
+    // `ekklesia://` comes back as "Not a valid URL" from accountLinks.create.
+    // So onboarding returns to the web app, which is also the right place for
+    // a host who started on a desktop browser.
+    const web = process.env.WEB_URL ?? 'http://localhost:3000';
+    const returnTo = `${web}/organizer/${orgId}/payouts`;
+    return this.connect.startOnboarding(orgId, req.user.id, returnTo);
+  }
+}
+
 @Controller('webhooks/stripe')
 class StripeWebhookController {
   private readonly logger = new Logger(StripeWebhookController.name);
@@ -72,6 +106,7 @@ class StripeWebhookController {
   constructor(
     private readonly stripe: StripeService,
     private readonly payments: PaymentsService,
+    private readonly connect: ConnectService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -125,6 +160,11 @@ class StripeWebhookController {
         case 'charge.refunded':
           await this.handleRefund(event.data.object as Stripe.Charge);
           break;
+        case 'account.updated':
+          // Onboarding finishes on Stripe's own pages, so this is how we
+          // learn that a host can be paid.
+          await this.connect.syncFromWebhook(event.data.object as Stripe.Account);
+          break;
         default:
           // Everything else is acknowledged and ignored. Subscribing to fewer
           // event types in the dashboard is the right fix, not a louder log.
@@ -174,8 +214,8 @@ class StripeWebhookController {
 }
 
 @Module({
-  controllers: [OrdersController, StripeWebhookController],
-  providers: [StripeService, OrdersService, PaymentsService],
-  exports: [StripeService, OrdersService, PaymentsService],
+  controllers: [OrdersController, ConnectController, StripeWebhookController],
+  providers: [StripeService, OrdersService, PaymentsService, ConnectService],
+  exports: [StripeService, OrdersService, PaymentsService, ConnectService],
 })
 export class PaymentsModule {}
