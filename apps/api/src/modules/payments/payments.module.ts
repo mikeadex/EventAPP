@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -75,13 +76,24 @@ class StripeWebhookController {
   ) {}
 
   /**
-   * Stripe webhook. Mounted outside /v1 (excluded in main.ts) so the raw body
-   * is available for signature verification.
+   * Stripe webhook.
    *
-   * Always answers 200 once the signature checks out, even if handling fails.
-   * A non-2xx makes Stripe retry for days, and a handler that throws on a
-   * malformed event would have it redelivered forever; the error is logged
-   * and the reconcile path will pick the order up regardless.
+   * The URL is `/webhooks/stripe` — NOT `/v1/webhooks/stripe`. `bootstrap.ts`
+   * excludes `webhooks/(.*)` from the global prefix, so pointing
+   * `stripe listen --forward-to` at the /v1 path gets a 404 and every delivery
+   * fails silently. Worth stating here because the controller decorator above
+   * reads as though the prefix applies.
+   *
+   * Two different answers, on purpose:
+   *
+   *  - Signature fails → 400. This did not demonstrably come from Stripe. A
+   *    200 here would be worse than useless: a wrong STRIPE_WEBHOOK_SECRET
+   *    would show as green in Stripe's dashboard while nothing was processed,
+   *    which is a silent failure nobody goes looking for.
+   *  - Signature passes but handling throws → 200. A non-2xx makes Stripe
+   *    retry for days, and a handler that throws on one malformed event would
+   *    have it redelivered forever. The error is logged and `/sync` picks the
+   *    order up regardless.
    */
   @Post()
   @HttpCode(200)
@@ -90,18 +102,17 @@ class StripeWebhookController {
     @Headers('stripe-signature') signature: string,
   ) {
     if (!req.rawBody) {
+      // Means `rawBody: true` was lost from the Nest factory; signature
+      // verification is impossible, so treat it as unverified.
       this.logger.error('Stripe webhook hit without rawBody');
-      return { received: false };
+      throw new BadRequestException('Raw body unavailable');
     }
     let event: Stripe.Event;
     try {
       event = this.stripe.constructWebhookEvent(req.rawBody, signature);
     } catch (err) {
-      // Unverified: this did not necessarily come from Stripe. 400 so a real
-      // misconfiguration is visible in their dashboard rather than silently
-      // succeeding.
       this.logger.error(`Stripe signature verification failed: ${(err as Error).message}`);
-      return { received: false };
+      throw new BadRequestException('Invalid Stripe signature');
     }
 
     try {
