@@ -1,0 +1,739 @@
+import { HttpException, Logger } from '@nestjs/common';
+import { AuditLogService } from '../../common/audit-log.service.js';
+import { ClaimTokensService } from './claim-tokens.service.js';
+import { ClaimAccounts, ClaimsService, TAKEDOWN_CANCEL_REASON } from './claims.service.js';
+
+const NOW = new Date('2026-11-24T12:00:00.000Z');
+
+type ClaimStatus = 'CLAIMED' | 'UNCLAIMED' | 'DISPUTED';
+type Org = {
+  id: string;
+  name: string;
+  slug: string;
+  kind: string;
+  claimStatus: ClaimStatus;
+  claimedAt: Date | null;
+  verificationStatus: string;
+  contactName: string | null;
+  contactEmail: string | null;
+};
+type Token = {
+  id: string;
+  organizationId: string;
+  kind: 'CLAIM' | 'TAKEDOWN';
+  email: string;
+  tokenHash: string;
+  expiresAt: Date | null;
+  usedAt: Date | null;
+  revokedAt: Date | null;
+  createdByUserId: string | null;
+  createdAt: Date;
+};
+type User = { id: string; email: string; name: string; platformRole: string };
+type Membership = { userId: string; organizationId: string; role: string; acceptedAt: Date | null };
+type Event = {
+  id: string;
+  organizationId: string;
+  title: string;
+  startsAt: Date;
+  status: string;
+  deletedAt: Date | null;
+};
+type Audit = {
+  actorUserId?: string;
+  organizationId?: string;
+  action: string;
+  targetType?: string;
+  targetId?: string;
+  metadata?: unknown;
+};
+type State = {
+  orgs: Org[];
+  tokens: Token[];
+  users: User[];
+  memberships: Membership[];
+  events: Event[];
+  audits: Audit[];
+};
+
+type TokenWhere = {
+  organizationId?: string;
+  kind?: Token['kind'];
+  tokenHash?: string;
+  usedAt?: null;
+  revokedAt?: null;
+  OR?: Array<{ expiresAt: null } | { expiresAt: { gte: Date } }>;
+};
+
+/**
+ * In-memory stand-in for the Prisma calls the claim flow makes.
+ *
+ * `$transaction` runs one callback at a time (as row locks on the
+ * organization would serialise the real ones) and rolls the whole state back
+ * if the callback throws, so a test can assert that a refused claim left
+ * nothing behind.
+ */
+function fakeDb(initial: State) {
+  let s: State = initial;
+  let queue: Promise<unknown> = Promise.resolve();
+  const clone = (x: State): State => structuredClone(x);
+
+  const tokenMatches = (r: Token, w: TokenWhere) =>
+    (w.organizationId === undefined || r.organizationId === w.organizationId) &&
+    (w.kind === undefined || r.kind === w.kind) &&
+    (w.tokenHash === undefined || r.tokenHash === w.tokenHash) &&
+    (w.usedAt === undefined || r.usedAt === null) &&
+    (w.revokedAt === undefined || r.revokedAt === null) &&
+    (w.OR === undefined ||
+      w.OR.some((c) =>
+        c.expiresAt === null
+          ? r.expiresAt === null
+          : r.expiresAt !== null && r.expiresAt >= c.expiresAt.gte,
+      ));
+
+  const db = {
+    get state() {
+      return s;
+    },
+    organization: {
+      findUnique: async ({ where }: { where: { id: string } }) =>
+        s.orgs.find((o) => o.id === where.id) ?? null,
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: { id: string; claimStatus?: ClaimStatus };
+        data: Partial<Org>;
+      }) => {
+        const hit = s.orgs.filter(
+          (o) =>
+            o.id === where.id &&
+            (where.claimStatus === undefined || o.claimStatus === where.claimStatus),
+        );
+        hit.forEach((o) => Object.assign(o, data));
+        return { count: hit.length };
+      },
+    },
+    user: {
+      findFirst: async ({ where }: { where: { email: { equals: string } } }) =>
+        s.users.find((u) => u.email.toLowerCase() === where.email.equals.toLowerCase()) ?? null,
+    },
+    organizationMembership: {
+      upsert: async ({
+        where,
+        create,
+        update,
+      }: {
+        where: { userId_organizationId: { userId: string; organizationId: string } };
+        create: Membership;
+        update: Partial<Membership>;
+      }) => {
+        const k = where.userId_organizationId;
+        const found = s.memberships.find(
+          (m) => m.userId === k.userId && m.organizationId === k.organizationId,
+        );
+        if (found) return Object.assign(found, update);
+        s.memberships.push({ ...create });
+        return create;
+      },
+    },
+    event: {
+      findMany: async ({
+        where,
+      }: {
+        where: { organizationId: string; status?: string; deletedAt?: null };
+      }) =>
+        s.events
+          .filter(
+            (e) =>
+              e.organizationId === where.organizationId &&
+              (where.status === undefined || e.status === where.status) &&
+              (where.deletedAt === undefined || e.deletedAt === null),
+          )
+          .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
+    },
+    auditLog: {
+      create: async ({ data }: { data: Audit }) => {
+        s.audits.push(data);
+        return data;
+      },
+    },
+    organizationClaimToken: {
+      create: async ({ data }: { data: Partial<Token> }) => {
+        const row = {
+          id: `t${s.tokens.length + 1}`,
+          expiresAt: null,
+          usedAt: null,
+          revokedAt: null,
+          createdByUserId: null,
+          createdAt: new Date(),
+          ...data,
+        } as Token;
+        s.tokens.push(row);
+        return row;
+      },
+      findFirst: async ({ where }: { where: TokenWhere }) =>
+        s.tokens.find((r) => tokenMatches(r, where)) ?? null,
+      findUnique: async ({
+        where,
+        include,
+      }: {
+        where: { tokenHash: string };
+        include?: unknown;
+      }) => {
+        const r = s.tokens.find((x) => x.tokenHash === where.tokenHash);
+        if (!r) return null;
+        return include ? { ...r, organization: s.orgs.find((o) => o.id === r.organizationId) } : r;
+      },
+      findUniqueOrThrow: async ({ where }: { where: { tokenHash: string } }) =>
+        s.tokens.find((r) => r.tokenHash === where.tokenHash)!,
+      updateMany: async ({ where, data }: { where: TokenWhere; data: Partial<Token> }) => {
+        const hit = s.tokens.filter((r) => tokenMatches(r, where));
+        hit.forEach((r) => Object.assign(r, data));
+        return { count: hit.length };
+      },
+      deleteMany: async ({ where }: { where: TokenWhere }) => {
+        const before = s.tokens.length;
+        s.tokens = s.tokens.filter((r) => !tokenMatches(r, where));
+        return { count: before - s.tokens.length };
+      },
+    },
+    $transaction: <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => {
+      const run = queue.then(async () => {
+        const snapshot = clone(s);
+        try {
+          return await fn(db);
+        } catch (err) {
+          s = snapshot;
+          throw err;
+        }
+      });
+      queue = run.catch(() => undefined);
+      return run;
+    },
+  };
+  return db;
+}
+
+const org = (over: Partial<Org> = {}): Org => ({
+  id: 'org1',
+  name: 'Grace Chapel',
+  slug: 'grace-chapel',
+  kind: 'CHURCH',
+  claimStatus: 'UNCLAIMED',
+  claimedAt: null,
+  verificationStatus: 'UNVERIFIED',
+  contactName: 'Pastor Ruth',
+  contactEmail: 'Pastor@Grace.org',
+  ...over,
+});
+
+const event = (id: string, over: Partial<Event> = {}): Event => ({
+  id,
+  organizationId: 'org1',
+  title: `Event ${id}`,
+  startsAt: new Date(NOW.getTime() + 7 * 24 * 3600 * 1000),
+  status: 'PUBLISHED',
+  deletedAt: null,
+  ...over,
+});
+
+async function setup(opts: { users?: User[]; orgs?: Org[]; events?: Event[] } = {}) {
+  const db = fakeDb({
+    orgs: opts.orgs ?? [org()],
+    tokens: [],
+    users: opts.users ?? [],
+    memberships: [],
+    events: opts.events ?? [],
+    audits: [],
+  });
+  const tokens = new ClaimTokensService(db as never);
+  const audit = new AuditLogService(db as never);
+  const events = {
+    cancel: jest.fn(async (eventId: string, _actor: string | null, _reason: string) => {
+      const e = db.state.events.find((x) => x.id === eventId)!;
+      e.status = 'CANCELLED';
+      return e;
+    }),
+  };
+  const email = { send: jest.fn(async () => ({ id: null })) };
+  const accounts: ClaimAccounts = {
+    createPasswordUser: jest.fn(async ({ email: addr, name }) => {
+      const user = {
+        id: `u${db.state.users.length + 1}`,
+        email: addr.toLowerCase(),
+        name,
+        platformRole: 'USER',
+      };
+      db.state.users.push(user);
+      return { id: user.id };
+    }),
+    deleteUser: jest.fn(async (id: string) => {
+      db.state.users = db.state.users.filter((u) => u.id !== id);
+    }),
+  };
+  const svc = new ClaimsService(
+    db as never,
+    tokens,
+    audit,
+    email as never,
+    events as never,
+    accounts,
+  );
+  const issue = (kind: 'CLAIM' | 'TAKEDOWN', organizationId = 'org1') =>
+    tokens.issue(db as never, {
+      organizationId,
+      email: 'pastor@grace.org',
+      kind,
+      createdByUserId: 'staff1',
+    });
+  return { db, svc, tokens, events, email, accounts, issue };
+}
+
+/** The HTTP status and body a refused call would answer with. */
+async function refusal(p: Promise<unknown>) {
+  try {
+    await p;
+  } catch (err) {
+    if (err instanceof HttpException) return { status: err.getStatus(), body: err.getResponse() };
+    throw err;
+  }
+  throw new Error('expected the call to be refused');
+}
+
+const PASSWORD = 'correct horse battery';
+const signedIn = (email: string) => ({ id: 'u_existing', email, platformRole: 'USER' });
+
+describe('ClaimsService', () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    jest.setSystemTime(NOW);
+  });
+  afterEach(() => jest.useRealTimers());
+
+  describe('GET claim', () => {
+    it('shows the church, the address, its published events and whether an account exists', async () => {
+      const { svc, issue } = await setup({
+        events: [
+          event('e2', { startsAt: new Date(NOW.getTime() + 9e8) }),
+          event('e1'),
+          event('draft', { status: 'DRAFT' }),
+        ],
+      });
+      const raw = await issue('CLAIM');
+      await expect(svc.getClaim(raw)).resolves.toEqual({
+        organization: { name: 'Grace Chapel', slug: 'grace-chapel', kind: 'CHURCH' },
+        email: 'pastor@grace.org',
+        events: [
+          { title: 'Event e1', startsAt: event('e1').startsAt },
+          { title: 'Event e2', startsAt: new Date(NOW.getTime() + 9e8) },
+        ],
+        hasAccount: false,
+      });
+    });
+
+    it('says hasAccount when an account exists for the address in any case', async () => {
+      const { svc, issue } = await setup({
+        users: [{ id: 'u9', email: 'PASTOR@grace.org', name: 'R', platformRole: 'USER' }],
+      });
+      const raw = await issue('CLAIM');
+      await expect(svc.getClaim(raw)).resolves.toMatchObject({ hasAccount: true });
+    });
+
+    it('answers 410 with a code for unknown and claimed links', async () => {
+      const { svc, issue } = await setup();
+      expect(await refusal(svc.getClaim('nope'))).toEqual({
+        status: 410,
+        body: { code: 'INVALID' },
+      });
+      const raw = await issue('CLAIM');
+      await svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined);
+      expect(await refusal(svc.getClaim(raw))).toEqual({ status: 410, body: { code: 'CLAIMED' } });
+    });
+  });
+
+  describe('POST claim with a password', () => {
+    it('password claim for existing email returns 409 SIGN_IN', async () => {
+      const { db, svc, issue, accounts } = await setup({
+        users: [{ id: 'u9', email: 'pastor@grace.org', name: 'R', platformRole: 'USER' }],
+      });
+      const raw = await issue('CLAIM');
+      expect(
+        await refusal(svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined)),
+      ).toEqual({ status: 409, body: { code: 'SIGN_IN' } });
+      expect(accounts.createPasswordUser).not.toHaveBeenCalled();
+      expect(db.state.orgs[0]!.claimStatus).toBe('UNCLAIMED');
+      expect(db.state.tokens[0]!.usedAt).toBeNull();
+    });
+
+    it('refuses a staff account the password path too (it must use attach)', async () => {
+      const { svc, issue } = await setup({
+        users: [
+          {
+            id: 'u_staff',
+            email: 'pastor@grace.org',
+            name: 'Ada',
+            platformRole: 'PLATFORM_MODERATOR',
+          },
+        ],
+      });
+      const raw = await issue('CLAIM');
+      expect(
+        await refusal(svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined)),
+      ).toEqual({ status: 409, body: { code: 'SIGN_IN' } });
+    });
+
+    it('creates the account, makes it OWNER, claims the church and spends the links', async () => {
+      const { db, svc, issue, accounts } = await setup();
+      const raw = await issue('CLAIM');
+      const takedown = await issue('TAKEDOWN');
+
+      await expect(
+        svc.claimWithPassword(raw, { name: '  Ruth Ade ', password: PASSWORD }, undefined),
+      ).resolves.toEqual({ email: 'pastor@grace.org' });
+
+      expect(accounts.createPasswordUser).toHaveBeenCalledWith({
+        email: 'pastor@grace.org',
+        name: 'Ruth Ade',
+        password: PASSWORD,
+      });
+      const userId = db.state.users[0]!.id;
+      expect(db.state.memberships).toEqual([
+        { userId, organizationId: 'org1', role: 'OWNER', acceptedAt: NOW },
+      ]);
+      expect(db.state.orgs[0]).toMatchObject({
+        claimStatus: 'CLAIMED',
+        claimedAt: NOW,
+        verificationStatus: 'UNVERIFIED',
+      });
+      expect(db.state.tokens.find((t) => t.kind === 'CLAIM')!.usedAt).toEqual(NOW);
+      expect(db.state.tokens.find((t) => t.kind === 'TAKEDOWN')!.revokedAt).toEqual(NOW);
+      expect(db.state.audits).toEqual([
+        expect.objectContaining({
+          action: 'host.claim',
+          actorUserId: userId,
+          organizationId: 'org1',
+          targetType: 'organization',
+          targetId: 'org1',
+        }),
+      ]);
+      // The raw token is never written anywhere.
+      expect(JSON.stringify(db.state.audits)).not.toContain(raw);
+      expect(JSON.stringify(db.state.audits)).not.toContain(takedown);
+    });
+
+    it('rejects a password outside 12–128 characters with a 400 and creates nothing', async () => {
+      const { svc, issue, accounts } = await setup();
+      const raw = await issue('CLAIM');
+      await expect(
+        svc.claimWithPassword(raw, { name: 'Ruth', password: 'short' }, undefined),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+      await expect(
+        svc.claimWithPassword(raw, { name: 'Ruth', password: 'x'.repeat(129) }, undefined),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+      expect(accounts.createPasswordUser).not.toHaveBeenCalled();
+    });
+
+    it('a spent link answers 410 USED and creates no second account', async () => {
+      const { svc, issue, accounts } = await setup();
+      const raw = await issue('CLAIM');
+      await issue('CLAIM'); // a resend voids the first link
+      expect(
+        await refusal(svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined)),
+      ).toEqual({ status: 410, body: { code: 'USED' } });
+      expect(accounts.createPasswordUser).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('POST claim for the signed-in account', () => {
+    it('attach rejects mismatched email', async () => {
+      const { db, svc, issue } = await setup();
+      const raw = await issue('CLAIM');
+      expect(await refusal(svc.attach(raw, signedIn('someone@else.org'), undefined))).toEqual({
+        status: 403,
+        body: { code: 'EMAIL_MISMATCH' },
+      });
+      expect(db.state.memberships).toEqual([]);
+      expect(db.state.tokens[0]!.usedAt).toBeNull();
+    });
+
+    it('attaches the church to the signed-in account, matching the address in any case', async () => {
+      const { db, svc, issue } = await setup();
+      const raw = await issue('CLAIM');
+      await issue('TAKEDOWN');
+      await expect(svc.attach(raw, signedIn('PASTOR@Grace.ORG'), undefined)).resolves.toEqual({
+        organization: { id: 'org1', slug: 'grace-chapel', name: 'Grace Chapel' },
+      });
+      expect(db.state.memberships).toEqual([
+        { userId: 'u_existing', organizationId: 'org1', role: 'OWNER', acceptedAt: NOW },
+      ]);
+      expect(db.state.orgs[0]!.claimStatus).toBe('CLAIMED');
+      expect(db.state.tokens.find((t) => t.kind === 'TAKEDOWN')!.revokedAt).toEqual(NOW);
+      expect(db.state.audits).toEqual([
+        expect.objectContaining({ action: 'host.claim', actorUserId: 'u_existing' }),
+      ]);
+    });
+  });
+
+  describe('take-down', () => {
+    it('GET shows the church name', async () => {
+      const { svc, issue } = await setup();
+      const raw = await issue('TAKEDOWN');
+      await expect(svc.getTakedown(raw)).resolves.toEqual({
+        organization: { name: 'Grace Chapel' },
+      });
+    });
+
+    it('takedown after claim is 410', async () => {
+      const { db, svc, issue, events } = await setup({ events: [event('e1')] });
+      const claim = await issue('CLAIM');
+      const takedown = await issue('TAKEDOWN');
+      await svc.attach(claim, signedIn('pastor@grace.org'), undefined);
+
+      expect(await refusal(svc.getTakedown(takedown))).toEqual({
+        status: 410,
+        body: { code: 'CLAIMED' },
+      });
+      expect(await refusal(svc.takedown(takedown, {}, undefined))).toEqual({
+        status: 410,
+        body: { code: 'CLAIMED' },
+      });
+      expect(events.cancel).not.toHaveBeenCalled();
+      expect(db.state.orgs[0]!.claimStatus).toBe('CLAIMED');
+    });
+
+    it("takedown cancels only that org's published events and hides the church", async () => {
+      const { db, svc, issue, events } = await setup({
+        orgs: [org(), org({ id: 'org2', slug: 'other', name: 'Other' })],
+        events: [
+          event('e1'),
+          event('e2'),
+          event('draft', { status: 'DRAFT' }),
+          event('gone', { deletedAt: NOW }),
+          event('other', { organizationId: 'org2' }),
+        ],
+      });
+      const claim = await issue('CLAIM');
+      const raw = await issue('TAKEDOWN');
+
+      await expect(svc.takedown(raw, { reason: '  Not our church ' }, undefined)).resolves.toEqual({
+        cancelledEvents: 2,
+      });
+
+      expect(events.cancel.mock.calls).toEqual([
+        ['e1', null, TAKEDOWN_CANCEL_REASON],
+        ['e2', null, TAKEDOWN_CANCEL_REASON],
+      ]);
+      expect(TAKEDOWN_CANCEL_REASON).toBe("Removed at the church's request");
+      expect(db.state.events.find((e) => e.id === 'other')!.status).toBe('PUBLISHED');
+      expect(db.state.orgs[0]!.claimStatus).toBe('DISPUTED');
+      expect(db.state.orgs[1]!.claimStatus).toBe('UNCLAIMED');
+      expect(db.state.tokens.find((t) => t.kind === 'TAKEDOWN')!.usedAt).toEqual(NOW);
+      // The claim link stops working too.
+      expect(await refusal(svc.getClaim(claim))).toEqual({ status: 410, body: { code: 'USED' } });
+      expect(db.state.audits).toEqual([
+        expect.objectContaining({
+          action: 'host.disputed',
+          organizationId: 'org1',
+          targetType: 'organization',
+          targetId: 'org1',
+          metadata: { reason: 'Not our church' },
+        }),
+      ]);
+      expect(db.state.audits[0]!.actorUserId).toBeUndefined();
+    });
+
+    it('a second take-down answers 410 USED', async () => {
+      const { svc, issue } = await setup();
+      const raw = await issue('TAKEDOWN');
+      await svc.takedown(raw, {}, undefined);
+      expect(await refusal(svc.takedown(raw, {}, undefined))).toEqual({
+        status: 410,
+        body: { code: 'USED' },
+      });
+    });
+
+    it('rejects a reason over 1000 characters', async () => {
+      const { svc, issue } = await setup();
+      const raw = await issue('TAKEDOWN');
+      await expect(
+        svc.takedown(raw, { reason: 'x'.repeat(1001) }, undefined),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+    });
+
+    it('keeps going when one event fails to cancel, and reports how many did', async () => {
+      const { db, svc, issue, events } = await setup({ events: [event('e1'), event('e2')] });
+      events.cancel.mockImplementationOnce(async () => {
+        throw new Error('boom');
+      });
+      const logged = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+      const raw = await issue('TAKEDOWN');
+      await expect(svc.takedown(raw, {}, undefined)).resolves.toEqual({ cancelledEvents: 1 });
+      expect(events.cancel).toHaveBeenCalledTimes(2);
+      expect(logged).toHaveBeenCalledWith(expect.stringContaining('could not cancel event e1'));
+      logged.mockRestore();
+      expect(db.state.orgs[0]!.claimStatus).toBe('DISPUTED');
+    });
+  });
+
+  describe('races', () => {
+    it('two racing claims on one link: exactly one wins, the other is 410', async () => {
+      const { db, svc, issue } = await setup();
+      const raw = await issue('CLAIM');
+      const results = await Promise.allSettled([
+        svc.attach(raw, signedIn('pastor@grace.org'), undefined),
+        svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected']);
+      const lost = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+      expect((lost.reason as HttpException).getStatus()).toBe(410);
+      expect(db.state.memberships).toHaveLength(1);
+      expect(db.state.audits.filter((a) => a.action === 'host.claim')).toHaveLength(1);
+      // The losing password claim left no stray account behind.
+      expect(db.state.users).toHaveLength(0);
+    });
+
+    it('a claim that loses to a take-down is 410 USED and writes nothing', async () => {
+      const { db, svc, tokens, issue, accounts } = await setup({ events: [event('e1')] });
+      const claim = await issue('CLAIM');
+      const takedown = await issue('TAKEDOWN');
+      // Both pages were opened before either button was pressed.
+      const stalePeek = await tokens.peek(claim, 'CLAIM');
+      await svc.takedown(takedown, {}, undefined);
+      jest.spyOn(tokens, 'peek').mockResolvedValueOnce(stalePeek);
+
+      expect(
+        await refusal(
+          svc.claimWithPassword(claim, { name: 'Ruth', password: PASSWORD }, undefined),
+        ),
+      ).toEqual({ status: 410, body: { code: 'USED' } });
+      expect(db.state.orgs[0]!.claimStatus).toBe('DISPUTED');
+      expect(db.state.memberships).toEqual([]);
+      expect(db.state.audits.map((a) => a.action)).toEqual(['host.disputed']);
+      // The account made for the claim was removed again.
+      expect(accounts.deleteUser).toHaveBeenCalledTimes(1);
+      expect(db.state.users).toEqual([]);
+    });
+
+    it('a take-down that loses to a claim is 410 CLAIMED and cancels nothing', async () => {
+      const { db, svc, tokens, issue, events } = await setup({ events: [event('e1')] });
+      const claim = await issue('CLAIM');
+      const takedown = await issue('TAKEDOWN');
+      const stalePeek = await tokens.peek(takedown, 'TAKEDOWN');
+      await svc.attach(claim, signedIn('pastor@grace.org'), undefined);
+      jest.spyOn(tokens, 'peek').mockResolvedValueOnce(stalePeek);
+
+      expect(await refusal(svc.takedown(takedown, {}, undefined))).toEqual({
+        status: 410,
+        body: { code: 'CLAIMED' },
+      });
+      expect(db.state.orgs[0]!.claimStatus).toBe('CLAIMED');
+      expect(events.cancel).not.toHaveBeenCalled();
+      expect(db.state.audits.map((a) => a.action)).toEqual(['host.claim']);
+    });
+
+    it('a claim and a take-down at the same moment: exactly one wins', async () => {
+      const { db, svc, issue, events } = await setup({ events: [event('e1')] });
+      const claim = await issue('CLAIM');
+      const takedown = await issue('TAKEDOWN');
+      const results = await Promise.allSettled([
+        svc.attach(claim, signedIn('pastor@grace.org'), undefined),
+        svc.takedown(takedown, {}, undefined),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected']);
+      const status = db.state.orgs[0]!.claimStatus;
+      if (status === 'CLAIMED') {
+        expect(events.cancel).not.toHaveBeenCalled();
+        expect(db.state.memberships).toHaveLength(1);
+      } else {
+        expect(status).toBe('DISPUTED');
+        expect(db.state.memberships).toHaveLength(0);
+      }
+    });
+  });
+
+  describe('sendInvite', () => {
+    const OLD_WEB_URL = process.env.WEB_URL;
+    beforeEach(() => {
+      process.env.WEB_URL = 'https://ekklesiaevents.com';
+    });
+    afterAll(() => {
+      process.env.WEB_URL = OLD_WEB_URL;
+    });
+
+    it('issues both links and sends the invite with both', async () => {
+      const { db, svc, tokens, email } = await setup();
+      await expect(svc.sendInvite('org1', 'staff1')).resolves.toEqual({
+        email: 'pastor@grace.org',
+        hasAccount: false,
+      });
+      expect(db.state.tokens.map((t) => [t.kind, t.email, t.createdByUserId])).toEqual([
+        ['CLAIM', 'pastor@grace.org', 'staff1'],
+        ['TAKEDOWN', 'pastor@grace.org', 'staff1'],
+      ]);
+      const sent = (email.send.mock.calls[0] as unknown[])[0] as {
+        to: string;
+        text: string;
+        html: string;
+        required: boolean;
+        tags: unknown;
+      };
+      expect(sent).toMatchObject({
+        to: 'pastor@grace.org',
+        required: true,
+        tags: [{ name: 'type', value: 'claim-invite' }],
+      });
+      const claimRaw = sent.text.match(/\/claim\/([A-Za-z0-9_-]+)/)![1]!;
+      const takedownRaw = sent.text.match(/\/takedown\/([A-Za-z0-9_-]+)/)![1]!;
+      expect(sent.text).toContain(`https://ekklesiaevents.com/claim/${claimRaw}`);
+      expect(await tokens.peek(claimRaw, 'CLAIM')).toMatchObject({ organization: { id: 'org1' } });
+      expect(await tokens.peek(takedownRaw, 'TAKEDOWN')).toMatchObject({
+        organization: { id: 'org1' },
+      });
+      expect(sent.html).toContain(`/claim/${claimRaw}`);
+      expect(sent.html).toContain(`/takedown/${takedownRaw}`);
+    });
+
+    it('a resend voids the old claim link and keeps the original take-down link', async () => {
+      const { db, svc, email } = await setup();
+      await svc.sendInvite('org1', 'staff1');
+      await svc.sendInvite('org1', 'staff1');
+      expect(db.state.tokens.filter((t) => t.kind === 'TAKEDOWN')).toHaveLength(1);
+      const claims = db.state.tokens.filter((t) => t.kind === 'CLAIM');
+      expect(claims.map((t) => t.revokedAt)).toEqual([NOW, null]);
+      const second = (email.send.mock.calls[1] as unknown[])[0] as { text: string };
+      expect(second.text).toMatch(/\/claim\//);
+      expect(second.text).not.toMatch(/\/takedown\//);
+    });
+
+    it('uses the "sign in to manage it" wording when the address already has an account', async () => {
+      const { svc, email } = await setup({
+        users: [{ id: 'u9', email: 'pastor@grace.org', name: 'R', platformRole: 'USER' }],
+      });
+      await expect(svc.sendInvite('org1', 'staff1')).resolves.toMatchObject({ hasAccount: true });
+      const sent = (email.send.mock.calls[0] as unknown[])[0] as {
+        text: string;
+        tags: unknown;
+      };
+      expect(sent.tags).toEqual([{ name: 'type', value: 'claim-added' }]);
+      expect(sent.text).toMatch(/sign in to manage it/i);
+      expect(sent.text).toMatch(/\/claim\//);
+    });
+
+    it('when the email cannot be sent, takes back the links it issued', async () => {
+      const { db, svc, email } = await setup();
+      email.send.mockRejectedValueOnce(new Error('resend down'));
+      await expect(svc.sendInvite('org1', 'staff1')).rejects.toThrow('resend down');
+      // No take-down link exists that nobody received, so the next send issues one.
+      expect(db.state.tokens.filter((t) => t.kind === 'TAKEDOWN')).toHaveLength(0);
+      expect(db.state.tokens.every((t) => t.revokedAt !== null)).toBe(true);
+      await svc.sendInvite('org1', 'staff1');
+      expect(db.state.tokens.filter((t) => t.kind === 'TAKEDOWN')).toHaveLength(1);
+    });
+
+    it('refuses a church that is not unclaimed', async () => {
+      const { svc } = await setup({ orgs: [org({ claimStatus: 'CLAIMED' })] });
+      expect((await refusal(svc.sendInvite('org1', 'staff1'))).status).toBe(409);
+    });
+  });
+});

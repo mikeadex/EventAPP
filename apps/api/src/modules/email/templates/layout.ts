@@ -3,8 +3,18 @@
  * compatibility (Gmail strips <style> blocks aggressively). Keep this
  * minimal — we don't ship a full React Email renderer until volume warrants.
  */
-export function emailLayout(content: string, opts: { previewText?: string } = {}): string {
+export function emailLayout(
+  content: string,
+  opts: {
+    previewText?: string;
+    /** Plain text for the footer; defaults to the account-holder line. */
+    footer?: string;
+  } = {},
+): string {
   const preview = opts.previewText ?? '';
+  const footer =
+    opts.footer ??
+    "You're receiving this because you have an account at Ekklesia. Questions? Reply to this email.";
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -29,7 +39,7 @@ export function emailLayout(content: string, opts: { previewText?: string } = {}
           </tr>
           <tr>
             <td style="padding:20px 32px;border-top:1px solid #EFEEEC;background:#FBF6EE;font-size:12px;color:#86827B;">
-              You're receiving this because you have an account at Ekklesia. Questions? Reply to this email.
+              ${escapeHtml(footer)}
             </td>
           </tr>
         </table>

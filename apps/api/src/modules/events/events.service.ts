@@ -510,7 +510,8 @@ export class EventsService {
     });
   }
 
-  async cancel(eventId: string, actorUserId: string, reason: string | undefined) {
+  /** `actorUserId` is null when no one is signed in, e.g. a church's take-down link. */
+  async cancel(eventId: string, actorUserId: string | null, reason: string | undefined) {
     const evt = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: { id: true, status: true, organizationId: true },
@@ -524,7 +525,7 @@ export class EventsService {
       data: { status: 'CANCELLED', cancelledAt: new Date() },
     });
     await this.audit.write({
-      actorUserId,
+      actorUserId: actorUserId ?? undefined,
       organizationId: evt.organizationId,
       action: 'event.cancel',
       targetType: 'event',
