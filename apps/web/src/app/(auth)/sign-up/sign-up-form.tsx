@@ -14,7 +14,8 @@ export function SignUpForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = safeNext(params.get('next'));
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState(params.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +32,10 @@ export function SignUpForm() {
     setError(null);
     // Absolute: a relative callbackURL would resolve against the API host, so
     // the verification link would land people on the API instead of here.
-    const res = await signUp.email({ email: email.trim(), password, name: name.trim(), callbackURL: webUrl(next) });
+    // Accounts hold one display name (mobile sends one too), so the two
+    // fields are joined. Last name is optional — not everyone has two.
+    const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
+    const res = await signUp.email({ email: email.trim(), password, name, callbackURL: webUrl(next) });
     setPending(false);
     if (res.error) {
       setError(res.error.message ?? 'We couldn’t create your account.');
@@ -71,29 +75,57 @@ export function SignUpForm() {
     );
   }
 
+  const terms = (
+    <p className="text-center text-[12px] leading-relaxed text-faint">
+      By creating an account you agree to our{' '}
+      <Link href="/terms" className="underline">
+        Terms
+      </Link>{' '}
+      and{' '}
+      <Link href="/privacy" className="underline">
+        Privacy Policy
+      </Link>
+      .
+    </p>
+  );
+
   return (
-    <div>
-      <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-[30px] text-strong">Create your account</h1>
-        <p className="text-[15px] text-body">Free for everyone. Save events and keep your tickets in one place.</p>
+    <div data-auth-wide>
+      <div className="flex flex-col gap-2">
+        <span className="eyebrow text-accent">Create account</span>
+        <h1 className="text-[30px] text-strong">Set up your account</h1>
+        <p className="text-[15px] text-body">Takes about a minute.</p>
       </div>
-      <div className="mt-7 flex flex-col gap-3">
+      <div className="mt-7 flex flex-col gap-4">
         <SocialSignIn callbackURL={next} />
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
-          <Field label="Your name">
-            {(p) => (
-              <input
-                {...p}
-                required
-                autoComplete="name"
-                maxLength={120}
-                placeholder="First and last name"
-                className="input"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            )}
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="First name">
+              {(p) => (
+                <input
+                  {...p}
+                  required
+                  autoComplete="given-name"
+                  maxLength={60}
+                  className="input"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+              )}
+            </Field>
+            <Field label="Last name">
+              {(p) => (
+                <input
+                  {...p}
+                  autoComplete="family-name"
+                  maxLength={60}
+                  className="input"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              )}
+            </Field>
+          </div>
           <Field label="Email address">
             {(p) => (
               <input
@@ -115,29 +147,19 @@ export function SignUpForm() {
                 required
                 minLength={PASSWORD_MIN}
                 autoComplete="new-password"
-                placeholder={`At least ${PASSWORD_MIN} characters`}
+                placeholder={`${PASSWORD_MIN} characters or more`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             )}
           </Field>
-          <PasswordMeter value={password} />
-          <button type="submit" disabled={pending} className="btn btn-primary btn-lg mt-1">
+          <PasswordMeter value={password} summary />
+          <button type="submit" disabled={pending} className="btn btn-primary btn-lg mt-4">
             {pending ? 'Creating account…' : 'Create account'}
           </button>
-          <p className="text-center text-[12px] leading-relaxed text-faint">
-            By creating an account you agree to the{' '}
-            <Link href="/terms" className="underline">
-              Terms
-            </Link>{' '}
-            and{' '}
-            <Link href="/privacy" className="underline">
-              Privacy policy
-            </Link>
-            .
-          </p>
+          {terms}
           <p className="text-center text-[14px] text-ink-2">
-            Already have an account?{' '}
+            Already have one?{' '}
             <Link href={signInHref as never} className="text-accent">
               Sign in
             </Link>
