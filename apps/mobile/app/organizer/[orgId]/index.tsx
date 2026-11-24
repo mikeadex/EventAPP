@@ -154,6 +154,18 @@ export default function OrgDashboardScreen() {
             )
           ) : null}
 
+          <Pressable
+            style={({ pressed }) => [styles.payoutsRow, pressed && { opacity: 0.8 }]}
+            onPress={() => router.push(`/organizer/${orgId}/payouts`)}
+          >
+            <Ionicons name="card-outline" size={20} color={theme.dark.textSecondary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.payoutsLabel}>Payouts</Text>
+              <Text style={styles.payoutsSub}>How you get paid for ticket sales</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.dark.textMuted} />
+          </Pressable>
+
           <Section title="Live" events={live} orgId={orgId!} />
           <Section title="Drafts" events={drafts} orgId={orgId!} />
           <Section title="Past" events={done} orgId={orgId!} muted />
@@ -241,6 +253,19 @@ const styles = StyleSheet.create({
   },
   verifyText: { flex: 1, fontSize: fontSize.sm, color: theme.dark.textSecondary, lineHeight: 21 },
   verifyActionText: { color: palette.coral[200] },
+  payoutsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    padding: spacing[4],
+    borderRadius: 14,
+    backgroundColor: theme.dark.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.14)',
+    marginBottom: spacing[5],
+  },
+  payoutsLabel: { fontSize: fontSize.base, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  payoutsSub: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2 },
   sectionTitle: {
     fontSize: fontSize.xs,
     textTransform: 'uppercase',
