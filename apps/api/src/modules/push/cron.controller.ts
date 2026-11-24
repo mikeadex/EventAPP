@@ -1,5 +1,6 @@
 import { Controller, ForbiddenException, Get, Headers, Logger } from '@nestjs/common';
 import { RemindersService } from './reminders.service.js';
+import { OrdersService } from '../payments/orders.service.js';
 
 /**
  * Endpoints driven by Vercel Cron rather than by a user.
@@ -18,18 +19,42 @@ import { RemindersService } from './reminders.service.js';
 export class CronController {
   private readonly logger = new Logger(CronController.name);
 
-  constructor(private readonly reminders: RemindersService) {}
+  constructor(
+    private readonly reminders: RemindersService,
+    private readonly orders: OrdersService,
+  ) {}
 
-  @Get('reminders')
-  async reminders_(@Headers('authorization') authorization?: string) {
+  /** Shared secret check. Fails closed when CRON_SECRET is unset. */
+  private assertCron(authorization: string | undefined, job: string): void {
     const secret = process.env.CRON_SECRET;
     if (!secret) {
-      this.logger.error('CRON_SECRET is not set — refusing to run the reminder job');
+      this.logger.error(`CRON_SECRET is not set — refusing to run the ${job} job`);
       throw new ForbiddenException('Cron is not configured');
     }
     if (authorization !== `Bearer ${secret}`) {
       throw new ForbiddenException('Invalid cron credentials');
     }
+  }
+
+  /**
+   * Hand back inventory from checkouts that were never paid for.
+   *
+   * Without this an abandoned order holds its seats until the event itself
+   * passes, so a popular event reads as sold out with nobody coming. Runs
+   * every five minutes against a fifteen-minute reservation window, which
+   * means a released seat is back on sale well inside the window it was held
+   * for, and the sweep is cheap enough to run that often.
+   */
+  @Get('release-expired-orders')
+  async releaseExpiredOrders(@Headers('authorization') authorization?: string) {
+    this.assertCron(authorization, 'order release');
+    const released = await this.orders.releaseExpired();
+    return { released };
+  }
+
+  @Get('reminders')
+  async reminders_(@Headers('authorization') authorization?: string) {
+    this.assertCron(authorization, 'reminder');
     return this.reminders.runDue();
   }
 }
