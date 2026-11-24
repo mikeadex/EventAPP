@@ -573,6 +573,16 @@ describe('ClaimsService', () => {
       expect(logged).toHaveBeenCalledWith(expect.stringContaining('could not cancel event e1'));
       logged.mockRestore();
       expect(db.state.orgs[0]!.claimStatus).toBe('DISPUTED');
+      expect(db.state.audits.map((a) => [a.action, a.metadata])).toEqual([
+        ['host.disputed', {}],
+        ['host.disputed.cancel_failed', { failedEventIds: ['e1'] }],
+      ]);
+    });
+
+    it('writes no cancel_failed audit when every event is cancelled', async () => {
+      const { db, svc, issue } = await setup({ events: [event('e1')] });
+      await svc.takedown(await issue('TAKEDOWN'), {}, undefined);
+      expect(db.state.audits.map((a) => a.action)).toEqual(['host.disputed']);
     });
   });
 
@@ -653,17 +663,31 @@ describe('ClaimsService', () => {
   });
 
   describe('sendInvite', () => {
-    const OLD_WEB_URL = process.env.WEB_URL;
+    const OLD_ENV = { ...process.env };
+    let warn: jest.SpyInstance;
+    let error: jest.SpyInstance;
     beforeEach(() => {
       process.env.WEB_URL = 'https://ekklesiaevents.com';
+      process.env.RESEND_API_KEY = 're_test';
+      warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     });
-    afterAll(() => {
-      process.env.WEB_URL = OLD_WEB_URL;
+    afterEach(() => {
+      process.env = { ...OLD_ENV };
+      warn.mockRestore();
+      error.mockRestore();
     });
+
+    type Sent = { to: string; text: string; html: string; required: boolean; tags: unknown };
+    const sentAt = (email: { send: jest.Mock }, i: number) =>
+      (email.send.mock.calls[i] as unknown[])[0] as Sent;
+    const linkIn = (text: string, path: 'claim' | 'takedown') =>
+      text.match(new RegExp(`/${path}/([A-Za-z0-9_-]+)`))![1]!;
 
     it('issues both links and sends the invite with both', async () => {
       const { db, svc, tokens, email } = await setup();
       await expect(svc.sendInvite('org1', 'staff1')).resolves.toEqual({
+        sent: true,
         email: 'pastor@grace.org',
         hasAccount: false,
       });
@@ -671,21 +695,16 @@ describe('ClaimsService', () => {
         ['CLAIM', 'pastor@grace.org', 'staff1'],
         ['TAKEDOWN', 'pastor@grace.org', 'staff1'],
       ]);
-      const sent = (email.send.mock.calls[0] as unknown[])[0] as {
-        to: string;
-        text: string;
-        html: string;
-        required: boolean;
-        tags: unknown;
-      };
+      const sent = sentAt(email, 0);
       expect(sent).toMatchObject({
         to: 'pastor@grace.org',
         required: true,
         tags: [{ name: 'type', value: 'claim-invite' }],
       });
-      const claimRaw = sent.text.match(/\/claim\/([A-Za-z0-9_-]+)/)![1]!;
-      const takedownRaw = sent.text.match(/\/takedown\/([A-Za-z0-9_-]+)/)![1]!;
+      const claimRaw = linkIn(sent.text, 'claim');
+      const takedownRaw = linkIn(sent.text, 'takedown');
       expect(sent.text).toContain(`https://ekklesiaevents.com/claim/${claimRaw}`);
+      expect(sent.text).toContain(`https://ekklesiaevents.com/takedown/${takedownRaw}`);
       expect(await tokens.peek(claimRaw, 'CLAIM')).toMatchObject({ organization: { id: 'org1' } });
       expect(await tokens.peek(takedownRaw, 'TAKEDOWN')).toMatchObject({
         organization: { id: 'org1' },
@@ -694,41 +713,89 @@ describe('ClaimsService', () => {
       expect(sent.html).toContain(`/takedown/${takedownRaw}`);
     });
 
-    it('a resend voids the old claim link and keeps the original take-down link', async () => {
-      const { db, svc, email } = await setup();
+    it('a resend carries both links, voids the old claim link and keeps the old take-down link', async () => {
+      const { svc, tokens, email } = await setup();
       await svc.sendInvite('org1', 'staff1');
       await svc.sendInvite('org1', 'staff1');
-      expect(db.state.tokens.filter((t) => t.kind === 'TAKEDOWN')).toHaveLength(1);
-      const claims = db.state.tokens.filter((t) => t.kind === 'CLAIM');
-      expect(claims.map((t) => t.revokedAt)).toEqual([NOW, null]);
-      const second = (email.send.mock.calls[1] as unknown[])[0] as { text: string };
-      expect(second.text).toMatch(/\/claim\//);
-      expect(second.text).not.toMatch(/\/takedown\//);
+      const first = sentAt(email, 0);
+      const second = sentAt(email, 1);
+      expect(await tokens.peek(linkIn(first.text, 'claim'), 'CLAIM')).toEqual({ error: 'USED' });
+      expect(await tokens.peek(linkIn(second.text, 'claim'), 'CLAIM')).toMatchObject({
+        organization: { id: 'org1' },
+      });
+      for (const mail of [first, second]) {
+        expect(await tokens.peek(linkIn(mail.text, 'takedown'), 'TAKEDOWN')).toMatchObject({
+          organization: { id: 'org1' },
+        });
+      }
+    });
+
+    it('every take-down link dies once the church is claimed', async () => {
+      const { svc, tokens, email } = await setup();
+      await svc.sendInvite('org1', 'staff1');
+      await svc.sendInvite('org1', 'staff1');
+      const claim = linkIn(sentAt(email, 1).text, 'claim');
+      await svc.attach(claim, signedIn('pastor@grace.org'), undefined);
+      for (const i of [0, 1]) {
+        const raw = linkIn(sentAt(email, i).text, 'takedown');
+        expect(await refusal(svc.takedown(raw, {}, undefined))).toEqual({
+          status: 410,
+          body: { code: 'CLAIMED' },
+        });
+      }
+      expect(await tokens.peek(linkIn(sentAt(email, 0).text, 'takedown'), 'TAKEDOWN')).toEqual({
+        error: 'USED',
+      });
     });
 
     it('uses the "sign in to manage it" wording when the address already has an account', async () => {
       const { svc, email } = await setup({
         users: [{ id: 'u9', email: 'pastor@grace.org', name: 'R', platformRole: 'USER' }],
       });
-      await expect(svc.sendInvite('org1', 'staff1')).resolves.toMatchObject({ hasAccount: true });
-      const sent = (email.send.mock.calls[0] as unknown[])[0] as {
-        text: string;
-        tags: unknown;
-      };
+      await expect(svc.sendInvite('org1', 'staff1')).resolves.toMatchObject({
+        sent: true,
+        hasAccount: true,
+      });
+      const sent = sentAt(email, 0);
       expect(sent.tags).toEqual([{ name: 'type', value: 'claim-added' }]);
       expect(sent.text).toMatch(/sign in to manage it/i);
       expect(sent.text).toMatch(/\/claim\//);
+      expect(sent.text).toMatch(/\/takedown\//);
     });
 
-    it('when the email cannot be sent, takes back the links it issued', async () => {
+    it('a failed send answers sent: false and leaves the issued links in place', async () => {
       const { db, svc, email } = await setup();
       email.send.mockRejectedValueOnce(new Error('resend down'));
-      await expect(svc.sendInvite('org1', 'staff1')).rejects.toThrow('resend down');
-      // No take-down link exists that nobody received, so the next send issues one.
-      expect(db.state.tokens.filter((t) => t.kind === 'TAKEDOWN')).toHaveLength(0);
-      expect(db.state.tokens.every((t) => t.revokedAt !== null)).toBe(true);
+      await expect(svc.sendInvite('org1', 'staff1')).resolves.toMatchObject({ sent: false });
+      expect(error).toHaveBeenCalledWith(expect.stringContaining('resend down'));
+      expect(db.state.tokens.map((t) => [t.kind, t.revokedAt])).toEqual([
+        ['CLAIM', null],
+        ['TAKEDOWN', null],
+      ]);
+    });
+
+    it('logs both links (dev only) when email is not configured outside production', async () => {
+      delete process.env.RESEND_API_KEY;
+      process.env.NODE_ENV = 'development';
+      const { svc, email } = await setup();
       await svc.sendInvite('org1', 'staff1');
-      expect(db.state.tokens.filter((t) => t.kind === 'TAKEDOWN')).toHaveLength(1);
+      const sent = sentAt(email, 0);
+      expect(warn).toHaveBeenCalledTimes(1);
+      const line = warn.mock.calls[0]![0] as string;
+      expect(line).toMatch(/dev-only/);
+      expect(line).toContain(`/claim/${linkIn(sent.text, 'claim')}`);
+      expect(line).toContain(`/takedown/${linkIn(sent.text, 'takedown')}`);
+    });
+
+    it('never logs the links in production or when email is configured', async () => {
+      delete process.env.RESEND_API_KEY;
+      process.env.NODE_ENV = 'production';
+      const { svc } = await setup();
+      await svc.sendInvite('org1', 'staff1');
+      process.env.NODE_ENV = 'development';
+      process.env.RESEND_API_KEY = 're_test';
+      await svc.sendInvite('org1', 'staff1');
+      expect(warn).not.toHaveBeenCalled();
     });
 
     it('refuses a church that is not unclaimed', async () => {

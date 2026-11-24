@@ -224,15 +224,28 @@ export class ClaimsService {
       orderBy: { startsAt: 'asc' },
     });
     let cancelledEvents = 0;
+    const failedEventIds: string[] = [];
     for (const { id } of events) {
       try {
         await this.events.cancel(id, null, TAKEDOWN_CANCEL_REASON);
         cancelledEvents++;
       } catch (err) {
+        failedEventIds.push(id);
         this.logger.error(
           `Take-down of ${organizationId}: could not cancel event ${id}: ${(err as Error).message}`,
         );
       }
+    }
+    if (failedEventIds.length) {
+      // So staff can find and unpublish the stragglers.
+      await this.audit.write({
+        organizationId,
+        action: 'host.disputed.cancel_failed',
+        targetType: 'organization',
+        targetId: organizationId,
+        metadata: { failedEventIds },
+        req,
+      });
     }
     return { cancelledEvents };
   }
@@ -240,9 +253,12 @@ export class ClaimsService {
   // ─── Invite (staff) ──────────────────────────────────────────────────────
 
   /**
-   * Email the church's contact a claim link, and — the first time only — a
-   * take-down link. A resend voids the previous claim link; the take-down
-   * link from the first email keeps working.
+   * Email the church's contact a claim link and a take-down link. Each send
+   * issues both: a resend voids earlier claim links, while earlier take-down
+   * links keep working until the church is claimed or taken down.
+   *
+   * A failed send does not throw: the links stay issued (the next resend
+   * voids the claim link anyway) and `sent` says whether it went.
    */
   async sendInvite(organizationId: string, actorUserId: string) {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
@@ -252,24 +268,9 @@ export class ClaimsService {
     if (!email) throw new ConflictException('NO_CONTACT_EMAIL');
 
     const issued = await this.prisma.$transaction(async (tx) => {
-      const claim = await this.tokens.issue(tx, {
-        organizationId,
-        email,
-        kind: 'CLAIM',
-        createdByUserId: actorUserId,
-      });
-      const hasTakedown = await tx.organizationClaimToken.findFirst({
-        where: { organizationId, kind: 'TAKEDOWN' },
-      });
-      const takedown = hasTakedown
-        ? null
-        : await this.tokens.issue(tx, {
-            organizationId,
-            email,
-            kind: 'TAKEDOWN',
-            createdByUserId: actorUserId,
-          });
-      return { claim, takedown };
+      const issue = (kind: 'CLAIM' | 'TAKEDOWN') =>
+        this.tokens.issue(tx, { organizationId, email, kind, createdByUserId: actorUserId });
+      return { claim: await issue('CLAIM'), takedown: await issue('TAKEDOWN') };
     });
 
     const hasAccount = !!(await this.findUserByEmail(email));
@@ -278,11 +279,21 @@ export class ClaimsService {
       orgName: org.name,
       contactName: org.contactName,
       claimUrl: `${web}/claim/${issued.claim}`,
-      takedownUrl: issued.takedown ? `${web}/takedown/${issued.takedown}` : null,
+      takedownUrl: `${web}/takedown/${issued.takedown}`,
       expiresInLabel: '7 days',
     };
-    const { subject, html, text } = hasAccount ? claimAddedEmail(data) : claimInviteEmail(data);
 
+    // Without a mail provider nobody can follow these links locally. The URLs
+    // carry tokens that grant the action, so never in production.
+    if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== 'production') {
+      this.logger.warn(
+        `[dev-only, email not configured] claim links for ${org.name}: ` +
+          `claim ${data.claimUrl} | take-down ${data.takedownUrl}`,
+      );
+    }
+
+    const { subject, html, text } = hasAccount ? claimAddedEmail(data) : claimInviteEmail(data);
+    let sent = true;
     try {
       await this.email.send({
         to: email,
@@ -293,21 +304,12 @@ export class ClaimsService {
         required: true,
       });
     } catch (err) {
-      // Nobody received these links. Void the claim link, and remove a
-      // take-down link outright so the next send can issue one; otherwise it
-      // would exist forever with no one able to use it.
-      await this.prisma.organizationClaimToken.updateMany({
-        where: { tokenHash: hashToken(issued.claim), revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-      if (issued.takedown) {
-        await this.prisma.organizationClaimToken.deleteMany({
-          where: { tokenHash: hashToken(issued.takedown) },
-        });
-      }
-      throw err;
+      sent = false;
+      this.logger.error(
+        `Claim email for ${organizationId} was not sent: ${(err as Error).message}`,
+      );
     }
-    return { email, hasAccount };
+    return { sent, email, hasAccount };
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────

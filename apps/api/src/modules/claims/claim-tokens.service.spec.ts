@@ -1,4 +1,4 @@
-import { ConflictException, GoneException } from '@nestjs/common';
+import { GoneException } from '@nestjs/common';
 import { ClaimTokensService, hashToken } from './claim-tokens.service.js';
 
 const NOW = new Date('2026-11-24T12:00:00.000Z');
@@ -153,12 +153,13 @@ describe('ClaimTokensService', () => {
     expect(await svc.peek(takedown, 'TAKEDOWN')).toMatchObject({ organization: { id: 'org1' } });
   });
 
-  it('issues a take-down token only once per organization', async () => {
+  it('issues a fresh take-down token each time, and older ones stay valid', async () => {
     const { db, svc } = setup();
-    await svc.issue(db as never, { ...input, kind: 'TAKEDOWN' });
-    await expect(svc.issue(db as never, { ...input, kind: 'TAKEDOWN' })).rejects.toThrow(
-      ConflictException,
-    );
+    const first = await svc.issue(db as never, { ...input, kind: 'TAKEDOWN' });
+    const second = await svc.issue(db as never, { ...input, kind: 'TAKEDOWN' });
+    expect(first).not.toBe(second);
+    expect(await svc.peek(first, 'TAKEDOWN')).toMatchObject({ organization: { id: 'org1' } });
+    expect(await svc.peek(second, 'TAKEDOWN')).toMatchObject({ organization: { id: 'org1' } });
   });
 
   it('CLAIM is valid at exactly 7 days and EXPIRED after 7 days + 1s', async () => {

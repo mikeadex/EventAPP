@@ -1,4 +1,4 @@
-import { ConflictException, GoneException, Injectable } from '@nestjs/common';
+import { GoneException, Injectable } from '@nestjs/common';
 import type { ClaimTokenKind, Organization, OrganizationClaimToken, Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -48,12 +48,10 @@ export class ClaimTokensService {
         },
         data: { revokedAt: now },
       });
-    } else {
-      const existing = await tx.organizationClaimToken.findFirst({
-        where: { organizationId: input.organizationId, kind: 'TAKEDOWN' },
-      });
-      if (existing) throw new ConflictException('TAKEDOWN_TOKEN_EXISTS');
     }
+    // TAKEDOWN: every email carries a fresh one and older ones stay valid.
+    // None expires while the church is UNCLAIMED, and all of them die once it
+    // is CLAIMED or DISPUTED (peek, and the claim/take-down transactions).
 
     const raw = randomBytes(32).toString('base64url');
     await tx.organizationClaimToken.create({

@@ -9,12 +9,8 @@ export interface ClaimEmailData {
   contactName?: string | null;
   /** `${WEB_URL}/claim/<token>`. */
   claimUrl: string;
-  /**
-   * `${WEB_URL}/takedown/<token>`. Only the first email carries it: the
-   * take-down link survives resends, and only its hash is stored, so a resend
-   * cannot repeat it.
-   */
-  takedownUrl?: string | null;
+  /** `${WEB_URL}/takedown/<token>`. */
+  takedownUrl: string;
   /** How long the claim link stays valid, for the copy (e.g. "7 days"). */
   expiresInLabel?: string;
 }
@@ -38,26 +34,16 @@ export function claimButton(url: string, label: string): string {
 
 /** The "not yours?" paragraph, in HTML and in plain text. */
 export function takedownParts(data: ClaimEmailData): { html: string; text: string } {
-  if (data.takedownUrl) {
-    return {
-      html: `
+  return {
+    html: `
     <p style="margin:24px 0 0;font-size:14px;color:#5E5A52;">
       Not your church, or you'd rather not be listed?
       <a href="${escapeHtml(data.takedownUrl)}" style="color:#B17A2C;">Take it down</a>
       and we'll remove the page and its events straight away.
     </p>`,
-      text:
-        `Not your church, or you'd rather not be listed? Open this link and we'll ` +
-        `remove the page and its events straight away:\n${data.takedownUrl}\n\n`,
-    };
-  }
-  const line =
-    "Not your church, or you'd rather not be listed? The take-down link in our first " +
-    "email still works, or just reply to this one and we'll remove the page.";
-  return {
-    html: `
-    <p style="margin:24px 0 0;font-size:14px;color:#5E5A52;">${escapeHtml(line)}</p>`,
-    text: `${line}\n\n`,
+    text:
+      `Not your church, or you'd rather not be listed? Open this link and we'll ` +
+      `remove the page and its events straight away:\n${data.takedownUrl}\n\n`,
   };
 }
 
