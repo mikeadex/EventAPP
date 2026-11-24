@@ -4,6 +4,13 @@ import { EmailService } from '../email/email.service.js';
 import { passwordResetEmail } from '../email/templates/password-reset.js';
 import { verifyEmailTemplate } from '../email/templates/verify-email.js';
 import { buildSocialProviders } from './social-providers.js';
+import {
+  afterSignIn,
+  refuseLockedSignIn,
+  refuseTwoFactorEnable,
+  withoutTwoFactorFlag,
+  type SignInOutcome,
+} from './staff-signin.js';
 
 /**
  * better-auth is published as pure ESM: `"type": "module"`, a single
@@ -18,6 +25,7 @@ import { buildSocialProviders } from './social-providers.js';
  */
 import {
   loadBetterAuth,
+  loadBetterAuthApi,
   loadBetterAuthPlugins,
   loadBetterAuthPrismaAdapter,
 } from '../../../lib/load-esm.js';
@@ -44,6 +52,7 @@ const emailService = new EmailService();
 
 const RESET_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
 const VERIFY_TOKEN_TTL_SECONDS = 60 * 60 * 24; // 1 day — signing up is not always finished at a desk
+const TRUST_DEVICE_SECONDS = 60 * 60 * 24 * 7; // "Trust this device for 7 days" on the staff code step
 
 // Origins the API will accept auth requests from. Includes the mobile deep-link
 // scheme so the native app's bearer-token flow is trusted.
@@ -172,11 +181,19 @@ export function getAuth(): Promise<AuthInstance> {
 }
 
 async function createAuth() {
-  const [{ betterAuth }, { prismaAdapter }, { bearer, oneTimeToken }] = await Promise.all([
+  const [
+    { betterAuth },
+    { prismaAdapter },
+    { bearer, oneTimeToken, twoFactor },
+    { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError },
+  ] = await Promise.all([
     loadBetterAuth(),
     loadBetterAuthPrismaAdapter(),
     loadBetterAuthPlugins(),
+    loadBetterAuthApi(),
   ]);
+
+  const bearerPlugin = bearer();
 
   return betterAuth({
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -190,11 +207,67 @@ async function createAuth() {
     // app persists it in SecureStore and replays it, so login survives restarts.
     // (Web continues to use cookies — bearer is purely additive.)
     plugins: [
-      bearer(),
+      bearerPlugin,
       // Used only to hand a web-view session to the native app after social
       // sign-in; see native-handoff.controller.ts. Short-lived and single-use.
       oneTimeToken({ expiresIn: 3 }),
+      // 2-step codes for the staff admin console. Model `twoFactor` maps to
+      // Prisma's `TwoFactor` by the adapter's default camelCase naming, like
+      // user/session/account. Only staff can enable it (see hooks below), so
+      // no app user ever gets the code step the mobile app cannot show.
+      twoFactor({ issuer: 'Ekklesia Admin', trustDeviceMaxAge: TRUST_DEVICE_SECONDS }),
     ],
+    // Staff-only sign-in protection; see staff-signin.ts. These run before the
+    // plugins' hooks, and for anyone who is not staff they change nothing.
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        let refusal = null;
+        if (ctx.path === '/sign-in/email') {
+          refusal = await refuseLockedSignIn(prisma, ctx.body?.email, ctx.headers, new Date());
+        } else if (ctx.path === '/two-factor/enable') {
+          // This hook runs before the bearer plugin turns `Authorization:
+          // Bearer` into a session cookie, so a mobile-style request would look
+          // signed out here. Apply the bearer plugin's own conversion first, so
+          // this check resolves exactly the session the endpoint will.
+          const viaBearer = await bearerPlugin.hooks.before[0]?.handler(ctx);
+          const headers = viaBearer?.context?.headers ?? ctx.headers;
+          const session = await getSessionFromCtx({ ...ctx, headers });
+          refusal = await refuseTwoFactorEnable(prisma, session?.user.id);
+        }
+        if (refusal) throw new APIError(refusal.status, refusal.body);
+      }),
+      after: createAuthMiddleware(async (ctx) => {
+        const returned = ctx.context.returned;
+        // Sign-up answers with the same user object; keep it as it was too.
+        if (ctx.path === '/sign-up/email' && returned && !isAPIError(returned)) {
+          return ctx.json(withoutTwoFactorFlag(returned as Record<string, unknown>));
+        }
+        if (ctx.path !== '/sign-in/email') return;
+        let outcome: SignInOutcome = 'other';
+        if (ctx.context.newSession) outcome = 'ok';
+        else if (isAPIError(returned)) {
+          // Wrong password and unknown address answer alike (401); other
+          // refusals (unverified email, bad input) are not guesses at a password.
+          const err = returned as { statusCode?: number; body?: { code?: string } };
+          if (err.statusCode === 401 && err.body?.code === 'INVALID_EMAIL_OR_PASSWORD') {
+            outcome = 'failed';
+          }
+        }
+        await afterSignIn(prisma, {
+          email: ctx.body?.email,
+          outcome,
+          headers: ctx.headers,
+          now: new Date(),
+          twoFactorPending: ctx.context.newSession?.user.twoFactorEnabled === true,
+        });
+        // Keep the sign-in body exactly as it was before the twoFactor plugin
+        // (withoutTwoFactorFlag). A 2-step redirect is built by the plugin's own
+        // after-hook, which runs later and replaces this body for staff.
+        if (outcome === 'ok' && returned && !isAPIError(returned)) {
+          return ctx.json(withoutTwoFactorFlag(returned as Record<string, unknown>));
+        }
+      }),
+    },
     // Only providers whose credentials are present; see social-providers.ts.
     socialProviders: buildSocialProviders(),
     // Verification applies to email/password signups only. Google and Apple

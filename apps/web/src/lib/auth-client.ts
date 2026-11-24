@@ -1,5 +1,6 @@
 'use client';
 
+import { twoFactorClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 
 /**
@@ -11,6 +12,9 @@ export const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000',
   basePath: '/auth',
   fetchOptions: { credentials: 'include' },
+  // Staff 2-step (admin console). No `onTwoFactorRedirect`: the admin sign-in
+  // page reads `twoFactorRedirect` from the sign-in result and shows its code step.
+  plugins: [twoFactorClient()],
 });
 
 export const {
