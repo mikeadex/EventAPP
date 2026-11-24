@@ -64,6 +64,10 @@ const PATHS = {
   child: 'M12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM9 22v-7l-3-3 3-3h6l3 3-3 3v7',
   coffee: 'M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4ZM6 2v2M10 2v2M14 2v2',
   grid: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
+  // Admin console
+  dashboard: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+  flag: 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7',
+  house: 'M3 21h18M5 21V10l7-6 7 6v11M10 21v-5h4v5',
 } as const;
 
 export type IconName = keyof typeof PATHS;

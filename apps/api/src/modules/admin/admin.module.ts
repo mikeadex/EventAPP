@@ -27,7 +27,31 @@ import { AdminReportsService } from './admin-reports.service.js';
 @UseGuards(PlatformRoleGuard)
 @RequirePlatformRole('PLATFORM_MODERATOR')
 class AdminController {
-  constructor(private readonly reports: AdminReportsService) {}
+  constructor(
+    private readonly reports: AdminReportsService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /**
+   * Who is signed in to the console. The web layout calls this first: the
+   * guard's 401/403 (and its NEEDS_2FA / WRONG_DOMAIN codes) decide whether
+   * the shell renders at all. Lowest staff gate, so every staff role can
+   * reach the console even where its screens are hidden from them.
+   */
+  @Get('me')
+  @RequirePlatformRole('PLATFORM_SUPPORT')
+  async me(@Req() req: PlatformRequest) {
+    const row = await this.prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { name: true },
+    });
+    return {
+      id: req.user.id,
+      name: row?.name ?? null,
+      email: req.user.email,
+      platformRole: req.user.platformRole,
+    };
+  }
 
   @Get('reports')
   list(@Query('status') status?: string) {
