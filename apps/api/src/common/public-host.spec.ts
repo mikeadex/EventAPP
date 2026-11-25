@@ -51,6 +51,12 @@ const prisma = {
     ),
   },
   event: {
+    findFirst: jest.fn(async ({ where }: { where: { organization?: OrgWhere } }) => {
+      const e = events.find((x) =>
+        orgMatches(orgs.find((o) => o.id === x.organizationId)!, where.organization),
+      );
+      return e ? { id: e.id, status: 'CANCELLED' } : null;
+    }),
     findMany: jest.fn(async ({ where }: { where: { organization?: { is: OrgWhere } } }) =>
       events
         .filter((e) => orgMatches(orgs.find((o) => o.id === e.organizationId)!, where.organization?.is))
@@ -91,5 +97,12 @@ describe('public visibility of hosts', () => {
     await expect(orgsController.getBySlug('claimed')).resolves.toMatchObject({ slug: 'claimed' });
     await expect(orgsController.getBySlug('taken-down')).rejects.toBeInstanceOf(NotFoundException);
     await expect(orgsController.getBySlug('removed')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("a taken-down or removed host's event pages stay closed, even cancelled ones", async () => {
+    await expect(svc.getPublicBySlug('claimed', 'any')).resolves.toMatchObject({ id: 'e-claimed' });
+    await expect(svc.getPublicBySlug('unclaimed', 'any')).resolves.toMatchObject({ id: 'e-unclaimed' });
+    await expect(svc.getPublicBySlug('taken-down', 'any')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(svc.getPublicBySlug('removed', 'any')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
