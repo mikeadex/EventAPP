@@ -24,6 +24,8 @@ interface Report {
     id: string;
     label: string;
     slug: string | null;
+    /** Public page, when there is one to open (events only while published). */
+    publicPath: string | null;
     status: string | null;
   };
   actions: Action[];
@@ -181,9 +183,9 @@ export function ReportQueue() {
 
                 <p className="mt-3 text-[14px] text-body">
                   <span className="text-muted">Target: </span>
-                  {r.target.kind === 'event' && r.target.slug ? (
+                  {r.target.publicPath ? (
                     <a
-                      href={`/events/${r.target.slug}`}
+                      href={r.target.publicPath}
                       target="_blank"
                       rel="noreferrer"
                       className="underline"

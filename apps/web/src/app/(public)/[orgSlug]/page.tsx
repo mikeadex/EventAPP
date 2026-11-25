@@ -27,10 +27,8 @@ export default async function HostPage({ params }: { params: Params }) {
   const org = await load(orgSlug);
   if (!org) notFound();
 
-  // The public search has no host filter, so take the next 50 upcoming events
-  // and keep this host's. Enough for any host page today.
-  const upcoming = await searchEvents({ limit: 50 }).catch(() => null);
-  const events = upcoming?.items.filter((e) => e.organization.slug === orgSlug) ?? [];
+  const upcoming = await searchEvents({ host: orgSlug, limit: 50 }).catch(() => null);
+  const events = upcoming?.items ?? [];
 
   const website = safeHttpUrl(org.websiteUrl);
   const bio = org.description || org.shortDescription;

@@ -45,7 +45,13 @@ export class EventsService {
       status: 'PUBLISHED',
       visibility: 'PUBLIC',
       deletedAt: null,
-      organization: { is: { ...PUBLIC_HOST_WHERE, ...(includeDemo ? {} : { isDemo: false }) } },
+      organization: {
+        is: {
+          ...PUBLIC_HOST_WHERE,
+          ...(includeDemo ? {} : { isDemo: false }),
+          ...(input.host && { slug: input.host }),
+        },
+      },
       ...(input.category && {
         category: input.category.toUpperCase() as Prisma.EventWhereInput['category'],
       }),
@@ -236,7 +242,10 @@ export class EventsService {
         slug: eventSlug,
         deletedAt: null,
         organization: { slug: orgSlug },
-        status: 'PUBLISHED',
+        // A cancelled event keeps its page (with a "cancelled" note instead of
+        // the booking panel) so ticket holders' links and shares still land
+        // somewhere that explains. Booking is refused separately by status.
+        status: { in: ['PUBLISHED', 'CANCELLED'] },
         visibility: { in: ['PUBLIC', 'UNLISTED'] },
       },
       include: {

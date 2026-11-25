@@ -42,6 +42,8 @@ export interface SearchParams {
   startsAfter?: string;
   startsBefore?: string;
   free?: boolean;
+  /** Organization slug: only that host's events. */
+  host?: string;
   limit?: number;
   cursor?: string;
 }
@@ -54,6 +56,7 @@ export async function searchEvents(p: SearchParams = {}): Promise<EventSearchRes
   if (p.q) qs.set('q', p.q);
   if (p.category) qs.set('category', p.category);
   if (p.free) qs.set('free', 'true');
+  if (p.host) qs.set('host', p.host);
   if (p.cursor) qs.set('cursor', p.cursor);
   qs.set('limit', String(p.limit ?? 24));
   return api<EventSearchResult>(`/v1/events?${qs.toString()}`);

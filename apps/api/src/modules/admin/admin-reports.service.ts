@@ -58,7 +58,14 @@ export class AdminReportsService {
         reportedBy: { select: { email: true } },
         targetEventId: true,
         targetEvent: {
-          select: { id: true, title: true, slug: true, status: true, organizationId: true },
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            status: true,
+            organizationId: true,
+            organization: { select: { slug: true } },
+          },
         },
         targetOrgId: true,
         targetOrg: { select: { id: true, name: true, slug: true } },
@@ -102,6 +109,11 @@ export class AdminReportsService {
             id: r.targetEvent.id,
             label: r.targetEvent.title,
             slug: r.targetEvent.slug,
+            // The public page is /{orgSlug}/{eventSlug}, and only while published.
+            publicPath:
+              r.targetEvent.status === 'PUBLISHED'
+                ? `/${r.targetEvent.organization.slug}/${r.targetEvent.slug}`
+                : null,
             status: r.targetEvent.status,
           }
         : r.targetOrg
@@ -110,6 +122,7 @@ export class AdminReportsService {
               id: r.targetOrg.id,
               label: r.targetOrg.name,
               slug: r.targetOrg.slug,
+              publicPath: `/${r.targetOrg.slug}`,
               status: null,
             }
           : r.targetUserId
@@ -121,9 +134,10 @@ export class AdminReportsService {
                   userById.get(r.targetUserId)?.name ??
                   'Deleted account',
                 slug: null,
+                publicPath: null,
                 status: null,
               }
-            : { kind: 'unknown' as const, id: '', label: 'Target missing', slug: null, status: null },
+            : { kind: 'unknown' as const, id: '', label: 'Target missing', slug: null, publicPath: null, status: null },
       actions: r.actions.map((a) => ({
         id: a.id,
         action: a.action,

@@ -104,6 +104,8 @@ export const EventSearchSchema = z.object({
   category: EventCategory.optional(),
   country: z.string().length(2).optional(),
   city: z.string().max(120).optional(),
+  /** Only this host's events (organization slug), for the host page. */
+  host: z.string().max(120).optional(),
   startsAfter: z.string().datetime().optional(),
   startsBefore: z.string().datetime().optional(),
   free: z.coerce.boolean().optional(),
