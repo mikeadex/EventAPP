@@ -5,6 +5,7 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { money } from '@/lib/format';
 import { Field } from './controls';
 import { Icon } from './icons';
+import { Skeleton } from '@/components/ui';
 
 interface TicketType {
   id: string;
@@ -109,7 +110,13 @@ export function TicketTypesEditor({ eventId, disabled = false }: { eventId: stri
       )}
 
       {!loaded ? (
-        <p className="text-[14px] text-faint">Loading…</p>
+        <ul className="divide-y divide-line rounded-panel border border-line" aria-busy="true">
+          {[0, 1].map((i) => (
+            <li key={i} className="p-4">
+              <Skeleton className="h-10" />
+            </li>
+          ))}
+        </ul>
       ) : items.length > 0 ? (
         <ul className="divide-y divide-line rounded-panel border border-line">
           {items.map((t) => (

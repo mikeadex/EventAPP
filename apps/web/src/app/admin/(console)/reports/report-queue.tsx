@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { Skeleton } from '@/components/ui';
 
 interface Action {
   id: string;
@@ -158,7 +159,13 @@ export function ReportQueue() {
       </div>
 
       {reports === null ? (
-        <p className="mt-8 text-[14px] text-muted">Loading…</p>
+        <ul className="mt-6 space-y-4" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <li key={i}>
+              <Skeleton className="h-40 rounded-card" />
+            </li>
+          ))}
+        </ul>
       ) : reports.length === 0 ? (
         <p className="mt-8 text-[14px] text-muted">Nothing here.</p>
       ) : (

@@ -3,6 +3,10 @@ import type { IconName } from '@/components/icons';
 /**
  * The event categories the API accepts (`EventCategory` in @ekklesia/shared),
  * with the labels, icons and cover palettes the web shows for them.
+ *
+ * The palettes are art, not UI colour: `Cover` paints them into a generated
+ * image for events without a photo, and `.cover-art` inverts that image on
+ * the light theme. They are the one place hex is allowed outside tokens.
  */
 export const CATEGORIES = [
   { value: 'service', label: 'Service', icon: 'building', palette: ['#21161a', '#5e2a24', '#ffc9c2'] },

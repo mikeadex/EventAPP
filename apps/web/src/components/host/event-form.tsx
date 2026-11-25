@@ -406,6 +406,7 @@ export function TicketKind({ freeOnly = false }: { freeOnly?: boolean } = {}) {
           </button>
         ))}
       </div>
+      {/* TODO(confirm): docs/04 #7 — that free events carry no fee. */}
       <p className="text-[14px] leading-relaxed text-muted">
         Free events have no fees. Attendees get a QR ticket just the same. Paid and donation tickets aren&rsquo;t
         available yet.

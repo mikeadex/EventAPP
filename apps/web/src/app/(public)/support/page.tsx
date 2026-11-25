@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LegalPage, Section } from '../legal-layout';
+import { SUPPORT_EMAIL } from '@/lib/contact';
 
 export const metadata: Metadata = {
   title: 'Support',
   description: 'Get help with Ekklesia, report a problem, or contact us.',
 };
 
-const CONTACT = 'david@ekklesiaevents.com';
+const CONTACT = SUPPORT_EMAIL;
 
 function Mail() {
   return <a href={`mailto:${CONTACT}`}>{CONTACT}</a>;

@@ -656,8 +656,8 @@ export function SignInFlow() {
               value={setup.totpURI}
               size={184}
               level="M"
-              bgColor="#FFFFFF"
-              fgColor="#16140F"
+              bgColor="var(--qr-bg)"
+              fgColor="var(--qr-ink)"
             />
           </div>
           <div className="flex flex-col gap-1.5">

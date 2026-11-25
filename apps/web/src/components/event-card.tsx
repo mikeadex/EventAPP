@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import type { EventCardData } from '@/lib/types';
 import { categoryOf } from '@/lib/categories';
-import { cardPrice, fmtDay, fmtTime, fmtWhen } from '@/lib/format';
+import { cardPrice, fmtWhen } from '@/lib/format';
 import { eventHref } from '@/lib/url';
 import { Cover } from './cover';
 import { SaveButton } from './client';
@@ -50,55 +50,6 @@ export function EventCard({
             <span className="text-accent">{cardPrice(event)}</span>
           )}
           <span className="text-faint">{event.attendeeCount} going</span>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-/** Overlay card — title set over the photo with a scrim (home "Happening soon"). */
-export function EventFeatureCard({ event, tall = false }: { event: EventCardData; tall?: boolean }) {
-  return (
-    <article
-      className={`group relative overflow-hidden rounded-card border border-line bg-surface-2 ${
-        tall ? 'min-h-[420px]' : 'min-h-[260px]'
-      }`}
-    >
-      <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-[1.03]">
-        <Cover image={event.coverImageUrl} category={event.category} title={event.title} />
-      </div>
-      <div className="scrim-card" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-4">
-        <span className="tag-solid">{categoryOf(event.category).label}</span>
-        <span className="pointer-events-auto">
-          <Suspense fallback={null}>
-            <SaveButton eventId={event.id} title={event.title} />
-          </Suspense>
-        </span>
-      </div>
-      <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-5 sm:p-6">
-        <h3 className={`${tall ? 'text-[30px] sm:text-[34px]' : 'text-[22px]'} leading-[1.05] text-strong`}>
-          <Link href={eventHref(event) as never} className="after:absolute after:inset-0">
-            {event.title}
-          </Link>
-        </h3>
-        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[14px] text-ink-2">
-          <span className="inline-flex items-center gap-1.5">
-            <Icon name="calendar" size={15} className="text-accent" /> {fmtDay(event.startsAt, event.timezone)}
-          </span>
-          <span className="dot" aria-hidden="true" />
-          <span className="inline-flex items-center gap-1.5">
-            <Icon name="clock" size={15} className="text-accent" /> {fmtTime(event.startsAt, event.timezone)}
-          </span>
-          {tall && (event.venue || event.isOnline) && (
-            <>
-              <span className="dot" aria-hidden="true" />
-              <span className="inline-flex items-center gap-1.5">
-                <Icon name="pin" size={15} className="text-accent" />
-                {event.venue ? event.venue.city : 'Online'}
-              </span>
-            </>
-          )}
         </div>
       </div>
     </article>

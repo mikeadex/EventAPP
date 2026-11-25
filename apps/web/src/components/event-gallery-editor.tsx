@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { Skeleton } from '@/components/ui';
 
 interface Media {
   id: string;
@@ -227,7 +228,11 @@ export function EventGalleryEditor({
       )}
 
       {items === null ? (
-        <p className="text-[14px] text-faint">Loading…</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="aspect-[16/10] rounded-card" />
+          ))}
+        </div>
       ) : items.length === 0 ? (
         <p className="rounded-panel border border-dashed border-line-2 p-6 text-center text-[14px] text-muted">
           No photos yet. Add pictures from a previous event so people know what to expect.

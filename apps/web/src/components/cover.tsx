@@ -35,7 +35,7 @@ export function Cover({
       aria-hidden="true"
       className={`cover-art absolute inset-0 overflow-hidden ${className}`}
       style={{
-        background: `radial-gradient(120% 90% at ${Math.round(cx / 4)}% ${Math.round(cy / 2.4)}%, ${b} 0%, ${a} 55%, #0d0a0b 100%)`,
+        background: `radial-gradient(120% 90% at ${Math.round(cx / 4)}% ${Math.round(cy / 2.4)}%, ${b} 0%, ${a} 55%, var(--cover-base) 100%)`,
       }}
     >
       <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">

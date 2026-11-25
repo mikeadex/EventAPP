@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LegalPage, Section } from '../legal-layout';
+import { SUPPORT_EMAIL } from '@/lib/contact';
 
 export const metadata: Metadata = {
   title: 'Delete your account',
   description: 'How to permanently delete your Ekklesia account and what happens to your data.',
 };
 
-const CONTACT = 'david@ekklesiaevents.com';
+const CONTACT = SUPPORT_EMAIL;
 
 /**
  * How to delete an account without the app installed.

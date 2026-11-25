@@ -12,7 +12,8 @@
    ===================================================================== */
 
 :root,
-[data-theme='dark'] {
+[data-theme='dark'],
+.force-dark {
   color-scheme: dark;
   --bg: #0d0a0b;
   --raised: #131013;
@@ -78,6 +79,14 @@
   --line-3: rgba(var(--accent-rgb), 0.5);
   --soft: rgba(var(--accent-rgb), 0.12);
   --softer: rgba(var(--accent-rgb), 0.07);
+}
+
+/* Theme-independent: generated cover art is drawn dark and inverted on light
+   (see .cover-art), and a QR code must stay dark-on-white to scan. */
+:root {
+  --cover-base: #0d0a0b;
+  --qr-ink: #16140f;
+  --qr-bg: #ffffff;
 }
 
 @layer base {

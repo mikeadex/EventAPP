@@ -25,18 +25,6 @@ const config: Config = {
         ink: {
           DEFAULT: v('ink'),
           2: v('ink-2'),
-          // legacy aliases
-          0: v('surface'),
-          50: v('raised'),
-          100: v('line'),
-          200: v('line-2'),
-          300: v('line-3'),
-          400: v('faint'),
-          500: v('muted'),
-          600: v('body'),
-          700: v('ink-2'),
-          800: v('ink'),
-          900: v('strong'),
         },
         body: v('body'),
         muted: v('muted'),
@@ -46,18 +34,6 @@ const config: Config = {
         line: { DEFAULT: v('line'), 2: v('line-2'), 3: v('line-3') },
         soft: v('soft'),
         softer: v('softer'),
-        // legacy aliases
-        brand: {
-          50: v('softer'),
-          100: v('soft'),
-          200: v('line-2'),
-          300: v('line-3'),
-          500: v('accent'),
-          600: v('accent'),
-          700: v('accent-ink'),
-        },
-        danger: v('accent'),
-        success: v('accent'),
       },
       fontFamily: {
         sans: ['Alata', 'ui-sans-serif', 'system-ui', 'sans-serif'],

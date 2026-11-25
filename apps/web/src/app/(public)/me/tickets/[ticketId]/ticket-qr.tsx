@@ -17,8 +17,8 @@ export function TicketQr({ value, size = 224 }: { value: string; size?: number }
       // High error-correction makes the code scan reliably even on a phone
       // screen with reflections or partial smudges.
       level="H"
-      bgColor="#FFFFFF"
-      fgColor="#16140F"
+      bgColor="var(--qr-bg)"
+      fgColor="var(--qr-ink)"
     />
   );
 }

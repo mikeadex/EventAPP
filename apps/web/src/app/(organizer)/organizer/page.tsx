@@ -20,7 +20,17 @@ export default function OrganizerHomePage() {
   }, [only, router]);
 
   if (me.status === 'loading' || only) return <Skeleton className="h-64 rounded-card" />;
-  if (me.status === 'error') return <ErrorCard message={me.error} />;
+  if (me.status === 'error')
+    return (
+      <ErrorCard
+        message={me.error}
+        action={
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => me.reload()}>
+            Try again
+          </button>
+        }
+      />
+    );
 
   if (orgs.length === 0) {
     return (

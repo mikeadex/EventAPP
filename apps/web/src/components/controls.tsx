@@ -181,38 +181,3 @@ export const PasswordInput = forwardRef<
   );
 });
 
-/** Segmented control (radio group styled as chips). */
-export function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-  label,
-}: {
-  value: T;
-  options: readonly { value: T; label: string }[];
-  onChange: (v: T) => void;
-  label: string;
-}) {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-2">
-      <span id={id} className="label">
-        {label}
-      </span>
-      <div role="radiogroup" aria-labelledby={id} className="flex flex-wrap gap-2">
-        {options.map((o) => (
-          <button
-            key={o.value}
-            type="button"
-            role="radio"
-            aria-checked={value === o.value}
-            onClick={() => onChange(o.value)}
-            className={`chip ${value === o.value ? 'on' : ''}`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
