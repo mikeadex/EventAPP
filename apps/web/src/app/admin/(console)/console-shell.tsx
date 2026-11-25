@@ -13,7 +13,7 @@ type Gate = { state: 'checking' } | { state: 'ok'; me: AdminMe } | { state: 'err
 
 function sectionFor(pathname: string): AdminSection | undefined {
   if (pathname === '/admin') return 'overview';
-  for (const s of ['reports', 'hosts', 'events'] as const) {
+  for (const s of ['reports', 'hosts', 'events', 'flags'] as const) {
     if (pathname === `/admin/${s}` || pathname.startsWith(`/admin/${s}/`)) return s;
   }
   return undefined;
