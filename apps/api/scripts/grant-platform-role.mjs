@@ -23,9 +23,13 @@
  * Pass --list-offdomain to list staff-role accounts outside @ekklesiaevents.com
  * (changes nothing).
  * Any non-USER role is refused for an address outside @ekklesiaevents.com.
+ * Changing a role signs the account out everywhere (see platform-role-change.cjs).
  */
 
 import { PrismaClient } from '@prisma/client';
+import roleChange from './platform-role-change.cjs';
+
+const { changePlatformRole } = roleChange;
 
 const ROLES = ['USER', 'PLATFORM_SUPPORT', 'PLATFORM_MODERATOR', 'PLATFORM_ADMIN', 'PLATFORM_FINANCE'];
 // Keep in step with apps/api/src/common/staff.ts (STAFF_DOMAIN, isStaffEmail).
@@ -100,22 +104,16 @@ try {
     } else if (user.platformRole === role) {
       console.log(`Already ${role}. Nothing to do.`);
     } else if (dryRun) {
-      console.log(`Would change ${user.platformRole} -> ${role}.`);
+      console.log(`Would change ${user.platformRole} -> ${role} and end their sessions.`);
     } else {
-      await prisma.user.update({ where: { id: user.id }, data: { platformRole: role } });
-      // Written by hand rather than through AuditLogService: this runs outside
-      // Nest, and a role change is exactly the kind of thing that should be
-      // answerable later.
-      await prisma.auditLog.create({
-        data: {
-          actorUserId: user.id,
-          action: 'user.platform_role.grant',
-          targetType: 'user',
-          targetId: user.id,
-          metadata: { from: user.platformRole, to: role, via: 'grant-platform-role script' },
-        },
-      });
+      const { sessionsEnded } = await changePlatformRole(
+        prisma,
+        user,
+        role,
+        'grant-platform-role script',
+      );
       console.log(`Done. ${user.email} is now ${role} (was ${user.platformRole}).`);
+      console.log(`Signed out of ${sessionsEnded} session(s); they sign in again to pick it up.`);
       if (!user.emailVerified) {
         console.log(`Note: this account's email is not verified.`);
       }
