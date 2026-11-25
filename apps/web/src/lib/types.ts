@@ -121,6 +121,30 @@ export interface Me {
 /** `Organization.payoutStatus`: where a host is with Stripe Connect. */
 export type PayoutStatus = 'NOT_STARTED' | 'ONBOARDING' | 'RESTRICTED' | 'ENABLED' | 'DISABLED';
 
+/** GET /v1/organizations/:orgId/connect/payouts — read from the host's Stripe account. */
+export interface ConnectPayouts {
+  balance: {
+    available: { amountMinor: number; currency: string } | null;
+    pending: { amountMinor: number; currency: string } | null;
+  } | null;
+  schedule: {
+    interval: 'manual' | 'daily' | 'weekly' | 'monthly';
+    weeklyAnchor: string | null;
+    monthlyAnchor: number | null;
+    delayDays: number;
+  } | null;
+  items: {
+    id: string;
+    amountMinor: number;
+    currency: string;
+    status: 'paid' | 'pending' | 'in_transit' | 'canceled' | 'failed';
+    arrivalDate: string;
+    createdAt: string;
+    method: string;
+    failureMessage: string | null;
+  }[];
+}
+
 /** GET /v1/organizations/:orgId/connect/status */
 export interface ConnectStatus {
   status: PayoutStatus;

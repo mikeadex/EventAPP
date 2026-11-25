@@ -141,6 +141,62 @@ export class ConnectService {
   }
 
   /**
+   * What has been, and will be, paid out — read from the connected account.
+   *
+   * Stripe is the ledger: payouts are scheduled and sent from the host's own
+   * account, and nothing in our database knows about them. `pending` is what
+   * Stripe is still settling, `available` what the next payout will carry.
+   */
+  async payouts(orgId: string, limit = 20) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { stripeAccountId: true, payoutStatus: true },
+    });
+    if (!org) throw new NotFoundException('Organisation not found');
+    if (!org.stripeAccountId) {
+      return { balance: null, schedule: null, items: [] };
+    }
+    const opts = { stripeAccount: org.stripeAccountId };
+    const [balance, account, list] = await Promise.all([
+      this.stripe.client.balance.retrieve(undefined, opts),
+      this.stripe.client.accounts.retrieve(org.stripeAccountId),
+      this.stripe.client.payouts.list({ limit: Math.min(100, Math.max(1, limit)) }, opts),
+    ]);
+    const sum = (rows: { amount: number; currency: string }[]) => {
+      // One currency per account in practice; report the first, never add
+      // across currencies.
+      const first = rows[0];
+      if (!first) return null;
+      const amountMinor = rows
+        .filter((r) => r.currency === first.currency)
+        .reduce((n, r) => n + r.amount, 0);
+      return { amountMinor, currency: first.currency.toUpperCase() };
+    };
+    const schedule = account.settings?.payouts?.schedule;
+    return {
+      balance: { available: sum(balance.available), pending: sum(balance.pending) },
+      schedule: schedule
+        ? {
+            interval: schedule.interval,
+            weeklyAnchor: schedule.weekly_anchor ?? null,
+            monthlyAnchor: schedule.monthly_anchor ?? null,
+            delayDays: schedule.delay_days,
+          }
+        : null,
+      items: list.data.map((p) => ({
+        id: p.id,
+        amountMinor: p.amount,
+        currency: p.currency.toUpperCase(),
+        status: p.status,
+        arrivalDate: new Date(p.arrival_date * 1000).toISOString(),
+        createdAt: new Date(p.created * 1000).toISOString(),
+        method: p.method,
+        failureMessage: p.failure_message ?? null,
+      })),
+    };
+  }
+
+  /**
    * Stripe's account flags collapsed into our enum.
    *
    * `payouts_enabled` is the one that matters for the rule above: an account

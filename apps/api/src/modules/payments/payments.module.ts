@@ -86,6 +86,13 @@ class ConnectController {
     return this.connect.status(orgId);
   }
 
+  /** Balance and past payouts, straight from the connected Stripe account. */
+  @Get('payouts')
+  @RequirePermissions(Permission.PAYOUT_VIEW)
+  payouts(@Param('orgId') orgId: string) {
+    return this.connect.payouts(orgId);
+  }
+
   @Post('onboard')
   @RequirePermissions(Permission.PAYOUT_MANAGE)
   onboard(@Param('orgId') orgId: string, @Req() req: AuthedRequest) {
