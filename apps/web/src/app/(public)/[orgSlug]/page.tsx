@@ -4,6 +4,7 @@ import type { Organization } from '@/lib/types';
 import { EventCard } from '@/components/event-card';
 import { Icon } from '@/components/icons';
 import { Avatar, EmptyState } from '@/components/ui';
+import { UnclaimedNote } from '@/components/unclaimed-note';
 import { safeHttpUrl } from '@/lib/url';
 
 export const revalidate = 300;
@@ -56,6 +57,7 @@ export default async function HostPage({ params }: { params: Params }) {
             <div className="flex flex-col gap-3">
               <span className="tag self-start">{KIND[org.kind] ?? 'Host'}</span>
               <h1 className="h1">{org.name}</h1>
+              <UnclaimedNote claimStatus={org.claimStatus} name={org.name} className="-my-2" />
               {website && (
                 <a
                   href={website}

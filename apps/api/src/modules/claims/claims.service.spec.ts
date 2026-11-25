@@ -526,7 +526,10 @@ describe('ClaimsService', () => {
 
       await expect(
         svc.claimWithPassword(raw, { name: 'Ruth Ade', password: PASSWORD }, undefined),
-      ).resolves.toEqual({ email: 'pastor@grace.org' });
+      ).resolves.toEqual({
+        email: 'pastor@grace.org',
+        organization: { id: 'org1', slug: 'grace-chapel', name: 'Grace Chapel' },
+      });
 
       expect(accounts.createPasswordUser).not.toHaveBeenCalled();
       expect(db.state.users).toEqual([{ ...squatter, name: 'Ruth Ade', emailVerified: true }]);
@@ -594,7 +597,10 @@ describe('ClaimsService', () => {
 
       await expect(
         svc.claimWithPassword(raw, { name: '  Ruth Ade ', password: PASSWORD }, undefined),
-      ).resolves.toEqual({ email: 'pastor@grace.org' });
+      ).resolves.toEqual({
+        email: 'pastor@grace.org',
+        organization: { id: 'org1', slug: 'grace-chapel', name: 'Grace Chapel' },
+      });
 
       expect(accounts.createPasswordUser).toHaveBeenCalledWith({
         email: 'pastor@grace.org',

@@ -18,6 +18,7 @@ import { Cover } from '@/components/cover';
 import { SaveButton, ShareButton } from '@/components/client';
 import { Icon } from '@/components/icons';
 import { Avatar } from '@/components/ui';
+import { UnclaimedNote } from '@/components/unclaimed-note';
 import { BookingPanel, MobileBookingBar } from './booking-panel';
 
 export const revalidate = 60;
@@ -159,6 +160,12 @@ export default async function EventDetailPage({ params }: { params: Params }) {
 
       <div className="wrap grid items-start gap-16 pt-10 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className="flex min-w-0 flex-col gap-12">
+          {/* Under the header rather than on the photo, where it could not be read. */}
+          <UnclaimedNote
+            claimStatus={event.organization.claimStatus}
+            name={event.organization.name}
+            className="-mb-10 -mt-3"
+          />
           {/* Location · Date · Time with fading dividers */}
           <dl className="card grid gap-5 p-6 sm:grid-cols-[minmax(0,1.3fr)_1px_minmax(0,1fr)_1px_minmax(0,0.8fr)]">
             <Fact label="Location" value={where?.name ?? 'Online'} sub={event.venue?.city ?? (event.isOnline ? 'Link shared after RSVP' : '')} />

@@ -55,6 +55,9 @@ type Valid = { token: OrganizationClaimToken; organization: Organization };
 
 const gone = (code: ClaimTokenError) => new GoneException({ code });
 
+/** What a successful claim answers with, so the web can open the host dashboard. */
+const claimed = (o: Organization) => ({ id: o.id, slug: o.slug, name: o.name });
+
 /**
  * Lets a church's contact claim, or take down, a page that staff added.
  *
@@ -100,8 +103,8 @@ export class ClaimsService {
   }
 
   /**
-   * Claim with a new account. The web signs in with `signIn.email` afterwards;
-   * no session is made here.
+   * Claim with a new account. The web signs in with `signIn.email` afterwards
+   * and opens the church's dashboard; no session is made here.
    */
   async claimWithPassword(raw: string, body: unknown, req: Request | undefined) {
     const input = PasswordClaimSchema.parse(body);
@@ -123,7 +126,7 @@ export class ClaimsService {
         name: input.name,
         passwordHash,
       });
-      return { email };
+      return { email, organization: claimed(organization) };
     }
 
     let user: { id: string };
@@ -155,7 +158,7 @@ export class ClaimsService {
         );
       throw err;
     }
-    return { email };
+    return { email, organization: claimed(organization) };
   }
 
   /** Claim for the signed-in account, whose address must be the one invited. */
@@ -172,9 +175,7 @@ export class ClaimsService {
     // Staff accounts are for the console, not for owning a church.
     if (account.platformRole !== 'USER') throw new ForbiddenException({ code: 'STAFF_ACCOUNT' });
     await this.complete(raw, organization.id, user.id, 'attach', req);
-    return {
-      organization: { id: organization.id, slug: organization.slug, name: organization.name },
-    };
+    return { organization: claimed(organization) };
   }
 
   private async complete(
