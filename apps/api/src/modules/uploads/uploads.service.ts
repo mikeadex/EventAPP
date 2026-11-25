@@ -93,6 +93,11 @@ export class UploadsService {
       credentials: { accessKeyId, secretAccessKey },
       // MinIO requires path-style addressing; real AWS S3 accepts it too.
       forcePathStyle: true,
+      // SDK >= 3.729 otherwise signs a CRC32 of the *empty* body into every
+      // presigned PUT (x-amz-checksum-crc32=AAAAAA==), so the real upload
+      // fails the checksum check on Backblaze B2 and other S3-compatibles.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
     });
   }
 
