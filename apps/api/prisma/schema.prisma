@@ -6,7 +6,7 @@
 //   - Money stored as Int (minor units) + currency string.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // "native" covers local dev (darwin-arm64). Vercel's Node runtime is Amazon
   // Linux 2023, which needs the rhel-openssl-3.0.x query engine — without it
   // the function crashes at $connect() with "Query engine library could not be
@@ -24,44 +24,44 @@ datasource db {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  name          String?
-  image         String?
-  platformRole  PlatformRole @default(USER)
+  id               String       @id @default(cuid())
+  email            String       @unique
+  emailVerified    Boolean      @default(false)
+  name             String?
+  image            String?
+  platformRole     PlatformRole @default(USER)
   // Lets this account see organisations marked `isDemo` in public discovery.
   // Set on the store-review account so a reviewer signing in with the supplied
   // credentials sees a populated app, while everyone else sees only real
   // listings. Not a role: it grants visibility of seed data, nothing else.
-  seesDemoContent Boolean @default(false)
+  seesDemoContent  Boolean      @default(false)
   // Better Auth `twoFactor` plugin flag. Required of staff before the admin
   // surface opens to them.
-  twoFactorEnabled Boolean @default(false)
+  twoFactorEnabled Boolean      @default(false)
   // Consecutive failed sign-ins and the time until which sign-in is refused.
-  failedSignIns    Int       @default(0)
+  failedSignIns    Int          @default(0)
   lockedUntil      DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  deletedAt        DateTime?
 
-  profile          Profile?
-  accounts         Account[]
-  sessions         Session[]
-  memberships      OrganizationMembership[]
-  orders           Order[]
-  tickets          Ticket[]
-  donations        Donation[]
-  savedEvents      SavedEvent[]
-  devices          Device[]
-  blocks           Block[]      @relation("BlocksMade")
-  reportsFiled     Report[]               @relation("ReportsFiled")
-  moderationActs   ModerationAction[]
+  profile           Profile?
+  accounts          Account[]
+  sessions          Session[]
+  memberships       OrganizationMembership[]
+  orders            Order[]
+  tickets           Ticket[]
+  donations         Donation[]
+  savedEvents       SavedEvent[]
+  devices           Device[]
+  blocks            Block[]                  @relation("BlocksMade")
+  reportsFiled      Report[]                 @relation("ReportsFiled")
+  moderationActs    ModerationAction[]
   notificationPrefs NotificationPreference?
-  consents         Consent[]
-  auditLogs        AuditLog[]
-  twoFactors       TwoFactor[]
-  orgsAdded        Organization[] @relation("OrganizationAddedBy")
+  consents          Consent[]
+  auditLogs         AuditLog[]
+  twoFactors        TwoFactor[]
+  orgsAdded         Organization[]           @relation("OrganizationAddedBy")
 
   @@index([deletedAt])
 }
@@ -75,23 +75,23 @@ enum PlatformRole {
 }
 
 model Profile {
-  userId       String   @id
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  displayName  String
-  bio          String?
-  phone        String?
-  country      String?  @db.Char(2)
-  city         String?
-  locale       String?  @default("en-GB")
-  avatarUrl    String?
-  updatedAt    DateTime @updatedAt
+  userId      String   @id
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  bio         String?
+  phone       String?
+  country     String?  @db.Char(2)
+  city        String?
+  locale      String?  @default("en-GB")
+  avatarUrl   String?
+  updatedAt   DateTime @updatedAt
 }
 
 // Better Auth tables ---------------------------------------------------------
 model Account {
-  id                    String   @id @default(cuid())
+  id                    String    @id @default(cuid())
   userId                String
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   providerId            String
   accountId             String
   password              String?
@@ -101,8 +101,8 @@ model Account {
   accessTokenExpiresAt  DateTime?
   refreshTokenExpiresAt DateTime?
   scope                 String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@unique([providerId, accountId])
   @@index([userId])
@@ -126,12 +126,12 @@ model Session {
 // Better Auth `twoFactor` plugin table (secret and backup codes are stored
 // encrypted by the plugin).
 model TwoFactor {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   secret      String
   backupCodes String
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  verified    Boolean  @default(true)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified    Boolean @default(true)
 
   @@index([secret])
   @@index([userId])
@@ -153,25 +153,25 @@ model Verification {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Organization {
-  id                String   @id @default(cuid())
-  slug              String   @unique
-  name              String
-  kind              OrgKind  @default(CHURCH)
-  shortDescription  String?
-  description       String?
-  websiteUrl        String?
-  logoUrl           String?
-  coverImageUrl     String?
-  country           String   @db.Char(2)
-  currency          String   @db.Char(3)
-  timezone          String   @default("Europe/London")
+  id               String  @id @default(cuid())
+  slug             String  @unique
+  name             String
+  kind             OrgKind @default(CHURCH)
+  shortDescription String?
+  description      String?
+  websiteUrl       String?
+  logoUrl          String?
+  coverImageUrl    String?
+  country          String  @db.Char(2)
+  currency         String  @db.Char(3)
+  timezone         String  @default("Europe/London")
 
   // Seed and demonstration organisations. Their events are fabricated — a real
   // venue and time with nothing actually happening — so they are kept out of
   // public discovery and shown only to accounts with `User.seesDemoContent`.
   // Events stay reachable by direct link whatever this says, because people
   // already hold tickets to some of them and a ticket must still open.
-  isDemo            Boolean  @default(false)
+  isDemo Boolean @default(false)
 
   // Whether the organisation's own contact has taken control of the page.
   // Staff-added organisations start UNCLAIMED. Existing rows default CLAIMED.
@@ -180,36 +180,37 @@ model Organization {
   addedByUserId String?
   addedBy       User?       @relation("OrganizationAddedBy", fields: [addedByUserId], references: [id], onDelete: SetNull)
 
-  verificationStatus VerificationStatus @default(UNVERIFIED)
-  verifiedAt         DateTime?
+  verificationStatus      VerificationStatus @default(UNVERIFIED)
+  verifiedAt              DateTime?
   verificationSubmittedAt DateTime?
 
   // Details a host supplies so a human can check they are a real organisation
   // before their events are trusted. Not shown publicly — the contact fields in
   // particular exist for review and support, not for display.
-  contactName   String?
-  contactEmail  String?
-  contactPhone  String?
-  addressLine1  String?
-  city          String?
-  postalCode    String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  addressLine1 String?
+  city         String?
+  postalCode   String?
 
   // Stripe Connect
-  stripeAccountId    String?  @unique
-  payoutStatus       PayoutStatus @default(NOT_STARTED)
+  stripeAccountId String?      @unique
+  payoutStatus    PayoutStatus @default(NOT_STARTED)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  memberships    OrganizationMembership[]
-  events         Event[]
-  donations      Donation[]
-  payouts        Payout[]
-  featureFlags   OrganizationFeatureFlag[]
-  reports        Report[]                 @relation("ReportsAgainstOrg")
-  auditLogs      AuditLog[]
-  claimTokens    OrganizationClaimToken[]
+  memberships  OrganizationMembership[]
+  events       Event[]
+  eventSeries  EventSeries[]
+  donations    Donation[]
+  payouts      Payout[]
+  featureFlags OrganizationFeatureFlag[]
+  reports      Report[]                  @relation("ReportsAgainstOrg")
+  auditLogs    AuditLog[]
+  claimTokens  OrganizationClaimToken[]
 
   @@index([country])
   @@index([claimStatus])
@@ -269,16 +270,16 @@ enum PayoutStatus {
 }
 
 model OrganizationMembership {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   role           OrgRole
   invitedAt      DateTime?
   acceptedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([userId, organizationId])
   @@index([organizationId, role])
@@ -323,7 +324,7 @@ model OrganizationFeatureFlag {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Event {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   slug           String
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -332,22 +333,38 @@ model Event {
   summary     String?
   description String?
   category    EventCategory
-  status      EventStatus    @default(DRAFT)
+  status      EventStatus     @default(DRAFT)
   visibility  EventVisibility @default(PUBLIC)
 
-  startsAt   DateTime
-  endsAt     DateTime
-  timezone   String
+  startsAt DateTime
+  endsAt   DateTime
+  timezone String
 
-  isOnline      Boolean @default(false)
-  onlineUrl     String?
-  venueId       String?
-  venue         Venue?  @relation(fields: [venueId], references: [id])
+  isOnline  Boolean @default(false)
+  onlineUrl String?
+  venueId   String?
+  venue     Venue?  @relation(fields: [venueId], references: [id])
 
   capacity      Int?
-  attendeeCount Int     @default(0)
+  attendeeCount Int          @default(0)
   coverImageUrl String?
   media         EventMedia[]
+
+  /// Set when this event is one occurrence of a repeating series.
+  seriesId String?
+  series   EventSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+
+  /// The one occurrence of its series that discovery shows.
+  ///
+  /// Without this a weekly service generated six months ahead would put
+  /// twenty-six identical cards in the feed and bury everything else. The
+  /// others stay fully reachable by link and by the event's own page — they
+  /// are not hidden, just not repeated in a list meant for browsing.
+  ///
+  /// `true` for every standalone event so the discovery filter is a single
+  /// condition rather than a null-check, and a cron rolls it forward as each
+  /// occurrence passes.
+  seriesLead Boolean @default(true)
 
   publishedAt DateTime?
   cancelledAt DateTime?
@@ -362,7 +379,9 @@ model Event {
   reports     Report[]     @relation("ReportsAgainstEvent")
 
   @@unique([organizationId, slug])
+  @@index([status, visibility, seriesLead, startsAt])
   @@index([status, visibility, startsAt])
+  @@index([seriesId, startsAt])
   @@index([category, startsAt])
   @@index([organizationId])
   @@index([deletedAt])
@@ -374,6 +393,68 @@ enum EventStatus {
   PUBLISHED
   CANCELLED
   COMPLETED
+}
+
+/// How a series repeats. Deliberately a short list rather than an RRULE
+/// string: these four cover what churches and community groups actually run —
+/// a weekly service, a fortnightly group, a monthly "first Sunday" — and each
+/// is something an organiser can pick without being taught iCalendar.
+enum RecurrenceFreq {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY_BY_DATE
+  MONTHLY_BY_WEEKDAY
+}
+
+/// A repeating event.
+///
+/// The occurrences are REAL `Event` rows carrying `seriesId`, not dates
+/// computed at read time. That is the whole design decision and it is made
+/// for this schema specifically: Ticket, Order, SavedEvent, Report and
+/// check-in all have foreign keys to Event, so a materialised occurrence
+/// keeps every one of them working untouched. Computed occurrences would need
+/// an occurrence discriminator threaded through all of them.
+///
+/// The cost is row count and a horizon, which is what `generatedUntil` is for.
+model EventSeries {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  freq       RecurrenceFreq
+  /// Every N periods. 2 with WEEKLY is the same as FORTNIGHTLY; both exist
+  /// because "fortnightly" is what people say and an interval is what
+  /// generalises.
+  interval   Int            @default(1)
+  /// 0 = Sunday .. 6 = Saturday. Several for "Tuesdays and Thursdays".
+  /// Empty for the monthly frequencies, which take their day from the start.
+  byWeekday  Int[]
+  /// For MONTHLY_BY_WEEKDAY: 1..4 for first..fourth, -1 for last.
+  nthWeekday Int?
+
+  /// The clock time and date the first occurrence starts, and how long each
+  /// one runs. Stored rather than derived so a series can be regenerated
+  /// without consulting an existing occurrence.
+  startsAt        DateTime
+  durationMinutes Int
+  timezone        String
+
+  /// Stop conditions. Either, both, or neither — generation stops at
+  /// whichever arrives first, and always at the horizon.
+  until DateTime?
+  count Int?
+
+  /// How far occurrences have been materialised. The top-up job reads this.
+  generatedUntil DateTime?
+
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  events Event[]
+
+  @@index([organizationId])
+  @@index([generatedUntil])
 }
 
 enum EventVisibility {
@@ -398,14 +479,14 @@ enum EventCategory {
 }
 
 model Venue {
-  id           String  @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
   addressLine1 String
   addressLine2 String?
   city         String
   region       String?
   postalCode   String
-  country      String  @db.Char(2)
+  country      String   @db.Char(2)
   latitude     Float?
   longitude    Float?
   createdAt    DateTime @default(now())
@@ -415,51 +496,51 @@ model Venue {
 }
 
 model TicketType {
-  id           String   @id @default(cuid())
-  eventId      String
-  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  name         String
-  description  String?
-  priceMinor   Int
-  currency     String   @db.Char(3)
-  quantity     Int
-  sold         Int      @default(0)
-  perOrderMax  Int      @default(10)
-  salesStart   DateTime?
-  salesEnd     DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String    @id @default(cuid())
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  priceMinor  Int
+  currency    String    @db.Char(3)
+  quantity    Int
+  sold        Int       @default(0)
+  perOrderMax Int       @default(10)
+  salesStart  DateTime?
+  salesEnd    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  tickets      Ticket[]
-  orderItems   OrderItem[]
+  tickets    Ticket[]
+  orderItems OrderItem[]
 
   @@index([eventId])
 }
 
 model Ticket {
-  id            String   @id @default(cuid())
-  code          String   @unique // QR code payload
-  eventId       String
-  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  ticketTypeId  String
-  ticketType    TicketType @relation(fields: [ticketTypeId], references: [id])
-  orderId       String?
-  order         Order?   @relation(fields: [orderId], references: [id])
-  userId        String?
-  user          User?    @relation(fields: [userId], references: [id])
-  attendeeName  String?
-  attendeeEmail String?
+  id              String       @id @default(cuid())
+  code            String       @unique // QR code payload
+  eventId         String
+  event           Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketTypeId    String
+  ticketType      TicketType   @relation(fields: [ticketTypeId], references: [id])
+  orderId         String?
+  order           Order?       @relation(fields: [orderId], references: [id])
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id])
+  attendeeName    String?
+  attendeeEmail   String?
   // Whether the holder appears in the event's public "who's going" list.
   // Deliberately opt-in (default false): attendance at a faith event can
   // reveal religious belief — special-category data under UK/EU GDPR — so
   // visibility requires an explicit, withdrawable choice by the attendee.
-  showAsAttending Boolean @default(false)
-  status        TicketStatus @default(RESERVED)
-  issuedAt      DateTime?
-  checkedInAt   DateTime?
-  checkedInById String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  showAsAttending Boolean      @default(false)
+  status          TicketStatus @default(RESERVED)
+  issuedAt        DateTime?
+  checkedInAt     DateTime?
+  checkedInById   String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@index([eventId, status])
   @@index([userId])
@@ -480,21 +561,21 @@ enum TicketStatus {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Order {
-  id                String   @id @default(cuid())
-  userId            String?
-  user              User?    @relation(fields: [userId], references: [id])
-  eventId           String
-  event             Event    @relation(fields: [eventId], references: [id])
-  organizationId    String
-  guestEmail        String?
-  subtotalMinor     Int
-  platformFeeMinor  Int      @default(0)
-  totalMinor        Int
-  currency          String   @db.Char(3)
-  status            OrderStatus @default(PENDING)
-  stripePaymentIntentId String? @unique
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                    String      @id @default(cuid())
+  userId                String?
+  user                  User?       @relation(fields: [userId], references: [id])
+  eventId               String
+  event                 Event       @relation(fields: [eventId], references: [id])
+  organizationId        String
+  guestEmail            String?
+  subtotalMinor         Int
+  platformFeeMinor      Int         @default(0)
+  totalMinor            Int
+  currency              String      @db.Char(3)
+  status                OrderStatus @default(PENDING)
+  stripePaymentIntentId String?     @unique
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
   items    OrderItem[]
   tickets  Ticket[]
@@ -516,34 +597,34 @@ enum OrderStatus {
 }
 
 model OrderItem {
-  id           String   @id @default(cuid())
-  orderId      String
-  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  ticketTypeId String
-  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
-  quantity     Int
+  id             String     @id @default(cuid())
+  orderId        String
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketTypeId   String
+  ticketType     TicketType @relation(fields: [ticketTypeId], references: [id])
+  quantity       Int
   unitPriceMinor Int
-  currency     String   @db.Char(3)
+  currency       String     @db.Char(3)
 
   @@index([orderId])
 }
 
 model Payment {
-  id                    String   @id @default(cuid())
+  id                    String        @id @default(cuid())
   orderId               String?
-  order                 Order?   @relation(fields: [orderId], references: [id])
-  donationId            String?  @unique
-  donation              Donation? @relation(fields: [donationId], references: [id])
+  order                 Order?        @relation(fields: [orderId], references: [id])
+  donationId            String?       @unique
+  donation              Donation?     @relation(fields: [donationId], references: [id])
   organizationId        String
   amountMinor           Int
-  currency              String   @db.Char(3)
-  platformFeeMinor      Int      @default(0)
+  currency              String        @db.Char(3)
+  platformFeeMinor      Int           @default(0)
   status                PaymentStatus @default(PENDING)
-  stripePaymentIntentId String?  @unique
-  stripeChargeId        String?  @unique
+  stripePaymentIntentId String?       @unique
+  stripeChargeId        String?       @unique
   failureReason         String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   refunds Refund[]
 
@@ -579,17 +660,17 @@ model Refund {
 }
 
 model Donation {
-  id              String   @id @default(cuid())
-  userId          String?
-  user            User?    @relation(fields: [userId], references: [id])
-  organizationId  String
-  organization    Organization @relation(fields: [organizationId], references: [id])
-  amountMinor     Int
-  currency        String   @db.Char(3)
-  message         String?
-  anonymous       Boolean  @default(false)
-  status          PaymentStatus @default(PENDING)
-  createdAt       DateTime @default(now())
+  id             String        @id @default(cuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  amountMinor    Int
+  currency       String        @db.Char(3)
+  message        String?
+  anonymous      Boolean       @default(false)
+  status         PaymentStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
 
   payment Payment?
 
@@ -597,15 +678,15 @@ model Donation {
 }
 
 model Payout {
-  id              String   @id @default(cuid())
-  organizationId  String
-  organization    Organization @relation(fields: [organizationId], references: [id])
-  amountMinor     Int
-  currency        String   @db.Char(3)
-  status          String   // mirror Stripe payout.status
-  stripePayoutId  String?  @unique
-  arrivedAt       DateTime?
-  createdAt       DateTime @default(now())
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  amountMinor    Int
+  currency       String       @db.Char(3)
+  status         String // mirror Stripe payout.status
+  stripePayoutId String?      @unique
+  arrivedAt      DateTime?
+  createdAt      DateTime     @default(now())
 
   @@index([organizationId])
 }
@@ -616,40 +697,40 @@ model Payout {
 
 model SavedEvent {
   userId    String
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   eventId   String
-  event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@id([userId, eventId])
 }
 
 model NotificationPreference {
-  userId            String  @id
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailReminders    Boolean @default(true)
-  emailMarketing    Boolean @default(false)
-  pushReminders     Boolean @default(true)
-  pushAnnouncements Boolean @default(true)
+  userId            String   @id
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailReminders    Boolean  @default(true)
+  emailMarketing    Boolean  @default(false)
+  pushReminders     Boolean  @default(true)
+  pushAnnouncements Boolean  @default(true)
   updatedAt         DateTime @updatedAt
 }
 
 model Report {
-  id              String   @id @default(cuid())
+  id               String        @id @default(cuid())
   // Nullable so a user can delete their account without destroying trust &
   // safety history: the report survives, the reporter identity is severed.
   reportedByUserId String?
-  reportedBy      User?    @relation("ReportsFiled", fields: [reportedByUserId], references: [id], onDelete: SetNull)
-  targetEventId   String?
-  targetEvent     Event?   @relation("ReportsAgainstEvent", fields: [targetEventId], references: [id])
-  targetOrgId     String?
-  targetOrg       Organization? @relation("ReportsAgainstOrg", fields: [targetOrgId], references: [id])
-  targetUserId    String?
-  reason          String
-  details         String?
-  status          ReportStatus @default(OPEN)
-  createdAt       DateTime @default(now())
-  resolvedAt      DateTime?
+  reportedBy       User?         @relation("ReportsFiled", fields: [reportedByUserId], references: [id], onDelete: SetNull)
+  targetEventId    String?
+  targetEvent      Event?        @relation("ReportsAgainstEvent", fields: [targetEventId], references: [id])
+  targetOrgId      String?
+  targetOrg        Organization? @relation("ReportsAgainstOrg", fields: [targetOrgId], references: [id])
+  targetUserId     String?
+  reason           String
+  details          String?
+  status           ReportStatus  @default(OPEN)
+  createdAt        DateTime      @default(now())
+  resolvedAt       DateTime?
 
   actions ModerationAction[]
 
@@ -671,7 +752,7 @@ model ModerationAction {
   // actions are retained for audit after the acting moderator is deleted.
   actorUserId String?
   actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
-  action      String   // takedown_event, suspend_user, suspend_org, dismiss, warn
+  action      String // takedown_event, suspend_user, suspend_org, dismiss, warn
   targetType  String
   targetId    String
   note        String?
@@ -681,18 +762,18 @@ model ModerationAction {
 }
 
 model AuditLog {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   actorUserId    String?
-  actor          User?    @relation(fields: [actorUserId], references: [id])
+  actor          User?         @relation(fields: [actorUserId], references: [id])
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
-  action         String   // e.g. "event.publish"
+  action         String // e.g. "event.publish"
   targetType     String?
   targetId       String?
   metadata       Json?
   ipAddress      String?
   userAgent      String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime      @default(now())
 
   @@index([organizationId, createdAt])
   @@index([actorUserId, createdAt])
@@ -700,12 +781,12 @@ model AuditLog {
 }
 
 model Consent {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind      String   // terms, privacy, marketing, cookies
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // terms, privacy, marketing, cookies
   version   String
-  grantedAt DateTime @default(now())
+  grantedAt DateTime  @default(now())
   revokedAt DateTime?
 
   @@index([userId, kind])
@@ -718,18 +799,18 @@ model Consent {
 /// as a different person must not inherit the previous session's notifications —
 /// so the token row is reassigned to whoever registers it last.
 model Device {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Expo push token, e.g. ExponentPushToken[xxxxxxxx]
-  token         String   @unique
-  platform      String   // "ios" | "android"
+  token      String    @unique
+  platform   String // "ios" | "android"
   /// Cleared when Expo reports the token dead, so we stop sending to it without
   /// losing the row and its history.
-  disabledAt    DateTime?
-  lastSeenAt    DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  disabledAt DateTime?
+  lastSeenAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([userId])
   @@index([disabledAt])
@@ -742,12 +823,12 @@ model Device {
 /// same person repeatedly about the same event. The unique constraint is the
 /// guard — an insert that collides means somebody else already sent it.
 model NotificationLog {
-  id        String   @id @default(cuid())
-  userId    String
-  eventId   String
+  id      String   @id @default(cuid())
+  userId  String
+  eventId String
   /// e.g. "event.reminder"
-  kind      String
-  sentAt    DateTime @default(now())
+  kind    String
+  sentAt  DateTime @default(now())
 
   @@unique([userId, eventId, kind])
   @@index([eventId, kind])
@@ -799,13 +880,13 @@ model EventMedia {
 /// Deliberately one-directional and private. The blocked party is never told,
 /// because notifying them turns a quiet exit into a confrontation.
 model Block {
-  id             String   @id @default(cuid())
-  blockerId      String
-  blocker        User     @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  blockerId     String
+  blocker       User     @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
   /// Exactly one of these is set.
-  blockedUserId  String?
-  blockedOrgId   String?
-  createdAt      DateTime @default(now())
+  blockedUserId String?
+  blockedOrgId  String?
+  createdAt     DateTime @default(now())
 
   @@unique([blockerId, blockedUserId])
   @@unique([blockerId, blockedOrgId])
