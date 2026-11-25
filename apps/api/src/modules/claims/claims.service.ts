@@ -189,7 +189,7 @@ export class ClaimsService {
     await this.prisma.$transaction(async (tx) => {
       const now = new Date();
       await this.leaveUnclaimed(tx, organizationId, { claimStatus: 'CLAIMED', claimedAt: now });
-      await this.consume(tx, raw, 'CLAIM');
+      await this.assertSentToContact(tx, organizationId, await this.consume(tx, raw, 'CLAIM'));
       if (takeover) await this.takeOver(tx, userId, takeover);
       await tx.organizationMembership.upsert({
         where: { userId_organizationId: { userId, organizationId } },
@@ -259,7 +259,7 @@ export class ClaimsService {
     await this.prisma.$transaction(async (tx) => {
       const now = new Date();
       await this.leaveUnclaimed(tx, organizationId, { claimStatus: 'DISPUTED' });
-      await this.consume(tx, raw, 'TAKEDOWN');
+      await this.assertSentToContact(tx, organizationId, await this.consume(tx, raw, 'TAKEDOWN'));
       await tx.organizationClaimToken.updateMany({
         where: { organizationId, kind: 'CLAIM', usedAt: null, revokedAt: null },
         data: { revokedAt: now },
@@ -379,16 +379,19 @@ export class ClaimsService {
    * church's contact asked for from an expired link.
    */
   async sendInvite(organizationId: string, actorUserId: string | null) {
-    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException('Organization not found');
-    if (org.claimStatus !== 'UNCLAIMED') throw new ConflictException({ code: 'NOT_UNCLAIMED' });
-    const email = org.contactEmail?.trim().toLowerCase();
-    if (!email) throw new ConflictException({ code: 'NO_CONTACT_EMAIL' });
-
-    const issued = await this.prisma.$transaction(async (tx) => {
+    // Read inside the transaction that issues the links, so a contact change
+    // that commits before it is the address they are issued to and sent to.
+    // (One that commits after is caught when the link is used; see
+    // assertSentToContact.)
+    const { org, email, issued } = await this.prisma.$transaction(async (tx) => {
+      const org = await tx.organization.findUnique({ where: { id: organizationId } });
+      if (!org) throw new NotFoundException('Organization not found');
+      if (org.claimStatus !== 'UNCLAIMED') throw new ConflictException({ code: 'NOT_UNCLAIMED' });
+      const email = org.contactEmail?.trim().toLowerCase();
+      if (!email) throw new ConflictException({ code: 'NO_CONTACT_EMAIL' });
       const issue = (kind: 'CLAIM' | 'TAKEDOWN') =>
         this.tokens.issue(tx, { organizationId, email, kind, createdByUserId: actorUserId });
-      return { claim: await issue('CLAIM'), takedown: await issue('TAKEDOWN') };
+      return { org, email, issued: { claim: await issue('CLAIM'), takedown: await issue('TAKEDOWN') } };
     });
 
     const hasAccount = !!(await this.findUserByEmail(email))?.emailVerified;
@@ -473,6 +476,26 @@ export class ClaimsService {
       });
       throw gone(now?.claimStatus === 'CLAIMED' ? 'CLAIMED' : 'USED');
     }
+  }
+
+  /**
+   * A link works only for the address it was sent to while that is still the
+   * church's contact. A resend that raced a contact change can have mailed a
+   * link to the old address; once the contact has changed, such a link reads
+   * as spent (410 USED, like a revoked one) and the claim or take-down rolls
+   * back.
+   */
+  private async assertSentToContact(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    token: OrganizationClaimToken,
+  ) {
+    const org = await tx.organization.findUnique({
+      where: { id: organizationId },
+      select: { contactEmail: true },
+    });
+    const current = org?.contactEmail?.trim().toLowerCase();
+    if (!current || current !== token.email.trim().toLowerCase()) throw gone('USED');
   }
 
   /** ClaimTokensService.consume, with its refusal turned into 410 `{ code }`. */

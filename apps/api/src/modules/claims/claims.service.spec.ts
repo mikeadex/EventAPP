@@ -1201,4 +1201,85 @@ describe('ClaimsService', () => {
       expect(email.send).not.toHaveBeenCalled();
     });
   });
+
+  describe('a link sent before the contact changed', () => {
+    const OLD_ENV = { ...process.env };
+    beforeEach(() => {
+      process.env.WEB_URL = 'https://ekklesiaevents.com';
+      process.env.RESEND_API_KEY = 're_test';
+    });
+    afterEach(() => {
+      process.env = { ...OLD_ENV };
+    });
+
+    it('cannot claim the church: 410 USED and nothing changes', async () => {
+      const { db, svc, issue } = await setup();
+      const raw = await issue('CLAIM');
+      db.state.orgs[0]!.contactEmail = 'New.Contact@Grace.org';
+      const user = signedIn(db, 'pastor@grace.org');
+
+      expect(await refusal(svc.attach(raw, user, undefined))).toEqual({
+        status: 410,
+        body: { code: 'USED' },
+      });
+      expect(db.state.orgs[0]).toMatchObject({ claimStatus: 'UNCLAIMED', claimedAt: null });
+      expect(db.state.tokens[0]).toMatchObject({ usedAt: null });
+      expect(db.state.memberships).toEqual([]);
+      expect(db.state.audits).toEqual([]);
+    });
+
+    it('cannot claim with a new account either, and leaves no account behind', async () => {
+      const { db, svc, issue } = await setup();
+      const raw = await issue('CLAIM');
+      db.state.orgs[0]!.contactEmail = 'New.Contact@Grace.org';
+
+      expect(
+        await refusal(svc.claimWithPassword(raw, { name: 'Ruth', password: PASSWORD }, undefined)),
+      ).toEqual({ status: 410, body: { code: 'USED' } });
+      expect(db.state.orgs[0]!.claimStatus).toBe('UNCLAIMED');
+      expect(db.state.users).toEqual([]);
+      expect(db.state.memberships).toEqual([]);
+    });
+
+    it('cannot take the church down: 410 USED and nothing is cancelled', async () => {
+      const { db, svc, events, issue } = await setup({ events: [event('e1')] });
+      const raw = await issue('TAKEDOWN');
+      db.state.orgs[0]!.contactEmail = 'new.contact@grace.org';
+
+      expect(await refusal(svc.takedown(raw, {}, undefined))).toEqual({
+        status: 410,
+        body: { code: 'USED' },
+      });
+      expect(db.state.orgs[0]!.claimStatus).toBe('UNCLAIMED');
+      expect(events.cancel).not.toHaveBeenCalled();
+    });
+
+    it('still works for the current contact in any letter case', async () => {
+      const { db, svc, issue } = await setup();
+      const raw = await issue('TAKEDOWN');
+      db.state.orgs[0]!.contactEmail = '  PASTOR@grace.ORG ';
+      await expect(svc.takedown(raw, {}, undefined)).resolves.toEqual({ cancelledEvents: 0 });
+      expect(db.state.orgs[0]!.claimStatus).toBe('DISPUTED');
+    });
+
+    it('a resend issues and sends to the contact as read inside its transaction', async () => {
+      const { db, svc, email } = await setup();
+      // A contact change that commits just before the resend's transaction starts.
+      const transaction = db.$transaction;
+      db.$transaction = (<T>(fn: (tx: unknown) => Promise<T>) => {
+        db.state.orgs[0]!.contactEmail = 'new.contact@grace.org';
+        db.$transaction = transaction;
+        return transaction(fn);
+      }) as typeof transaction;
+
+      await expect(svc.sendInvite('org1', 'staff1')).resolves.toMatchObject({
+        email: 'new.contact@grace.org',
+      });
+      expect(db.state.tokens.map((t) => t.email)).toEqual([
+        'new.contact@grace.org',
+        'new.contact@grace.org',
+      ]);
+      expect((email.send.mock.calls[0] as unknown[])[0]).toMatchObject({ to: 'new.contact@grace.org' });
+    });
+  });
 });
