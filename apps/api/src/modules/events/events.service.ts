@@ -19,6 +19,7 @@ import {
 import type { Prisma } from '@prisma/client';
 import { PUBLIC_HOST_WHERE } from '../../common/public-host.js';
 import { randomId } from '../../common/random-id.js';
+import { describeRecurrence, type RecurrenceFreq } from './recurrence.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditLogService } from '../../common/audit-log.service.js';
 import { PushService } from '../push/push.service.js';
@@ -45,6 +46,12 @@ export class EventsService {
       status: 'PUBLISHED',
       visibility: 'PUBLIC',
       deletedAt: null,
+      // One card per repeating event. Without this a weekly service
+      // generated six months ahead is twenty-six rows and the feed is that
+      // service and nothing else. Siblings stay reachable by link and from
+      // the event's own page; they are not hidden, just not repeated in a
+      // list meant for browsing. Standalone events default to true.
+      seriesLead: true,
       organization: {
         is: {
           ...PUBLIC_HOST_WHERE,
@@ -143,6 +150,7 @@ export class EventsService {
       where: {
         status: 'PUBLISHED',
         visibility: 'PUBLIC',
+        seriesLead: true,
         deletedAt: null,
         startsAt: { gte: new Date() },
         venueId: { not: null },
@@ -261,10 +269,43 @@ export class EventsService {
             claimStatus: true,
           },
         },
+        series: {
+          select: {
+            id: true,
+            freq: true,
+            interval: true,
+            byWeekday: true,
+            nthWeekday: true,
+            startsAt: true,
+            until: true,
+            count: true,
+          },
+        },
       },
     });
     if (!event) throw new NotFoundException('Event not found');
-    return event;
+
+    // The pattern as a sentence, decided here rather than in each client.
+    // Two apps phrasing "every other Tuesday" independently is two chances
+    // to phrase it differently.
+    const { series, ...rest } = event;
+    return {
+      ...rest,
+      recurrence: series
+        ? {
+            id: series.id,
+            description: describeRecurrence({
+              freq: series.freq as RecurrenceFreq,
+              interval: series.interval,
+              byWeekday: series.byWeekday,
+              nthWeekday: series.nthWeekday,
+              startsAt: series.startsAt,
+              until: series.until,
+              count: series.count,
+            }),
+          }
+        : null,
+    };
   }
 
   // ─── Organizer operations ────────────────────────────────────────────────
@@ -460,11 +501,7 @@ export class EventsService {
    * stand-in for following the host, which is still deferred — when Phase B
    * lands, this should key off follows instead, and the recency window can go.
    */
-  private async notifyPastAttendees(
-    organizationId: string,
-    eventId: string,
-    actorUserId: string,
-  ) {
+  private async notifyPastAttendees(organizationId: string, eventId: string, actorUserId: string) {
     const [event, org] = await Promise.all([
       this.prisma.event.findUnique({ where: { id: eventId }, select: { title: true } }),
       this.prisma.organization.findUnique({
@@ -603,9 +640,9 @@ export const EVENT_CARD_SELECT = {
 } satisfies Prisma.EventSelect;
 
 /** Flatten card rows: replace raw ticketTypes with isFree + minPriceMinor. */
-export function toEventCard<
-  T extends { ticketTypes: { priceMinor: number; currency: string }[] },
->(row: T) {
+export function toEventCard<T extends { ticketTypes: { priceMinor: number; currency: string }[] }>(
+  row: T,
+) {
   const { ticketTypes, ...rest } = row;
   const prices = ticketTypes.map((t) => t.priceMinor);
   const minPriceMinor = prices.length ? Math.min(...prices) : 0;

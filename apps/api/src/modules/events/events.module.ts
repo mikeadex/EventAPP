@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
+  forwardRef,
   Get,
   HttpCode,
   Module,
@@ -14,24 +16,20 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { Permission } from '@ekklesia/shared';
-import {
-  OrgScope,
-  RequirePermissions,
-} from '../../common/decorators.js';
-import {
-  OrgMembershipGuard,
-  type AuthedOrgRequest,
-} from '../../common/org-membership.guard.js';
+import { OrgScope, RequirePermissions } from '../../common/decorators.js';
+import { OrgMembershipGuard, type AuthedOrgRequest } from '../../common/org-membership.guard.js';
 import { EventsService } from './events.service.js';
 import { PushModule } from '../push/push.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { DemoVisibilityService } from '../auth/demo-visibility.service.js';
 import { EventMediaService } from './event-media.service.js';
+import { SeriesService } from './series.service.js';
 
 @Controller()
 class EventsController {
   constructor(
     private readonly events: EventsService,
+    private readonly series: SeriesService,
     private readonly media: EventMediaService,
     private readonly demo: DemoVisibilityService,
   ) {}
@@ -53,10 +51,7 @@ class EventsController {
   }
 
   @Get('organizations/:orgSlug/events/:eventSlug')
-  getPublic(
-    @Param('orgSlug') orgSlug: string,
-    @Param('eventSlug') eventSlug: string,
-  ) {
+  getPublic(@Param('orgSlug') orgSlug: string, @Param('eventSlug') eventSlug: string) {
     return this.events.getPublicBySlug(orgSlug, eventSlug);
   }
 
@@ -73,12 +68,37 @@ class EventsController {
   @UseGuards(OrgMembershipGuard)
   @OrgScope('param:orgId')
   @RequirePermissions(Permission.EVENT_CREATE)
-  create(
-    @Param('orgId') orgId: string,
-    @Req() req: AuthedOrgRequest,
-    @Body() body: unknown,
-  ) {
+  create(@Param('orgId') orgId: string, @Req() req: AuthedOrgRequest, @Body() body: unknown) {
     return this.events.create(orgId, req.user.id, body);
+  }
+
+  /**
+   * Create a repeating event. Separate from `POST events` because the body
+   * is different and the outcome is many rows rather than one — folding the
+   * two together would make the common case carry the uncommon one's shape.
+   */
+  @Post('organizations/:orgId/event-series')
+  @UseGuards(OrgMembershipGuard)
+  @OrgScope('param:orgId')
+  @RequirePermissions(Permission.EVENT_CREATE)
+  createSeries(@Param('orgId') orgId: string, @Req() req: AuthedOrgRequest, @Body() body: never) {
+    return this.series.create(orgId, req.user.id, body);
+  }
+
+  /** Publish or cancel every occurrence still to come. Past ones are left alone. */
+  @Post('event-series/:seriesId/:action')
+  @UseGuards(OrgMembershipGuard)
+  @OrgScope('seriesParam:seriesId')
+  @RequirePermissions(Permission.EVENT_UPDATE)
+  seriesAction(
+    @Param('seriesId') seriesId: string,
+    @Param('action') action: string,
+    @Req() req: AuthedOrgRequest,
+  ) {
+    if (action !== 'publish' && action !== 'cancel') {
+      throw new BadRequestException('Unknown action');
+    }
+    return this.series.applyToFuture(seriesId, req.user.id, action);
   }
 
   @Get('events/:eventId')
@@ -93,11 +113,7 @@ class EventsController {
   @UseGuards(OrgMembershipGuard)
   @OrgScope('eventParam:eventId')
   @RequirePermissions(Permission.EVENT_UPDATE)
-  update(
-    @Param('eventId') eventId: string,
-    @Req() req: AuthedOrgRequest,
-    @Body() body: unknown,
-  ) {
+  update(@Param('eventId') eventId: string, @Req() req: AuthedOrgRequest, @Body() body: unknown) {
     return this.events.update(eventId, req.user.id, body);
   }
 
@@ -111,11 +127,7 @@ class EventsController {
   @UseGuards(OrgMembershipGuard)
   @OrgScope('eventParam:eventId')
   @RequirePermissions(Permission.EVENT_UPDATE)
-  addMedia(
-    @Param('eventId') eventId: string,
-    @Req() req: AuthedOrgRequest,
-    @Body() body: unknown,
-  ) {
+  addMedia(@Param('eventId') eventId: string, @Req() req: AuthedOrgRequest, @Body() body: unknown) {
     return this.media.add(eventId, req.user.id, body);
   }
 
@@ -182,9 +194,13 @@ class EventsController {
 }
 
 @Module({
-  imports: [PushModule, AuthModule],
+  // forwardRef because the cron controller lives in PushModule and needs
+  // SeriesService, while this module needs PushModule's notifications. The
+  // alternative was a second @Controller('cron') here duplicating the shared
+  // secret check, which is a worse thing to have two copies of.
+  imports: [forwardRef(() => PushModule), AuthModule],
   controllers: [EventsController],
-  providers: [EventsService, EventMediaService],
-  exports: [EventsService],
+  providers: [EventsService, EventMediaService, SeriesService],
+  exports: [EventsService, SeriesService],
 })
 export class EventsModule {}

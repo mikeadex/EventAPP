@@ -1,6 +1,7 @@
 import { Controller, ForbiddenException, Get, Headers, Logger } from '@nestjs/common';
 import { RemindersService } from './reminders.service.js';
 import { OrdersService } from '../payments/orders.service.js';
+import { SeriesService } from '../events/series.service.js';
 
 /**
  * Endpoints driven by Vercel Cron rather than by a user.
@@ -22,6 +23,7 @@ export class CronController {
   constructor(
     private readonly reminders: RemindersService,
     private readonly orders: OrdersService,
+    private readonly series: SeriesService,
   ) {}
 
   /** Shared secret check. Fails closed when CRON_SECRET is unset. */
@@ -50,6 +52,22 @@ export class CronController {
     this.assertCron(authorization, 'order release');
     const released = await this.orders.releaseExpired();
     return { released };
+  }
+
+  /**
+   * Move each series' discovery slot to its next occurrence, and extend
+   * series running out of generated dates.
+   *
+   * Without the first, a repeating event drops out of discovery the moment
+   * its current occurrence starts and never comes back. Without the second,
+   * an open-ended weekly service quietly stops having dates about six months
+   * in. Hourly is enough for both: the lead only needs to move once per
+   * occurrence, and the horizon is extended a month before it runs out.
+   */
+  @Get('roll-series')
+  async rollSeries(@Headers('authorization') authorization?: string) {
+    this.assertCron(authorization, 'series roll');
+    return this.series.rollLeads();
   }
 
   @Get('reminders')

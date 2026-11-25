@@ -30,7 +30,8 @@ export interface AuthedOrgRequest extends Request {
  *
  * Decorator inputs (set on the controller method):
  *   @RequirePermissions(Permission.EVENT_CREATE, ...)
- *   @OrgScope('param:orgId' | 'paramSlug:slug' | 'body:organizationId' | 'eventParam:eventId')
+ *   @OrgScope('param:orgId' | 'paramSlug:slug' | 'body:organizationId' | 'eventParam:eventId'
+ *             | 'seriesParam:seriesId')
  *   @RequirePlatformRole('PLATFORM_ADMIN')   // optional
  *
  * Behaviour:
@@ -72,10 +73,9 @@ export class OrgMembershipGuard implements CanActivate {
     }
 
     // Required perms — may be empty if guard is used purely for auth+scope.
-    const required = this.reflector.getAllAndOverride<Permission[] | undefined>(
-      PERMISSIONS_KEY,
-      [handler, cls],
-    ) ?? [];
+    const required =
+      this.reflector.getAllAndOverride<Permission[] | undefined>(PERMISSIONS_KEY, [handler, cls]) ??
+      [];
 
     // 3. Resolve orgId.
     const scope = this.reflector.getAllAndOverride<string | undefined>(ORG_SCOPE_KEY, [
@@ -156,6 +156,16 @@ export class OrgMembershipGuard implements CanActivate {
         });
         if (!evt) throw new NotFoundException(`Event '${eventId}' not found`);
         return evt.organizationId;
+      }
+      case 'seriesParam': {
+        const seriesId = readStringParam(req, key);
+        if (!seriesId) throw new ForbiddenException(`Missing route param: ${key}`);
+        const series = await this.prisma.eventSeries.findUnique({
+          where: { id: seriesId },
+          select: { organizationId: true },
+        });
+        if (!series) throw new NotFoundException(`Series '${seriesId}' not found`);
+        return series.organizationId;
       }
       default:
         throw new ForbiddenException(`Unknown @OrgScope kind: ${kind}`);

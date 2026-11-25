@@ -10,8 +10,7 @@ import type { Permission } from '@ekklesia/shared';
  * which organization scope the call applies to.
  */
 export const PERMISSIONS_KEY = 'ekklesia.permissions';
-export const RequirePermissions = (...perms: Permission[]) =>
-  SetMetadata(PERMISSIONS_KEY, perms);
+export const RequirePermissions = (...perms: Permission[]) => SetMetadata(PERMISSIONS_KEY, perms);
 
 export const ORG_SCOPE_KEY = 'ekklesia.orgScope';
 /**
@@ -20,9 +19,11 @@ export const ORG_SCOPE_KEY = 'ekklesia.orgScope';
  *   - 'paramSlug:<name>' — read req.params[<name>], treat as org slug (will lookup)
  *   - 'body:<path>'   — read a dotted body path, treat as orgId
  *   - 'eventParam:<name>' — read event id from params, infer org from event row
+ *   - 'seriesParam:<name>' — read series id from params, infer org from series row
  */
 export const OrgScope = (location: string) => SetMetadata(ORG_SCOPE_KEY, location);
 
 export const PLATFORM_ROLE_KEY = 'ekklesia.platformRole';
-export const RequirePlatformRole = (role: 'PLATFORM_ADMIN' | 'PLATFORM_MODERATOR' | 'PLATFORM_SUPPORT') =>
-  SetMetadata(PLATFORM_ROLE_KEY, role);
+export const RequirePlatformRole = (
+  role: 'PLATFORM_ADMIN' | 'PLATFORM_MODERATOR' | 'PLATFORM_SUPPORT',
+) => SetMetadata(PLATFORM_ROLE_KEY, role);

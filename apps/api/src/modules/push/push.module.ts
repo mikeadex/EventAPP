@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  forwardRef,
   Delete,
   HttpCode,
   Module,
@@ -15,6 +16,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { PushService } from './push.service.js';
 import { RemindersService } from './reminders.service.js';
 import { CronController } from './cron.controller.js';
+import { EventsModule } from '../events/events.module.js';
 import { PaymentsModule } from '../payments/payments.module.js';
 
 const RegisterSchema = z.object({
@@ -65,7 +67,7 @@ class DevicesController {
 }
 
 @Module({
-  imports: [AuthModule, PaymentsModule],
+  imports: [AuthModule, PaymentsModule, forwardRef(() => EventsModule)],
   controllers: [DevicesController, CronController],
   providers: [PrismaService, PushService, RemindersService],
   exports: [PushService],
