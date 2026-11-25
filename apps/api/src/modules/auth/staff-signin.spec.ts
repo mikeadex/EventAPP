@@ -1,7 +1,12 @@
 import {
+  afterCodeCheck,
   afterSignIn,
-  afterTwoFactorVerified,
+  afterTrustedDeviceSignIn,
+  afterTwoFactorDisabled,
+  afterTwoFactorEnrolled,
+  auditTwoFactorChange,
   clientIp,
+  guardStaffCodeCheck,
   guardStaffSignIn,
   recordSignInAttempt,
   refuseStaffSession,
@@ -20,6 +25,7 @@ type Row = {
   platformRole: string;
   failedSignIns: number;
   lockedUntil: Date | null;
+  twoFactorEnabled?: boolean;
 };
 
 const staff: Row = {
@@ -52,8 +58,14 @@ type Data = { failedSignIns?: number | { increment: number }; lockedUntil?: Date
  * makes findUnique keep returning the row as it was at the start, to prove the
  * cap does not depend on a fresh read.
  */
-function fakeDb(initial: Row | null, opts: { staleReads?: boolean } = {}) {
+type SessionRow = { id: string; userId: string; token: string };
+
+function fakeDb(
+  initial: Row | null,
+  opts: { staleReads?: boolean; sessions?: SessionRow[] } = {},
+) {
   let row = initial ? { ...initial } : null;
+  let sessions = [...(opts.sessions ?? [])];
   const snapshot = initial ? { ...initial } : null;
   const matches = (w: Where) => {
     if (!row) return false;
@@ -91,9 +103,25 @@ function fakeDb(initial: Row | null, opts: { staleReads?: boolean } = {}) {
         return { count: 1 };
       }),
     },
+    session: {
+      deleteMany: jest.fn(
+        async ({ where }: { where: { userId: string; id?: { not: string } } }) => {
+          const before = sessions.length;
+          sessions = sessions.filter(
+            (x) => !(x.userId === where.userId && (!where.id || x.id !== where.id.not)),
+          );
+          return { count: before - sessions.length };
+        },
+      ),
+    },
     auditLog: { create: jest.fn().mockResolvedValue({}) },
   };
-  return { db, asDb: db as unknown as StaffSignInDb, current: () => row };
+  return {
+    db,
+    asDb: db as unknown as StaffSignInDb,
+    current: () => row,
+    sessions: () => sessions,
+  };
 }
 
 const headers = new Headers({
@@ -108,10 +136,17 @@ describe('non-staff sign-in response unchanged', () => {
     expect(await guardStaffSignIn(asDb, member.email, headers, NOW)).toBeNull();
     await afterSignIn(asDb, { email: member.email, outcome: 'failed', headers, now: NOW });
     await afterSignIn(asDb, { email: member.email, outcome: 'ok', headers, now: NOW });
-    await afterTwoFactorVerified(asDb, member, headers);
+    expect(await guardStaffCodeCheck(asDb, member, headers, NOW)).toBeNull();
+    await afterCodeCheck(asDb, { user: member, outcome: 'bad_code', headers, now: NOW });
+    await afterCodeCheck(asDb, { user: member, outcome: 'ok', headers, now: NOW });
+    await afterTrustedDeviceSignIn(asDb, member, headers, NOW);
+    await afterTwoFactorEnrolled(asDb, member, 's_new', headers);
+    await afterTwoFactorDisabled(asDb, member, headers);
+    await auditTwoFactorChange(asDb, member, 'staff.2fa.enable', headers);
 
     expect(db.user.findUnique).not.toHaveBeenCalled();
     expect(db.user.update).not.toHaveBeenCalled();
+    expect(db.session.deleteMany).not.toHaveBeenCalled();
     expect(db.auditLog.create).not.toHaveBeenCalled();
   });
 
@@ -316,7 +351,7 @@ describe('sign-in audit', () => {
 
   it('writes staff.signin { step: two-factor } after a code is verified', async () => {
     const { db, asDb } = fakeDb(staff);
-    await afterTwoFactorVerified(asDb, staff, headers);
+    await afterCodeCheck(asDb, { user: staff, outcome: 'ok', headers, now: NOW });
     expect(db.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         action: 'staff.signin',
@@ -401,5 +436,176 @@ describe('staff sessions only from the staff sign-in routes', () => {
   it('does not treat someone else’s session as a rotation', async () => {
     const { asDb } = fakeDb(staff);
     expect((await refuseStaffSession(asDb, via('/change-password', 'u_other')))?.status).toBe(403);
+  });
+});
+
+describe('2-step code checks count toward the lockout', () => {
+  const twoStep: Row = { ...staff, twoFactorEnabled: true };
+
+  /** One password step then a code check, as the hooks in auth.ts run them. */
+  async function rightPassword(asDb: StaffSignInDb) {
+    const refusal = await guardStaffSignIn(asDb, staff.email, headers, NOW);
+    if (!refusal) await afterSignIn(asDb, { email: staff.email, outcome: 'ok', headers, now: NOW });
+    return refusal;
+  }
+  async function code(asDb: StaffSignInDb, ok: boolean) {
+    const refusal = await guardStaffCodeCheck(asDb, staff, headers, NOW);
+    if (!refusal) {
+      await afterCodeCheck(asDb, { user: staff, outcome: ok ? 'ok' : 'bad_code', headers, now: NOW });
+    }
+    return refusal;
+  }
+
+  it('a right password does not reset the counter for an account with 2-step on', async () => {
+    const { asDb, current } = fakeDb({ ...twoStep, failedSignIns: 3 });
+    expect(await rightPassword(asDb)).toBeNull();
+    expect(current()).toMatchObject({ failedSignIns: 4, lockedUntil: null });
+  });
+
+  it('still resets it for an account without 2-step (it signs in at the password step)', async () => {
+    const { asDb, current } = fakeDb({ ...staff, failedSignIns: 3 });
+    expect(await rightPassword(asDb)).toBeNull();
+    expect(current()).toMatchObject({ failedSignIns: 0 });
+  });
+
+  it('wrong codes lock the account after 5 tries in all, and the next code check gets 423', async () => {
+    const { asDb, current } = fakeDb(twoStep);
+    expect(await rightPassword(asDb)).toBeNull(); // 1
+    for (let i = 0; i < 3; i++) expect(await code(asDb, false)).toBeNull(); // 2..4
+    expect(current()).toMatchObject({ failedSignIns: 4, lockedUntil: null });
+    expect(await code(asDb, false)).toBeNull(); // 5 → locked
+    expect(current()).toMatchObject({ failedSignIns: 5, lockedUntil: LOCK_END });
+
+    // Even the right code is refused while locked, in the password lockout's shape.
+    expect(await code(asDb, true)).toEqual({
+      status: 423,
+      body: { code: 'LOCKED', lockedUntil: LOCK_END.toISOString() },
+    });
+    expect(current()).toMatchObject({ failedSignIns: 5, lockedUntil: LOCK_END });
+  });
+
+  it('cannot be reset by signing in with the password again between rounds of guesses', async () => {
+    const { asDb, current } = fakeDb(twoStep);
+    for (let round = 0; round < 2; round++) {
+      await rightPassword(asDb);
+      await code(asDb, false);
+    }
+    expect(current()).toMatchObject({ failedSignIns: 4 });
+    expect(await rightPassword(asDb)).toBeNull(); // the 5th slot, which locks
+    expect((await code(asDb, false))?.status).toBe(423);
+  });
+
+  it('lets at most 5 concurrent code checks through, even when every read is stale', async () => {
+    const { asDb, current } = fakeDb(twoStep, { staleReads: true });
+    const results = await Promise.all(
+      Array.from({ length: 9 }, () => guardStaffCodeCheck(asDb, staff, headers, NOW)),
+    );
+    expect(results.filter((r) => r === null)).toHaveLength(5);
+    expect(results.filter((r) => r?.status === 423)).toHaveLength(4);
+    expect(current()).toMatchObject({ failedSignIns: 5, lockedUntil: LOCK_END });
+  });
+
+  it('an accepted code clears the counter and audits the sign-in', async () => {
+    const { db, asDb, current } = fakeDb(twoStep);
+    await rightPassword(asDb);
+    await code(asDb, false);
+    expect(await code(asDb, true)).toBeNull();
+    expect(current()).toMatchObject({ failedSignIns: 0, lockedUntil: null });
+    expect(db.auditLog.create).toHaveBeenLastCalledWith({
+      data: expect.objectContaining({ action: 'staff.signin', metadata: { step: 'two-factor' } }),
+    });
+  });
+
+  it("audits a wrong code as staff.signin.failed { reason: 'bad_code' } with IP and user agent", async () => {
+    const { db, asDb } = fakeDb({ ...twoStep, failedSignIns: 4 });
+    await code(asDb, false);
+    expect(db.auditLog.create).toHaveBeenCalledWith({
+      data: {
+        actorUserId: staff.id,
+        action: 'staff.signin.failed',
+        targetType: 'User',
+        targetId: staff.id,
+        metadata: { reason: 'bad_code', failedSignIns: 5, lockedUntil: LOCK_END.toISOString() },
+        ipAddress: '203.0.113.7',
+        userAgent: 'jest-agent',
+      },
+    });
+  });
+
+  it('does nothing when the plugin could not tell whose code it was, or for other errors', async () => {
+    const { db, asDb } = fakeDb(twoStep);
+    expect(await guardStaffCodeCheck(asDb, undefined, headers, NOW)).toBeNull();
+    await afterCodeCheck(asDb, { user: undefined, outcome: 'bad_code', headers, now: NOW });
+    await afterCodeCheck(asDb, { user: staff, outcome: 'other', headers, now: NOW });
+    expect(db.user.findUnique).not.toHaveBeenCalled();
+    expect(db.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('a trusted-device sign-in (no code step) clears the counter for a 2-step account', async () => {
+    const { db, asDb, current } = fakeDb({ ...twoStep, failedSignIns: 2 });
+    await rightPassword(asDb);
+    expect(current()).toMatchObject({ failedSignIns: 3 });
+    await afterTrustedDeviceSignIn(asDb, staff, headers, NOW);
+    expect(current()).toMatchObject({ failedSignIns: 0, lockedUntil: null });
+    expect(db.auditLog.create).toHaveBeenLastCalledWith({
+      data: expect.objectContaining({ action: 'staff.signin', metadata: { step: 'trusted-device' } }),
+    });
+  });
+});
+
+describe('2-step setup and removal end sessions that never passed a code', () => {
+  const sessions: SessionRow[] = [
+    { id: 's_mobile', userId: staff.id, token: 'bearer-before-setup' },
+    { id: 's_web_old', userId: staff.id, token: 'cookie-before-setup' },
+    { id: 's_new', userId: staff.id, token: 'issued-by-verify-totp' },
+    { id: 's_other', userId: 'u_someone_else', token: 'not-theirs' },
+  ];
+
+  it('setup keeps only the session verify-totp just issued, and audits it', async () => {
+    const { db, asDb, sessions: left } = fakeDb(staff, { sessions });
+    await afterTwoFactorEnrolled(asDb, staff, 's_new', headers);
+    expect(left().map((x) => x.id)).toEqual(['s_new', 's_other']);
+    expect(db.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'staff.2fa.enrolled',
+        actorUserId: staff.id,
+        metadata: { sessionsEnded: 2 },
+        ipAddress: '203.0.113.7',
+      }),
+    });
+  });
+
+  it('ends every session of the account when the new one is unknown (fails closed)', async () => {
+    const { asDb, sessions: left } = fakeDb(staff, { sessions });
+    await afterTwoFactorEnrolled(asDb, staff, undefined, headers);
+    expect(left().map((x) => x.id)).toEqual(['s_other']);
+  });
+
+  it('disabling 2-step ends every session of the account and audits it', async () => {
+    const { db, asDb, sessions: left } = fakeDb(staff, { sessions });
+    await afterTwoFactorDisabled(asDb, staff, headers);
+    expect(left().map((x) => x.id)).toEqual(['s_other']);
+    expect(db.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'staff.2fa.disable',
+        metadata: { sessionsEnded: 3 },
+      }),
+    });
+  });
+
+  it.each(['staff.2fa.enable', 'staff.2fa.backup_codes'] as const)('audits %s for staff', async (action) => {
+    const { db, asDb } = fakeDb(staff);
+    await auditTwoFactorChange(asDb, staff, action, headers);
+    expect(db.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action, actorUserId: staff.id, userAgent: 'jest-agent' }),
+    });
+  });
+
+  it('touches no session of a staff-domain address without a role', async () => {
+    const { db, asDb, sessions: left } = fakeDb({ ...staff, platformRole: 'USER' }, { sessions });
+    await afterTwoFactorEnrolled(asDb, staff, 's_new', headers);
+    await afterTwoFactorDisabled(asDb, staff, headers);
+    expect(left()).toHaveLength(4);
+    expect(db.auditLog.create).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { clientIp } from '../../common/client-ip.js';
 import { isStaffEmail } from '../../common/staff.js';
 
 /**
@@ -31,6 +32,7 @@ export const STAFF_SESSION_PATHS: readonly string[] = [
 /** The slice of Prisma these hooks use, so tests can hand in a mock. */
 export type StaffSignInDb = {
   user: Pick<PrismaClient['user'], 'findUnique' | 'update' | 'updateMany'>;
+  session: Pick<PrismaClient['session'], 'deleteMany'>;
   auditLog: Pick<PrismaClient['auditLog'], 'create'>;
 };
 
@@ -56,6 +58,7 @@ const staffSelect = {
   platformRole: true,
   failedSignIns: true,
   lockedUntil: true,
+  twoFactorEnabled: true,
 } satisfies Prisma.UserSelect;
 
 type StaffRow = Prisma.UserGetPayload<{ select: typeof staffSelect }>;
@@ -83,29 +86,20 @@ function isNotFound(err: unknown): boolean {
   return (err as { code?: unknown } | null)?.code === 'P2025';
 }
 
-/**
- * Client IP for the audit log. The left-most X-Forwarded-For entry is
- * whatever the client sent, so it is never trusted: Vercel's own header first,
- * then X-Real-IP, then the right-most X-Forwarded-For entry (the one our
- * nearest proxy appended).
- */
-export function clientIp(headers: Headers | undefined): string | undefined {
-  const vercel = headers?.get('x-vercel-forwarded-for')?.split(',')[0]?.trim();
-  if (vercel) return vercel;
-  const real = headers?.get('x-real-ip')?.trim();
-  if (real) return real;
-  const forwarded = headers
-    ?.get('x-forwarded-for')
-    ?.split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return forwarded?.[forwarded.length - 1] || undefined;
-}
+export { clientIp };
+
+type StaffAuditAction =
+  | 'staff.signin'
+  | 'staff.signin.failed'
+  | 'staff.2fa.enable'
+  | 'staff.2fa.enrolled'
+  | 'staff.2fa.disable'
+  | 'staff.2fa.backup_codes';
 
 async function audit(
   db: StaffSignInDb,
   user: { id: string },
-  action: 'staff.signin' | 'staff.signin.failed',
+  action: StaffAuditAction,
   headers: Headers | undefined,
   metadata: Prisma.InputJsonValue,
 ) {
@@ -144,8 +138,9 @@ async function refuseLocked(
  * The reservation is a conditional increment (`failedSignIns < 5` and not
  * locked), so concurrent wrong passwords cannot get more than 5 tries between
  * them — a stale read cannot let a 6th through. The attempt that takes the
- * 5th slot locks the account for 15 minutes; a correct password then clears
- * it (afterSignIn). A locked account, or one with no slot left, gets 423.
+ * 5th slot locks the account for 15 minutes; a completed sign-in then clears
+ * it (afterSignIn, afterCodeCheck). A locked account, or one with no slot
+ * left, gets 423.
  */
 export async function guardStaffSignIn(
   db: StaffSignInDb,
@@ -155,6 +150,35 @@ export async function guardStaffSignIn(
 ): Promise<Refusal | null> {
   const user = await findStaffByEmail(db, email);
   if (!user) return null;
+  return reserveAttempt(db, user, headers, now);
+}
+
+/**
+ * Before `/two-factor/verify-totp` and `/verify-backup-code`: the same
+ * reservation as the password step, so wrong codes count toward the same 5
+ * and a locked account cannot keep guessing codes. `user` is the account the
+ * code is for (the pending sign-in, or the signed-in account during setup);
+ * undefined when Better Auth could not tell, in which case the endpoint
+ * refuses on its own.
+ */
+export async function guardStaffCodeCheck(
+  db: StaffSignInDb,
+  user: { id: string; email: string } | undefined,
+  headers: Headers | undefined,
+  now: Date,
+): Promise<Refusal | null> {
+  if (!user || !isStaffEmail(user.email)) return null;
+  const staff = await findStaffById(db, user.id);
+  if (!staff) return null;
+  return reserveAttempt(db, staff, headers, now);
+}
+
+async function reserveAttempt(
+  db: StaffSignInDb,
+  user: StaffRow,
+  headers: Headers | undefined,
+  now: Date,
+): Promise<Refusal | null> {
   if (isLocked(user, now)) return refuseLocked(db, user, headers, now);
 
   // A lock that has run out starts a fresh count. Conditional on the lock
@@ -218,7 +242,14 @@ async function settle(db: StaffSignInDb, user: StaffRow, ok: boolean, now: Date)
   return { locked: isLocked(user, now), lockedUntil: isLocked(user, now) ? user.lockedUntil : null };
 }
 
-/** After `/sign-in/email`: settle the attempt and audit it, for staff only. */
+/**
+ * After `/sign-in/email`: settle the attempt and audit it, for staff only.
+ *
+ * A right password is only half a sign-in for an account with 2-step on, so
+ * it does not clear the counter: the code step does (afterCodeCheck), or the
+ * trusted-device shortcut does (afterTrustedDeviceSignIn). Otherwise someone
+ * holding the password could reset the count before every round of guesses.
+ */
 export async function afterSignIn(
   db: StaffSignInDb,
   input: { email: unknown; outcome: SignInOutcome; headers: Headers | undefined; now: Date },
@@ -229,10 +260,11 @@ export async function afterSignIn(
   if (outcome === 'other') return;
   const user = await findStaffByEmail(db, email);
   if (!user) return;
-  const result = await settle(db, user, outcome === 'ok', now);
   if (outcome === 'ok') {
+    if (!user.twoFactorEnabled) await settle(db, user, true, now);
     await audit(db, user, 'staff.signin', headers, { step: 'password' });
   } else {
+    const result = await settle(db, user, false, now);
     await audit(db, user, 'staff.signin.failed', headers, {
       reason: 'bad_credentials',
       failedSignIns: user.failedSignIns,
@@ -241,8 +273,91 @@ export async function afterSignIn(
   }
 }
 
-/** After a successful `/two-factor/verify-totp` or `/verify-backup-code`: audit staff. */
-export async function afterTwoFactorVerified(
+/**
+ * After `/sign-in/email` has run every hook, the twoFactor plugin's included:
+ * a 2-step account that got a full session without the code step came in on a
+ * trusted device, so this is where its sign-in completes and the counter
+ * clears. Call only when a session was issued and no code step is pending.
+ */
+export async function afterTrustedDeviceSignIn(
+  db: StaffSignInDb,
+  user: { id: string; email: string },
+  headers: Headers | undefined,
+  now: Date,
+): Promise<void> {
+  if (!isStaffEmail(user.email)) return;
+  const staff = await findStaffById(db, user.id);
+  if (!staff?.twoFactorEnabled) return;
+  await settle(db, staff, true, now);
+  await audit(db, staff, 'staff.signin', headers, { step: 'trusted-device' });
+}
+
+/** Outcome of a code check: accepted, a wrong code, or anything else. */
+export type CodeOutcome = 'ok' | 'bad_code' | 'other';
+
+/**
+ * After `/two-factor/verify-totp` or `/verify-backup-code`, for staff only:
+ * an accepted code completes the sign-in (counter cleared, audited); a wrong
+ * code keeps the slot guardStaffCodeCheck reserved and is audited as a failed
+ * sign-in. Anything else (expired code step, malformed body) keeps its slot.
+ */
+export async function afterCodeCheck(
+  db: StaffSignInDb,
+  input: {
+    user: { id: string; email: string } | undefined;
+    outcome: CodeOutcome;
+    headers: Headers | undefined;
+    now: Date;
+  },
+): Promise<void> {
+  const { user, outcome, headers, now } = input;
+  if (outcome === 'other' || !user || !isStaffEmail(user.email)) return;
+  const staff = await findStaffById(db, user.id);
+  if (!staff) return;
+  if (outcome === 'ok') {
+    await settle(db, staff, true, now);
+    await audit(db, staff, 'staff.signin', headers, { step: 'two-factor' });
+    return;
+  }
+  const result = await settle(db, staff, false, now);
+  await audit(db, staff, 'staff.signin.failed', headers, {
+    reason: 'bad_code',
+    failedSignIns: staff.failedSignIns,
+    lockedUntil: result.lockedUntil?.toISOString() ?? null,
+  });
+}
+
+/**
+ * After 2-step setup completes (the first accepted code for an account that
+ * had it off). Better Auth replaces only the session that made the request,
+ * so every other session of the account — password-only ones, a mobile bearer
+ * token among them — would otherwise pass the admin guard once the account
+ * reads `twoFactorEnabled`. End all of them but the one just issued.
+ *
+ * `keepSessionId` undefined ends every session: failing closed costs a
+ * sign-in, failing open costs the code step.
+ */
+export async function afterTwoFactorEnrolled(
+  db: StaffSignInDb,
+  user: { id: string; email: string },
+  keepSessionId: string | undefined,
+  headers: Headers | undefined,
+): Promise<void> {
+  if (!isStaffEmail(user.email)) return;
+  const staff = await findStaffById(db, user.id);
+  if (!staff) return;
+  const { count } = await db.session.deleteMany({
+    where: keepSessionId ? { userId: staff.id, id: { not: keepSessionId } } : { userId: staff.id },
+  });
+  await audit(db, staff, 'staff.2fa.enrolled', headers, { sessionsEnded: count });
+}
+
+/**
+ * After `/two-factor/disable` for staff: end every session, the one Better
+ * Auth just issued included, so nothing signed in without a code survives and
+ * the account has to sign in and set 2-step up again.
+ */
+export async function afterTwoFactorDisabled(
   db: StaffSignInDb,
   user: { id: string; email: string },
   headers: Headers | undefined,
@@ -250,7 +365,21 @@ export async function afterTwoFactorVerified(
   if (!isStaffEmail(user.email)) return;
   const staff = await findStaffById(db, user.id);
   if (!staff) return;
-  await audit(db, staff, 'staff.signin', headers, { step: 'two-factor' });
+  const { count } = await db.session.deleteMany({ where: { userId: staff.id } });
+  await audit(db, staff, 'staff.2fa.disable', headers, { sessionsEnded: count });
+}
+
+/** Audit a staff 2-step change that needs nothing else (setup started, new backup codes). */
+export async function auditTwoFactorChange(
+  db: StaffSignInDb,
+  user: { id: string; email: string },
+  action: 'staff.2fa.enable' | 'staff.2fa.backup_codes',
+  headers: Headers | undefined,
+): Promise<void> {
+  if (!isStaffEmail(user.email)) return;
+  const staff = await findStaffById(db, user.id);
+  if (!staff) return;
+  await audit(db, staff, action, headers, {});
 }
 
 /**
