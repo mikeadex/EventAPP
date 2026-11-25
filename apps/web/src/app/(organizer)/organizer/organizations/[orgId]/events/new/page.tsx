@@ -144,9 +144,14 @@ export default function NewEventPage() {
       });
       for (const t of paidTiers) {
         try {
-          await apiClient(`/v1/events/${created.id}/ticket-types`, { method: 'POST', body: tierToPayload(t) });
+          await apiClient(`/v1/events/${created.id}/ticket-types`, {
+            method: 'POST',
+            body: tierToPayload(t),
+          });
         } catch (err) {
-          router.replace(`/organizer/organizations/${orgId}/events/${created.id}/edit?publishError=1` as never);
+          router.replace(
+            `/organizer/organizations/${orgId}/events/${created.id}/edit?publishError=1` as never,
+          );
           throw err;
         }
       }
@@ -197,6 +202,12 @@ export default function NewEventPage() {
             <>
               <BasicsFields d={d} set={set} errors={visibleErrors} />
               <WhenWhereFields d={d} set={set} errors={visibleErrors} />
+              {/* Next to the date, because that is what it changes. It sat
+                  beside Capacity on the tickets step to mirror the mobile
+                  form, where the two are adjacent anyway — but here the date
+                  is a step earlier, so anyone looking for "does this repeat?"
+                  looked at the date and found nothing. */}
+              <RepeatField d={d} set={set} />
             </>
           )}
           {step === 1 && (
@@ -207,9 +218,10 @@ export default function NewEventPage() {
                 gate={gate}
                 payoutsHref={`/organizer/organizations/${orgId}/payouts`}
               />
-              {kind === 'paid' && <TierRows tiers={tiers} onChange={setTiers} errors={showErrors ? tierErrors : {}} />}
+              {kind === 'paid' && (
+                <TierRows tiers={tiers} onChange={setTiers} errors={showErrors ? tierErrors : {}} />
+              )}
               <CapacityField d={d} set={set} errors={visibleErrors} />
-              <RepeatField d={d} set={set} />
             </>
           )}
           {step === 2 && (
