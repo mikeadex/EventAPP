@@ -13,7 +13,7 @@ import {
   plural,
   tiersPrice,
 } from '@/lib/format';
-import type { EventDetail, Organization } from '@/lib/types';
+import type { EventDetail, Organization, SeriesDates } from '@/lib/types';
 import { Cover } from '@/components/cover';
 import { SaveButton, ShareButton } from '@/components/client';
 import { Icon } from '@/components/icons';
@@ -50,12 +50,14 @@ export default async function EventDetailPage({ params }: { params: Params }) {
   const event = await load(orgSlug, eventSlug);
   if (!event) notFound();
 
-  const [org, going] = await Promise.all([
+  const [org, going, series] = await Promise.all([
     api<Organization>(`/v1/organizations/${orgSlug}`, { revalidate: 300 }).catch(() => null),
     api<{ items: { name: string; image: string | null }[]; total: number }>(
       `/v1/events/${event.id}/attendees`,
     ).catch(() => null),
+    event.seriesId ? api<SeriesDates>(`/v1/events/${event.id}/series`).catch(() => null) : null,
   ]);
+  const moreDates = series?.items ?? [];
 
   const tz = event.timezone;
   const remaining = event.capacity !== null ? Math.max(0, event.capacity - event.attendeeCount) : null;
@@ -237,6 +239,32 @@ export default async function EventDetailPage({ params }: { params: Params }) {
               ) : null}
             </div>
           </section>
+
+          {moreDates.length > 0 && (
+            <section aria-labelledby="more-dates" className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1">
+                <h2 id="more-dates" className="text-[26px] text-strong">
+                  More dates
+                </h2>
+                <p className="text-[15px] text-body">
+                  This event {series?.rule === 'WEEKLY' ? 'runs weekly' : 'runs monthly'}. Can’t make this one? Book another.
+                </p>
+              </div>
+              <ol className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3" aria-label="Upcoming dates">
+                {moreDates.map((o) => (
+                  <li key={o.id}>
+                    <Link href={(o.href ?? `/${orgSlug}/${o.slug}`) as never} className="card card-link flex flex-col gap-1.5 p-5">
+                      <span className="eyebrow text-[10px] text-accent">{fmtWeekday(o.startsAt, o.timezone)}</span>
+                      <span className="text-[19px] text-strong">{fmtDayMonth(o.startsAt, o.timezone)}</span>
+                      <span className="text-[14px] text-muted">
+                        {fmtTime(o.startsAt, o.timezone)} – {fmtTime(o.endsAt, o.timezone)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
           <section aria-labelledby="host" className="flex flex-col gap-5">
             <h2 id="host" className="text-[26px] text-strong">

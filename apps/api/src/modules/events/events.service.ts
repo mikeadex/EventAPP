@@ -11,6 +11,7 @@ import {
   EventSearchSchema,
   UpdateEventSchema,
   slugify,
+  seriesOccurrences,
   type CreateEventInput,
   type EventSearchInput,
   type UpdateEventInput,
@@ -192,6 +193,7 @@ export class EventsService {
         publishedAt: true,
         cancelledAt: true,
         organizationId: true,
+        seriesId: true,
         venue: true,
         ticketTypes: {
           orderBy: { createdAt: 'asc' },
@@ -232,6 +234,7 @@ export class EventsService {
         coverImageUrl: true,
         publishedAt: true,
         cancelledAt: true,
+        seriesId: true,
       },
     });
   }
@@ -268,12 +271,25 @@ export class EventsService {
   }
 
   // ─── Organizer operations ────────────────────────────────────────────────
+  /**
+   * Create an event — or, with `repeat`, a whole run of them.
+   *
+   * A repeating event is materialised as one ordinary Event per date, all in
+   * one transaction, sharing the venue row, the cover, the visibility and a
+   * copy of the ticket types. Nothing downstream has to know about series:
+   * each date books, checks in and cancels on its own. The first date is
+   * returned, with the series id so the client can publish the rest.
+   */
   async create(organizationId: string, actorUserId: string, body: unknown) {
     const input: CreateEventInput = CreateEventSchema.parse(body);
     this.screen(input.title, input.summary, input.description);
-    return this.prisma.$transaction(async (tx) => {
-      const slug = await this.allocateSlug(tx, organizationId, input.title);
+    const firstStart = new Date(input.startsAt);
+    const firstEnd = new Date(input.endsAt);
+    const dates = input.repeat
+      ? seriesOccurrences(firstStart, firstEnd, input.repeat, input.timezone)
+      : [{ startsAt: firstStart, endsAt: firstEnd }];
 
+    return this.prisma.$transaction(async (tx) => {
       const venueId = input.venue
         ? (
             await tx.venue.create({
@@ -292,54 +308,201 @@ export class EventsService {
           ).id
         : null;
 
-      const event = await tx.event.create({
-        data: {
-          slug,
-          organizationId,
-          title: input.title,
-          summary: input.summary,
-          description: input.description,
-          category: input.category.toUpperCase() as Prisma.EventCreateInput['category'],
-          visibility: input.visibility.toUpperCase() as Prisma.EventCreateInput['visibility'],
-          startsAt: new Date(input.startsAt),
-          endsAt: new Date(input.endsAt),
-          timezone: input.timezone,
-          isOnline: input.isOnline,
-          onlineUrl: input.onlineUrl,
-          capacity: input.capacity,
-          coverImageUrl: input.coverImageUrl,
-          status: 'DRAFT',
-          ...(venueId && { venueId }),
-        },
-        include: { ticketTypes: true, venue: true },
-      });
+      const seriesId = input.repeat
+        ? (
+            await tx.eventSeries.create({
+              data: {
+                organizationId,
+                rule: input.repeat.every === 'week' ? 'WEEKLY' : 'MONTHLY',
+                interval: 1,
+                count: input.repeat.count,
+                until: dates[dates.length - 1]!.startsAt,
+              },
+              select: { id: true },
+            })
+          ).id
+        : null;
 
-      if (input.ticketTypes.length) {
-        await tx.ticketType.createMany({
-          data: input.ticketTypes.map((t) => ({
-            eventId: event.id,
-            name: t.name,
-            description: t.description,
-            priceMinor: t.priceMinor,
-            currency: t.currency,
-            quantity: t.quantity,
-            perOrderMax: t.perOrderMax,
-            salesStart: t.salesStart ? new Date(t.salesStart) : null,
-            salesEnd: t.salesEnd ? new Date(t.salesEnd) : null,
-          })),
+      let first: Prisma.EventGetPayload<{ include: { ticketTypes: true; venue: true } }> | null = null;
+      for (const [i, when] of dates.entries()) {
+        // Later dates get the date in the slug, so a run of "sunday-service"
+        // reads as sunday-service-2026-12-07 rather than a random suffix.
+        const slug = await this.allocateSlug(
+          tx,
+          organizationId,
+          input.title,
+          i === 0 ? undefined : isoDay(when.startsAt, input.timezone),
+        );
+        const event = await tx.event.create({
+          data: {
+            slug,
+            organizationId,
+            title: input.title,
+            summary: input.summary,
+            description: input.description,
+            category: input.category.toUpperCase() as Prisma.EventCreateInput['category'],
+            visibility: input.visibility.toUpperCase() as Prisma.EventCreateInput['visibility'],
+            startsAt: when.startsAt,
+            endsAt: when.endsAt,
+            timezone: input.timezone,
+            isOnline: input.isOnline,
+            onlineUrl: input.onlineUrl,
+            capacity: input.capacity,
+            coverImageUrl: input.coverImageUrl,
+            status: 'DRAFT',
+            ...(venueId && { venueId }),
+            ...(seriesId && { seriesId }),
+          },
+          include: { ticketTypes: true, venue: true },
+        });
+
+        if (input.ticketTypes.length) {
+          await tx.ticketType.createMany({
+            data: input.ticketTypes.map((t) => ({
+              eventId: event.id,
+              name: t.name,
+              description: t.description,
+              priceMinor: t.priceMinor,
+              currency: t.currency,
+              quantity: t.quantity,
+              perOrderMax: t.perOrderMax,
+              salesStart: t.salesStart ? new Date(t.salesStart) : null,
+              salesEnd: t.salesEnd ? new Date(t.salesEnd) : null,
+            })),
+          });
+        }
+
+        await this.audit.write({
+          actorUserId,
+          organizationId,
+          action: 'event.create',
+          targetType: 'event',
+          targetId: event.id,
+          ...(seriesId && { metadata: { seriesId, occurrence: i + 1 } as Prisma.InputJsonValue }),
+          tx,
+        });
+        first ??= event;
+      }
+      return { ...first!, seriesId, seriesCount: dates.length };
+    });
+  }
+
+  // ─── Series ──────────────────────────────────────────────────────────────
+  /**
+   * The other dates of a series, as the public event page shows them: the
+   * next few that are live, after the one being looked at. Empty for an
+   * event that is not part of a series, rather than 404, so the page can
+   * always ask.
+   */
+  async listSeriesPublic(eventId: string, limit = 5) {
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, deletedAt: null },
+      select: { seriesId: true, startsAt: true, organization: { select: { slug: true } } },
+    });
+    if (!event?.seriesId) return { seriesId: null, rule: null, items: [] };
+    const [series, items] = await Promise.all([
+      this.prisma.eventSeries.findUnique({ where: { id: event.seriesId }, select: { rule: true } }),
+      this.prisma.event.findMany({
+        where: {
+          seriesId: event.seriesId,
+          id: { not: eventId },
+          deletedAt: null,
+          status: 'PUBLISHED',
+          visibility: { in: ['PUBLIC', 'UNLISTED'] },
+          startsAt: { gte: new Date() },
+        },
+        orderBy: { startsAt: 'asc' },
+        take: limit,
+        select: { id: true, slug: true, startsAt: true, endsAt: true, timezone: true },
+      }),
+    ]);
+    return {
+      seriesId: event.seriesId,
+      rule: series?.rule ?? null,
+      items: items.map((e) => ({ ...e, href: `/${event.organization.slug}/${e.slug}` })),
+    };
+  }
+
+  /** Every date of the series an event belongs to, drafts and cancelled included, for its organiser. */
+  async listSeriesForOrganizer(eventId: string) {
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, deletedAt: null },
+      select: { seriesId: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    if (!event.seriesId) return { seriesId: null, rule: null, items: [] };
+    const series = await this.prisma.eventSeries.findUnique({
+      where: { id: event.seriesId },
+      select: {
+        rule: true,
+        events: {
+          where: { deletedAt: null },
+          orderBy: { startsAt: 'asc' },
+          select: {
+            id: true,
+            slug: true,
+            status: true,
+            startsAt: true,
+            endsAt: true,
+            timezone: true,
+            attendeeCount: true,
+          },
+        },
+      },
+    });
+    return { seriesId: event.seriesId, rule: series?.rule ?? null, items: series?.events ?? [] };
+  }
+
+  /**
+   * Cancel this date and every later one in its series. Earlier dates are
+   * left alone: they have happened, or are about to, and the people booked
+   * on them are still expected. Each cancellation notifies its own holders.
+   */
+  async cancelSeries(eventId: string, actorUserId: string, reason: string | undefined) {
+    const evt = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, seriesId: true, startsAt: true, organizationId: true },
+    });
+    if (!evt) throw new NotFoundException('Event not found');
+    if (!evt.seriesId) throw new BadRequestException('This event is not part of a series');
+
+    const targets = await this.prisma.event.findMany({
+      where: {
+        seriesId: evt.seriesId,
+        deletedAt: null,
+        startsAt: { gte: evt.startsAt },
+        status: { not: 'CANCELLED' },
+      },
+      select: { id: true },
+    });
+    if (targets.length === 0) throw new ConflictException('These dates are already cancelled');
+
+    const ids = targets.map((t) => t.id);
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.event.updateMany({
+        where: { id: { in: ids } },
+        data: { status: 'CANCELLED', cancelledAt: now },
+      });
+      for (const id of ids) {
+        await this.audit.write({
+          actorUserId,
+          organizationId: evt.organizationId,
+          action: 'event.cancel',
+          targetType: 'event',
+          targetId: id,
+          metadata: { seriesId: evt.seriesId, fromEventId: eventId, ...(reason && { reason }) } as Prisma.InputJsonValue,
+          tx,
         });
       }
-
-      await this.audit.write({
-        actorUserId,
-        organizationId,
-        action: 'event.create',
-        targetType: 'event',
-        targetId: event.id,
-        tx,
-      });
-      return event;
     });
+
+    for (const id of ids) {
+      void this.notifyCancellation(id).catch((err) => {
+        this.logger.warn(`Cancellation push failed: ${(err as Error).message}`);
+      });
+    }
+    return { cancelled: ids.length, ids };
   }
 
   async update(eventId: string, actorUserId: string, body: unknown) {
@@ -415,10 +578,16 @@ export class EventsService {
     }
   }
 
-  async publish(eventId: string, actorUserId: string) {
+  /**
+   * Publish an event. With `applyToSeries`, also every other unpublished,
+   * uncancelled date of its series that has not yet ended — the one call the
+   * create flow makes after saving a repeating event. Past attendees are told
+   * once, about the date they were asked to publish, not once per occurrence.
+   */
+  async publish(eventId: string, actorUserId: string, applyToSeries = false) {
     const evt = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true, status: true, organizationId: true, startsAt: true, endsAt: true },
+      select: { id: true, status: true, organizationId: true, startsAt: true, endsAt: true, seriesId: true },
     });
     if (!evt) throw new NotFoundException('Event not found');
     if (evt.status === 'PUBLISHED') {
@@ -427,19 +596,43 @@ export class EventsService {
     if (evt.status === 'CANCELLED') {
       throw new ConflictException('Cancelled events cannot be republished');
     }
-    if (evt.endsAt <= new Date()) {
+    const now = new Date();
+    if (evt.endsAt <= now) {
       throw new BadRequestException('Event end time is in the past');
     }
-    const updated = await this.prisma.event.update({
-      where: { id: eventId },
-      data: { status: 'PUBLISHED', publishedAt: new Date() },
-    });
-    await this.audit.write({
-      actorUserId,
-      organizationId: evt.organizationId,
-      action: 'event.publish',
-      targetType: 'event',
-      targetId: eventId,
+
+    const siblings =
+      applyToSeries && evt.seriesId
+        ? await this.prisma.event.findMany({
+            where: {
+              seriesId: evt.seriesId,
+              id: { not: eventId },
+              deletedAt: null,
+              status: { in: ['DRAFT', 'SCHEDULED'] },
+              endsAt: { gt: now },
+            },
+            select: { id: true },
+          })
+        : [];
+    const ids = [eventId, ...siblings.map((s) => s.id)];
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.event.updateMany({
+        where: { id: { in: ids } },
+        data: { status: 'PUBLISHED', publishedAt: now },
+      });
+      for (const id of ids) {
+        await this.audit.write({
+          actorUserId,
+          organizationId: evt.organizationId,
+          action: 'event.publish',
+          targetType: 'event',
+          targetId: id,
+          ...(id !== eventId && { metadata: { seriesId: evt.seriesId, fromEventId: eventId } as Prisma.InputJsonValue }),
+          tx,
+        });
+      }
+      return tx.event.findUniqueOrThrow({ where: { id: eventId } });
     });
 
     // After the commit, and never allowed to fail the publish.
@@ -447,7 +640,7 @@ export class EventsService {
       this.logger.warn(`Publish push failed: ${(err as Error).message}`);
     });
 
-    return updated;
+    return { ...updated, publishedCount: ids.length };
   }
 
   /**
@@ -563,8 +756,9 @@ export class EventsService {
     tx: Prisma.TransactionClient,
     organizationId: string,
     title: string,
+    suffix?: string,
   ): Promise<string> {
-    const base = slugify(title);
+    const base = suffix ? `${slugify(title)}-${suffix}` : slugify(title);
     for (let attempt = 0; attempt < 5; attempt++) {
       const candidate = attempt === 0 ? base : `${base}-${randomId(5).toLowerCase()}`;
       const clash = await tx.event.findUnique({
@@ -574,6 +768,15 @@ export class EventsService {
       if (!clash) return candidate;
     }
     return `${base}-${randomId(8).toLowerCase()}`;
+  }
+}
+
+/** The calendar date of `d` in `timeZone`, as YYYY-MM-DD. */
+function isoDay(d: Date, timeZone: string): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  } catch {
+    return d.toISOString().slice(0, 10);
   }
 }
 

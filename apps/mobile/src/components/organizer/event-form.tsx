@@ -2,9 +2,23 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, radius, fontSize, theme, palette, radiusExtra } from '@ekklesia/ui/tokens';
+import { REPEAT_MAX_COUNT, REPEAT_MIN_COUNT, seriesOccurrences, type RepeatEvery } from '@ekklesia/shared';
 import { DateField, TimeField } from './date-time-fields';
 import { CoverPhotoField } from './cover-photo-field';
 import type { LocationMode } from '@/lib/event-location';
+
+/** How a new event repeats. Create only — each date is its own event once saved. */
+export type RepeatChoice = 'none' | RepeatEvery;
+
+const REPEAT_OPTIONS: { value: RepeatChoice; label: string; hint: string }[] = [
+  { value: 'none', label: 'Does not repeat', hint: 'A one-off. You can always create another.' },
+  { value: 'week', label: 'Weekly', hint: 'Same day and time every week.' },
+  {
+    value: 'month',
+    label: 'Monthly',
+    hint: 'Same day of the month, every month. The 31st falls on the last day of shorter months.',
+  },
+];
 
 const LOCATION_MODES = [
   {
@@ -49,6 +63,9 @@ export interface EventFormValues {
   capacity: string;
   /** Public URL of an already-uploaded image, or null for no cover. */
   coverImageUrl: string | null;
+  repeat: RepeatChoice;
+  /** Dates in all, the first included; a string because it is typed. */
+  repeatCount: string;
 }
 
 export function emptyEventForm(): EventFormValues {
@@ -68,6 +85,8 @@ export function emptyEventForm(): EventFormValues {
     postalCode: '',
     capacity: '',
     coverImageUrl: null,
+    repeat: 'none',
+    repeatCount: '6',
   };
 }
 
@@ -117,7 +136,19 @@ export function validateEventForm(v: EventFormValues): string | null {
     if (!v.city.trim()) return 'Enter the town or city.';
   }
   if (v.capacity.trim() && !/^\d+$/.test(v.capacity.trim())) return 'Capacity must be a whole number.';
+  if (v.repeat !== 'none') {
+    const n = Number(v.repeatCount.trim());
+    if (!Number.isInteger(n) || n < REPEAT_MIN_COUNT || n > REPEAT_MAX_COUNT) {
+      return `Choose between ${REPEAT_MIN_COUNT} and ${REPEAT_MAX_COUNT} dates.`;
+    }
+  }
   return null;
+}
+
+/** The repeat rule the API takes, or undefined when the event does not repeat. */
+export function formRepeat(v: EventFormValues) {
+  if (v.repeat === 'none') return undefined;
+  return { every: v.repeat, count: Number(v.repeatCount.trim()) };
 }
 
 /**
@@ -172,6 +203,9 @@ export function toEventBody(v: EventFormValues, mode: 'create' | 'update') {
     // On create the schema takes a URL or nothing; on update, null is how a
     // cover is cleared, so `absent` carries the right meaning for each.
     coverImageUrl: v.coverImageUrl ?? absent,
+    // Only on create: a series is a set of dates to generate, not a property
+    // an existing date can change.
+    ...(mode === 'create' && { repeat: formRepeat(v) }),
   };
 }
 
@@ -179,10 +213,13 @@ export function EventForm({
   value,
   onChange,
   disabled,
+  mode = 'update',
 }: {
   value: EventFormValues;
   onChange: (next: EventFormValues) => void;
   disabled?: boolean;
+  /** `create` shows the Repeats control; an existing date cannot be made to repeat. */
+  mode?: 'create' | 'update';
 }) {
   const set = <K extends keyof EventFormValues>(key: K, v: EventFormValues[K]) =>
     onChange({ ...value, [key]: v });
@@ -278,6 +315,8 @@ export function EventForm({
           />
         </View>
       </View>
+
+      {mode === 'create' && <RepeatField value={value} set={set} disabled={disabled} />}
 
       <View>
         <Text style={styles.label}>How can people attend?</Text>
@@ -386,6 +425,109 @@ export function EventForm({
   );
 }
 
+/**
+ * Does not repeat / Weekly / Monthly, with a count and the dates it will make.
+ * Mirrors the web's RepeatFields: the same rule goes to the same endpoint.
+ */
+function RepeatField({
+  value,
+  set,
+  disabled,
+}: {
+  value: EventFormValues;
+  set: <K extends keyof EventFormValues>(key: K, v: EventFormValues[K]) => void;
+  disabled?: boolean;
+}) {
+  const count = Number(value.repeatCount.trim());
+  const start = toInstant(value.date, value.startTime);
+  const end = toInstant(value.date, value.endTime);
+  const dates =
+    value.repeat !== 'none' && start && end && end > start && Number.isInteger(count) && count >= REPEAT_MIN_COUNT && count <= REPEAT_MAX_COUNT
+      ? seriesOccurrences(start, end, { every: value.repeat, count }, deviceTimezone())
+      : null;
+  const bump = (by: number) =>
+    set('repeatCount', String(Math.min(REPEAT_MAX_COUNT, Math.max(REPEAT_MIN_COUNT, (Number.isInteger(count) ? count : 6) + by))));
+  return (
+    <View style={styles.repeatBox}>
+      <Text style={styles.label}>Repeats</Text>
+      <View style={styles.segmented} accessibilityRole="radiogroup" accessibilityLabel="Repeats">
+        {REPEAT_OPTIONS.map((o) => {
+          const on = value.repeat === o.value;
+          return (
+            <Pressable
+              key={o.value}
+              disabled={disabled}
+              onPress={() => set('repeat', o.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: on, disabled }}
+              style={[styles.segment, on && styles.segmentOn]}
+            >
+              <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{o.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={styles.hint}>{REPEAT_OPTIONS.find((o) => o.value === value.repeat)?.hint}</Text>
+
+      {value.repeat !== 'none' && (
+        <>
+          <View style={styles.stepperRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>How many dates</Text>
+              <Text style={styles.hint}>Each date is its own event with its own bookings.</Text>
+            </View>
+            <View style={styles.stepper} accessibilityRole="adjustable" accessibilityLabel="How many dates" accessibilityValue={{ text: value.repeatCount }}>
+              <Pressable
+                onPress={() => bump(-1)}
+                disabled={disabled || count <= REPEAT_MIN_COUNT}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Fewer dates"
+                style={styles.stepBtn}
+              >
+                <Ionicons name="remove" size={18} color={theme.dark.textPrimary} />
+              </Pressable>
+              <TextInput
+                value={value.repeatCount}
+                onChangeText={(t) => set('repeatCount', t.replace(/[^0-9]/g, ''))}
+                style={styles.stepInput}
+                editable={!disabled}
+                keyboardType="number-pad"
+                maxLength={2}
+                accessibilityLabel="Number of dates"
+              />
+              <Pressable
+                onPress={() => bump(1)}
+                disabled={disabled || count >= REPEAT_MAX_COUNT}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="More dates"
+                style={styles.stepBtn}
+              >
+                <Ionicons name="add" size={18} color={theme.dark.textPrimary} />
+              </Pressable>
+            </View>
+          </View>
+          {dates ? (
+            <View style={styles.chips} accessibilityLabel="Dates in this series">
+              {dates.slice(0, 6).map((o, i) => (
+                <View key={i} style={styles.chip}>
+                  <Text style={styles.chipText}>
+                    {o.startsAt.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </Text>
+                </View>
+              ))}
+              {dates.length > 6 && <Text style={[styles.hint, { alignSelf: 'center' }]}>and {dates.length - 6} more</Text>}
+            </View>
+          ) : (
+            <Text style={styles.hint}>Set the date and times above to see the dates.</Text>
+          )}
+        </>
+      )}
+    </View>
+  );
+}
+
 function Field({
   label,
   hint,
@@ -455,5 +597,29 @@ const styles = StyleSheet.create({
     padding: spacing[4],
     borderRadius: radius.lg,
     backgroundColor: theme.dark.surface,
+  },
+  repeatBox: {
+    gap: spacing[2],
+    padding: spacing[4],
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.22)',
+  },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginTop: spacing[2] },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(249,142,128,0.22)',
+    borderRadius: radius.full,
+    backgroundColor: theme.dark.surface,
+  },
+  stepBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  stepInput: {
+    width: 44,
+    textAlign: 'center',
+    fontSize: fontSize.base,
+    color: theme.dark.textPrimary,
+    paddingVertical: spacing[2],
   },
 });

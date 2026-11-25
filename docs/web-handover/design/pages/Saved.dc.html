@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Saved events</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="saved" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap" style="flex: 1; padding-top: 48px;">
+    <div class="row-between" style="margin-bottom: 40px;">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <span class="eyebrow" style="color: var(--accent);">Saved</span>
+        <h1 class="h1">Saved events</h1>
+        <p style="max-width: 560px; font-size: 16px; line-height: 1.6; color: var(--body);">Events you’ve hearted. Synced with the Ekklesia app.</p>
+      </div>
+      <a href="Discover.dc.html" class="btn btn-outline">Discover more
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </a>
+    </div>
+
+    <sc-if value="{{ hasSaved }}" hint-placeholder-val="{{ true }}">
+      <div class="cards">
+        <sc-for list="{{ saved }}" as="e" hint-placeholder-count="3">
+          <dc-import name="EventCard" event="{{ e }}" hint-size="100%,420px"></dc-import>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="card" style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 80px 24px; text-align: center;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--faint);"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+        <h2 style="font-size: 22px; font-weight: 400; color: var(--strong);">Nothing saved yet</h2>
+        <p style="max-width: 360px; font-size: 15px; color: var(--body);">Tap the heart on any event to keep it here for later.</p>
+        <a href="Discover.dc.html" class="btn btn-primary">Discover events</a>
+      </div>
+    </sc-if>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"empty":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1200}}'>
+var DATA_URL = '../sample-data.json';
+var SAVED = ['alpha-course-winter', 'city-outreach-day', 'charity-gala-dinner'];
+var PAL = {
+  Worship: ['#3a1712', '#7e1d14', '#f98e80'], Conference: ['#1f1418', '#4a2a2e', '#d9564a'],
+  Class: ['#21161a', '#5e2a24', '#ffc9c2'], Outreach: ['#2a1410', '#9a3a2c', '#f98e80'],
+  Fundraiser: ['#2b0f0c', '#7e1d14', '#ffb4a8'], Youth: ['#2a1016', '#c4392c', '#ffc9c2'],
+  Prayer: ['#160f12', '#3b2226', '#f98e80'], Concert: ['#1d1013', '#5c1d17', '#ffd9d2']
+};
+function money(n) { return n === 0 ? 'Free' : '£' + n.toLocaleString('en-GB'); }
+function enrich(e, hosts) {
+  var host = hosts.filter(function (h) { return h.slug === e.hostSlug; })[0] || {};
+  var d = new Date(e.start);
+  var tz = { timeZone: 'Europe/London' };
+  var day = d.toLocaleDateString('en-GB', Object.assign({ weekday: 'short', day: 'numeric', month: 'short' }, tz));
+  var time = d.toLocaleTimeString('en-GB', Object.assign({ hour: '2-digit', minute: '2-digit', hour12: false }, tz));
+  var prices = e.tiers.map(function (t) { return t.price; });
+  var min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
+  var price = max === 0 ? 'Free' : min === 0 ? 'Free – ' + money(max) : min === max ? money(min) : 'From ' + money(min);
+  var h = 7; for (var i = 0; i < e.title.length; i++) { h = (h * 31 + e.title.charCodeAt(i)) >>> 0; }
+  var p = PAL[e.category] || PAL.Worship;
+  var cx = 60 + (h % 280), cy = 20 + ((h >> 4) % 180);
+  var mx = ((h >> 8) % 2 === 0) ? 220 + ((h >> 3) % 60) : 10 + ((h >> 5) % 60);
+  var my = 40 + ((h >> 6) % 70);
+  return {
+    slug: e.slug, title: e.title, category: e.category, hostName: host.name,
+    when: (day + ' at ' + time).toUpperCase(), price: price, going: e.going + ' going',
+    image: e.image || '', hasImage: !!e.image, noImage: !e.image,
+    art: {
+      bg: 'radial-gradient(120% 90% at ' + Math.round(cx / 4) + '% ' + Math.round(cy / 2.4) + '%, ' + p[1] + ' 0%, ' + p[0] + ' 55%, #0d0a0b 100%)',
+      stroke: p[2], cx: cx, cy: cy, transform: 'translate(' + mx + ' ' + my + ') scale(1.6)'
+    }
+  };
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    fetch(DATA_URL).then(function (r) { return r.json(); }).then((d) => this.setState({ data: d })).catch(function () {});
+  }
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var data = s.data || { events: [], hosts: [] };
+    var empty = !!this.props.empty;
+    var saved = empty ? [] : data.events.filter(function (e) { return SAVED.indexOf(e.slug) >= 0; }).map(function (e) { return enrich(e, data.hosts); });
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      saved: saved, hasSaved: !empty, isEmpty: empty
+    };
+  }
+}
+</script>
+</body>
+</html>

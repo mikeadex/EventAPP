@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Payouts</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.shell{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.hostside{flex:1 1 240px;max-width:260px}
+@media (max-width:760px){.hostside{flex-basis:100%;max-width:none}.shell{gap:24px}}
+.po{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:stretch}
+@media (max-width:1180px){.po{grid-template-columns:minmax(0,1fr)}}
+.ln{display:flex;justify-content:space-between;gap:16px;font-size:15px}
+.tbl{width:100%;min-width:560px;border-collapse:collapse;font-size:15px}
+.tbl th{padding:12px 16px;text-align:left;font-weight:400;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--line)}
+.tbl td{padding:16px;border-bottom:1px solid var(--line)}
+.tbl tr:last-child td{border-bottom:0}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="dashboard" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap shell" style="flex: 1; padding-top: 40px;">
+    <div class="hostside">
+      <dc-import name="HostNav" active="payouts" theme="{{ theme }}" hint-size="100%,560px"></dc-import>
+    </div>
+
+    <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+      <div class="row-between">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <span class="eyebrow" style="color: var(--accent);">Grace Community Church</span>
+          <h1 class="h1" style="font-size: 40px;">Payouts</h1>
+        </div>
+        <button type="button" class="btn btn-outline">Download statement</button>
+      </div>
+
+      <div class="po">
+        <div style="position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px; padding: 28px; border-radius: 24px; border: 1px solid var(--line-3); background: var(--surface); box-shadow: var(--shadow);">
+          <div aria-hidden="true" style="position: absolute; right: -80px; top: -80px; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, rgba(var(--accent-rgb), 0.22), transparent 65%);"></div>
+          <span class="eyebrow" style="position: relative; font-size: 10px; color: var(--faint);">Next payout</span>
+          <span style="position: relative; font-size: 48px; line-height: 1.05; color: var(--strong);">£2,148.30</span>
+          <span style="position: relative; font-size: 15px; color: var(--ink-2);">Tuesday 1 December · to Barclays •••• 8842</span>
+          <span style="position: relative; display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--accent);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></span>Paid out weekly, on Tuesdays</span>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 12px; padding: 24px;">
+          <span class="eyebrow" style="font-size: 10px; color: var(--faint);">This period · 24–30 Nov</span>
+          <div class="ln"><span style="color: var(--ink-2);">Gross ticket sales</span><span>£2,220.00</span></div>
+          <div class="ln"><span style="color: var(--ink-2);">Platform fee</span><span>−£66.60</span></div>
+          <div class="ln"><span style="color: var(--ink-2);">Refunds</span><span>−£5.10</span></div>
+          <div class="rule-x" style="margin: 4px 0;"></div>
+          <div class="ln"><span style="color: var(--ink-2);">Net payout</span><span style="color: var(--strong);">£2,148.30</span></div>
+        </div>
+      </div>
+
+      <section class="card" style="overflow: hidden;" aria-labelledby="h-past">
+        <div class="row-between" style="align-items: center; padding: 20px 24px;">
+          <h2 id="h-past" style="font-size: 20px; font-weight: 400; color: var(--strong);">Past payouts</h2>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="tbl">
+            <thead><tr><th>Date</th><th>Status</th><th>Events</th><th style="text-align: right;">Amount</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ past }}" as="p" hint-placeholder-count="4">
+                <tr>
+                  <td>{{ p.date }}</td>
+                  <td><span class="tag">{{ p.status }}</span></td>
+                  <td style="color: var(--ink-2);">{{ p.events }}</td>
+                  <td style="text-align: right; color: var(--strong);">{{ p.amount }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card row-between" style="align-items: center; padding: 24px;" aria-labelledby="h-bank">
+        <span style="display: flex; align-items: center; gap: 16px;">
+          <span style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; flex: none; border-radius: 14px; background: var(--soft); color: var(--accent);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"></path></svg>
+          </span>
+          <span style="display: flex; flex-direction: column; gap: 2px;">
+            <span id="h-bank" style="font-size: 16px; color: var(--strong);">Grace Community Church</span>
+            <span style="font-size: 14px; color: var(--muted);">Barclays · sort code ••-••-04 · •••• 8842</span>
+          </span>
+        </span>
+        <button type="button" class="btn btn-outline btn-sm">Change bank account</button>
+      </section>
+      <p style="font-size: 13px; color: var(--faint);">Platform fee is 3% + £0.20 per paid ticket. Bank details are held by our payment provider, not by Ekklesia.</p>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      past: [
+        { date: '24 Nov 2026', status: 'Paid', events: '3 events', amount: '£1,806.40' },
+        { date: '17 Nov 2026', status: 'Paid', events: '2 events', amount: '£942.15' },
+        { date: '10 Nov 2026', status: 'Paid', events: '4 events', amount: '£2,410.00' },
+        { date: '3 Nov 2026', status: 'Paid', events: '1 event', amount: '£318.60' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

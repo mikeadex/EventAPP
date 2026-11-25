@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Checkout</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.box{border-radius:14px;border-color:var(--line-2);background:var(--raised);height:52px}
+.co{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:48px;align-items:start}
+@media (max-width:900px){.co{grid-template-columns:minmax(0,1fr)}}
+.pay{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:14px;font-size:16px}
+.ln{display:flex;justify-content:space-between;gap:16px;font-size:15px}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="none" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap" style="flex: 1; padding-top: 40px; max-width: 1120px;">
+    <div class="row-between" style="margin-bottom: 32px;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span class="eyebrow" style="color: var(--accent);">Checkout</span>
+        <h1 class="h1" style="font-size: 44px;">Pay for your tickets</h1>
+      </div>
+      <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        Secure · tickets held for 9:41
+      </span>
+    </div>
+
+    <div class="co">
+      <form style="display: flex; flex-direction: column; gap: 24px;" onSubmit="{{ noSubmit }}">
+        <section class="card" style="padding: 28px;" aria-labelledby="h-contact">
+          <h2 id="h-contact" style="font-size: 20px; font-weight: 400; color: var(--strong);">Your details</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 20px;">
+            <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">Full name</span><span class="field box"><input autocomplete="name" value="Mike Adex"></span></label>
+            <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">Email for tickets</span><span class="field box"><input type="email" autocomplete="email" value="joko.adeleye@outlook.com"></span></label>
+          </div>
+        </section>
+
+        <section class="card" style="padding: 28px;" aria-labelledby="h-pay">
+          <h2 id="h-pay" style="font-size: 20px; font-weight: 400; color: var(--strong);">Payment</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 20px;">
+            <a href="Confirmation.dc.html" class="pay" style="background: #000000; color: #ffffff;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.2.8c1.3 0 2.1-1.2 2.9-2.4.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.4-.9-2.4-4.1ZM14 5.4c.7-.8 1.1-1.9 1-3-1 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.5 2.8-1.3Z"></path></svg>Pay
+            </a>
+            <a href="Confirmation.dc.html" class="pay" style="border: 1px solid var(--line-2); background: var(--surface); color: var(--ink);">G Pay</a>
+          </div>
+          <div style="display: flex; align-items: center; gap: 16px; margin: 20px 0; font-size: 12px; color: var(--faint);"><span class="rule-x" style="flex: 1;"></span>or pay by card<span class="rule-x" style="flex: 1;"></span></div>
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">Card number</span><span class="field box"><input class="mono" inputmode="numeric" autocomplete="cc-number" placeholder="1234 1234 1234 1234"></span></label>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+              <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">Expiry</span><span class="field box"><input class="mono" autocomplete="cc-exp" placeholder="MM / YY"></span></label>
+              <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">CVC</span><span class="field box"><input class="mono" inputmode="numeric" autocomplete="cc-csc" placeholder="123"></span></label>
+            </div>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-2);"><input type="checkbox" style="width: 18px; height: 18px; accent-color: var(--accent);"> Save this card for next time</label>
+          </div>
+        </section>
+      </form>
+
+      <aside class="sticky" aria-label="Order summary" style="padding: 24px; border-radius: 24px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow);">
+        <div style="display: flex; gap: 14px; align-items: center;">
+          <span class="cover-art" aria-hidden="true" style="width: 64px; height: 64px; flex: none; border-radius: 14px; background: radial-gradient(120% 90% at 70% 20%, #7e1d14 0%, #2b0f0c 55%, #0d0a0b 100%);"></span>
+          <span style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 18px; color: var(--strong);">Charity Gala Dinner</span>
+            <span style="font-size: 13px; color: var(--muted);">Sat 5 Dec · 19:00 · The Bromley Court Hotel</span>
+          </span>
+        </div>
+        <div class="rule-x" style="margin: 20px 0;"></div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="ln"><span style="color: var(--ink-2);">2 × Single seat</span><span>£130.00</span></div>
+          <div class="ln"><span style="color: var(--ink-2);">Gift to winter shelters</span><span>£10.00</span></div>
+          <div class="ln"><span style="color: var(--ink-2);">Booking fee</span><span>£3.90</span></div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <label class="field" style="flex: 1; height: 44px; border-radius: 12px;"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Promo code</span><input placeholder="Promo code" style="font-size: 14px;"></label>
+          <button type="button" class="btn btn-outline" style="height: 44px;">Add</button>
+        </div>
+        <div class="rule-x" style="margin: 20px 0;"></div>
+        <div class="ln" style="align-items: baseline;"><span style="color: var(--ink-2);">Total</span><span style="font-size: 26px; color: var(--strong);">£143.90</span></div>
+        <a href="Confirmation.dc.html" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 20px;">Pay £143.90</a>
+        <p style="margin-top: 12px; text-align: center; font-size: 12px; line-height: 1.6; color: var(--faint);">Tickets are refundable up to 48 hours before the event.</p>
+      </aside>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      noSubmit: function (ev) { ev.preventDefault(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

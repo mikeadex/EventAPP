@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Site footer</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<footer class="{{ rootClass }}" style="border-top: 1px solid var(--line); background: var(--raised); font-family: 'Alata', sans-serif; color: var(--ink);">
+  <div class="wrap split" style="grid-template-columns: minmax(0, 1.3fr) minmax(0, 2fr); align-items: start; gap: 48px; padding-top: 64px; padding-bottom: 64px;">
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <a href="Main.dc.html" aria-label="Ekklesia Events — home" style="display: inline-flex; align-items: center; gap: 12px;">
+        <svg width="34" height="31" viewBox="11.5 16.6 85 78" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="ek-mark-f" x1="18" y1="24" x2="92" y2="90" gradientUnits="userSpaceOnUse">
+              <stop offset="0" style="stop-color: var(--mark-a)"></stop>
+              <stop offset="0.55" style="stop-color: var(--mark-b)"></stop>
+              <stop offset="1" style="stop-color: var(--mark-c)"></stop>
+            </linearGradient>
+          </defs>
+          <g stroke="url(#ek-mark-f)" stroke-linecap="round" fill="none">
+            <path d="M18 50 H70" stroke-width="14"></path>
+            <path d="M70 50 A26 26 0 1 0 58 71" stroke-width="14"></path>
+            <path d="M76 62 V88" stroke-width="8"></path>
+            <path d="M76 79 L88 68" stroke-width="8"></path>
+            <path d="M76 79 L90 88" stroke-width="8"></path>
+          </g>
+        </svg>
+        <span style="display: flex; flex-direction: column; line-height: 1;">
+          <span style="font-size: 22px; color: var(--strong);">ekklesia</span>
+          <span style="margin-top: 4px; padding-left: 2px; font-size: 9px; letter-spacing: 0.52em; color: var(--accent);">EVENTS</span>
+        </span>
+      </a>
+      <p style="max-width: 380px; font-size: 15px; line-height: 1.65; color: var(--body);">The home for church and faith-community events. Find what’s on near you, RSVP in seconds and keep your tickets in one place.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+        <a href="#" style="display: inline-flex; flex-direction: column; justify-content: center; height: 48px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); line-height: 1.1;"><span style="font-size: 10px; color: var(--faint);">Download on the</span><span style="font-size: 15px;">App Store</span></a>
+        <a href="#" style="display: inline-flex; flex-direction: column; justify-content: center; height: 48px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); line-height: 1.1;"><span style="font-size: 10px; color: var(--faint);">Get it on</span><span style="font-size: 15px;">Google Play</span></a>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 40px;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <h2 class="eyebrow" style="color: var(--faint); font-weight: 400;">Discover</h2>
+        <ul style="display: flex; flex-direction: column; gap: 12px; font-size: 15px; color: var(--ink-2);">
+          <li><a href="Discover.dc.html">All events</a></li>
+          <li><a href="Discover.dc.html">Worship</a></li>
+          <li><a href="Discover.dc.html">Conferences</a></li>
+          <li><a href="Hosts.dc.html">Browse hosts</a></li>
+        </ul>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <h2 class="eyebrow" style="color: var(--faint); font-weight: 400;">Hosts</h2>
+        <ul style="display: flex; flex-direction: column; gap: 12px; font-size: 15px; color: var(--ink-2);">
+          <li><a href="ForChurches.dc.html">Host on Ekklesia</a></li>
+          <li><a href="ForChurches.dc.html">Features</a></li>
+          <li><a href="ForChurches.dc.html">Host FAQ</a></li>
+          <li><a href="SignIn.dc.html">Host sign in</a></li>
+        </ul>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <h2 class="eyebrow" style="color: var(--faint); font-weight: 400;">Company</h2>
+        <ul style="display: flex; flex-direction: column; gap: 12px; font-size: 15px; color: var(--ink-2);">
+          <li><a href="Main.dc.html">FAQ</a></li>
+          <li><a href="mailto:david@ekklesiaevents.com">Support</a></li>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Terms</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="wrap"><div class="rule-x"></div></div>
+  <div class="wrap" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 24px; padding-bottom: 24px; font-size: 13px; color: var(--faint);">
+    <span>© 2026 Ekklesia Events · London, UK</span>
+    <span>Made for churches, ministries and faith communities.</span>
+  </div>
+</footer>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":420}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { rootClass: 't-' + (this.props.theme || 'dark') };
+  }
+}
+</script>
+</body>
+</html>

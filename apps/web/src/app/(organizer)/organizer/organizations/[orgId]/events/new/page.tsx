@@ -7,10 +7,12 @@ import {
   BasicsFields,
   CapacityField,
   EventPreview,
+  RepeatFields,
   ReviewList,
   TicketKind,
   VisibilityChips,
   WhenWhereFields,
+  draftRepeat,
   draftToPayload,
   emptyDraft,
   validateDraft,
@@ -24,7 +26,7 @@ const STEPS = ['The basics', 'Tickets', 'Review & publish'];
 
 /** Which fields each step owns, so errors send people back to the right one. */
 const STEP_FIELDS: (keyof EventDraft)[][] = [
-  ['title', 'category', 'summary', 'description', 'coverImageUrl', 'date', 'start', 'end', 'onlineUrl', 'venueName', 'city'],
+  ['title', 'category', 'summary', 'description', 'coverImageUrl', 'date', 'start', 'end', 'onlineUrl', 'venueName', 'city', 'repeatCount'],
   ['capacity'],
   [],
 ];
@@ -80,7 +82,11 @@ export default function NewEventPage() {
       });
       if (publish) {
         try {
-          await apiClient(`/v1/events/${created.id}/publish`, { method: 'POST' });
+          // A repeating event was saved as one draft per date; publish them all.
+          await apiClient(`/v1/events/${created.id}/publish`, {
+            method: 'POST',
+            body: { applyToSeries: draftRepeat(d) !== undefined },
+          });
         } catch (err) {
           // Saved but not live: take them to the editor to sort it out.
           router.replace(`/organizer/organizations/${orgId}/events/${created.id}/edit?publishError=1` as never);
@@ -118,6 +124,7 @@ export default function NewEventPage() {
             <>
               <BasicsFields d={d} set={set} errors={visibleErrors} />
               <WhenWhereFields d={d} set={set} errors={visibleErrors} />
+              <RepeatFields d={d} set={set} errors={visibleErrors} />
             </>
           )}
           {step === 1 && (

@@ -78,6 +78,30 @@ export interface EventDetail {
   };
   venue: Venue | null;
   ticketTypes: TicketTypeData[];
+  /** Set when the event is one date of a repeating series. */
+  seriesId?: string | null;
+}
+
+/** The other dates of a series, from `/v1/events/:id/series` (public) or `/series/dates` (organiser). */
+export interface SeriesDates<T = SeriesDate> {
+  seriesId: string | null;
+  rule: 'WEEKLY' | 'MONTHLY' | null;
+  items: T[];
+}
+
+export interface SeriesDate {
+  id: string;
+  slug: string;
+  startsAt: string;
+  endsAt: string;
+  timezone: string;
+  /** Public listing only: the event page path. */
+  href?: string;
+}
+
+export interface OrganizerSeriesDate extends SeriesDate {
+  status: 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'CANCELLED' | 'COMPLETED';
+  attendeeCount: number;
 }
 
 /** Whether a church page was added by staff and not yet taken on by the church. */
@@ -159,6 +183,7 @@ export interface OrgEvent {
   capacity: number | null;
   attendeeCount: number;
   coverImageUrl: string | null;
+  seriesId?: string | null;
 }
 
 export interface Attendee {

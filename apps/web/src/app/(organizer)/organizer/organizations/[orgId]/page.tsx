@@ -233,6 +233,7 @@ function EventRow({ e, orgId, orgSlug, past }: { e: OrgEvent; orgId: string; org
           </Link>
           <span className="text-[13px] text-muted">
             {fmtDay(e.startsAt)} · {fmtTime(e.startsAt)}
+            {e.seriesId && <span className="text-faint"> · Part of a series</span>}
           </span>
         </span>
       </td>

@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Event details</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <div style="position: relative; z-index: 50;">
+    <dc-import name="Header" theme="{{ theme }}" active="discover" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+  </div>
+
+  <main style="flex: 1;">
+    <!-- Hero: the app's Details screen, widened -->
+    <section style="position: relative; overflow: hidden; margin-top: -72px; min-height: 600px;">
+      <sc-if value="{{ e.hasImage }}" hint-placeholder-val="{{ false }}">
+        <img src="{{ e.image }}" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">
+      </sc-if>
+      <sc-if value="{{ e.noImage }}" hint-placeholder-val="{{ true }}">
+        <div class="cover-art" style="position: absolute; inset: 0; background: {{ e.art.bg }};">
+          <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%;" aria-hidden="true">
+            <g fill="none" stroke="{{ e.art.stroke }}" stroke-opacity="0.16">
+              <circle cx="{{ e.art.cx }}" cy="{{ e.art.cy }}" r="40"></circle>
+              <circle cx="{{ e.art.cx }}" cy="{{ e.art.cy }}" r="80"></circle>
+              <circle cx="{{ e.art.cx }}" cy="{{ e.art.cy }}" r="120"></circle>
+              <circle cx="{{ e.art.cx }}" cy="{{ e.art.cy }}" r="160"></circle>
+              <circle cx="{{ e.art.cx }}" cy="{{ e.art.cy }}" r="200"></circle>
+            </g>
+            <g stroke="{{ e.art.stroke }}" stroke-opacity="0.22" stroke-linecap="round" fill="none" transform="{{ e.art.transform }}">
+              <path d="M18 50 H70" stroke-width="14"></path>
+              <path d="M70 50 A26 26 0 1 0 58 71" stroke-width="14"></path>
+              <path d="M76 62 V88" stroke-width="8"></path>
+              <path d="M76 79 L88 68" stroke-width="8"></path>
+              <path d="M76 79 L90 88" stroke-width="8"></path>
+            </g>
+          </svg>
+        </div>
+      </sc-if>
+      <div class="scrim-hero"></div>
+      <div class="wrap" style="position: relative; display: flex; flex-direction: column; min-height: 600px; padding-top: 96px; padding-bottom: 56px;">
+        <a href="Discover.dc.html" class="glass" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line-2); font-size: 14px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+          All events
+        </a>
+        <div class="row-between" style="margin-top: auto; gap: 24px;">
+          <div style="display: flex; flex-direction: column; gap: 16px; max-width: 760px;">
+            <span class="tag">{{ e.category }}</span>
+            <h1 class="display" style="font-size: 64px; text-wrap: balance;">{{ e.title }}</h1>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="display: flex;" aria-hidden="true">
+                <span style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent); background: var(--avatar); color: var(--accent); font-size: 12px;">D</span>
+                <span style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-left: -9px; border-radius: 50%; border: 1px solid var(--accent); background: var(--avatar); color: var(--accent); font-size: 12px;">M</span>
+                <span style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-left: -9px; border-radius: 50%; border: 1px solid var(--accent); background: var(--avatar); color: var(--accent); font-size: 12px;">A</span>
+              </span>
+              <span style="font-size: 15px; color: var(--ink-2);">{{ e.goingLong }}</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <button type="button" class="icon-btn glass" aria-label="Share this event" style="width: 52px; height: 52px; color: var(--ink);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"></path></svg>
+            </button>
+            <button type="button" class="icon-btn glass" onClick="{{ toggleSave }}" aria-pressed="{{ saved }}" aria-label="Save this event" style="width: 52px; height: 52px; color: {{ heartColor }}; border-color: {{ heartBorder }};">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="{{ heartFill }}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="wrap split-detail" style="padding-top: 40px;">
+      <div style="display: flex; flex-direction: column; gap: 48px; min-width: 0;">
+        <!-- Location · Date · Time with fading dividers -->
+        <dl class="card" style="display: grid; grid-template-columns: minmax(0, 1.3fr) 1px minmax(0, 1fr) 1px minmax(0, 0.8fr); gap: 20px; padding: 24px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <dt class="eyebrow" style="font-size: 10px; color: var(--faint);">Location</dt>
+            <dd style="font-size: 19px; line-height: 1.3;">{{ e.venue }}</dd>
+            <dd style="font-size: 13px; color: var(--muted);">{{ e.city }}</dd>
+          </div>
+          <div class="rule-y" aria-hidden="true"></div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <dt class="eyebrow" style="font-size: 10px; color: var(--faint);">Date</dt>
+            <dd style="font-size: 19px; line-height: 1.3;">{{ e.day }}</dd>
+            <dd style="font-size: 13px; color: var(--muted);">{{ e.year }}</dd>
+          </div>
+          <div class="rule-y" aria-hidden="true"></div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <dt class="eyebrow" style="font-size: 10px; color: var(--faint);">Time</dt>
+            <dd style="font-size: 19px; line-height: 1.3;">{{ e.time }}</dd>
+            <dd style="font-size: 13px; color: var(--muted);">{{ e.until }}</dd>
+          </div>
+        </dl>
+
+        <section aria-labelledby="about" style="display: flex; flex-direction: column; gap: 16px;">
+          <h2 id="about" style="font-size: 26px; font-weight: 400; color: var(--strong);">About this event</h2>
+          <sc-for list="{{ e.description }}" as="para" hint-placeholder-count="2">
+            <p style="max-width: 680px; font-size: 17px; line-height: 1.7; color: var(--body);">{{ para }}</p>
+          </sc-for>
+          <p style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--accent);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></span>{{ e.spots }}</p>
+        </section>
+
+        <section aria-labelledby="where" style="display: flex; flex-direction: column; gap: 20px;">
+          <h2 id="where" style="font-size: 26px; font-weight: 400; color: var(--strong);">When and where</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+            <div class="card" style="display: flex; flex-direction: column; gap: 16px; padding: 24px; font-size: 15px;">
+              <span style="display: flex; align-items: center; gap: 12px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>{{ e.dateLong }}</span>
+              <span style="display: flex; align-items: center; gap: 12px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>{{ e.timeRange }}</span>
+              <span style="display: flex; align-items: center; gap: 12px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><circle cx="9" cy="7" r="4"></circle><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85"></path></svg>{{ e.capacity }}</span>
+            </div>
+            <a href="{{ e.maps }}" class="card" style="position: relative; overflow: hidden; display: flex; min-height: 170px; flex-direction: column; justify-content: flex-end; padding: 24px; background: var(--raised);">
+              <svg viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%;">
+                <g stroke="rgba(var(--accent-rgb), 0.12)" fill="none">
+                  <path d="M0 0 L-30 200M36 0 L6 200M72 0 L42 200M108 0 L78 200M144 0 L114 200M180 0 L150 200M216 0 L186 200M252 0 L222 200M288 0 L258 200M324 0 L294 200M360 0 L330 200M396 0 L366 200"></path>
+                  <path d="M0 0 L400 14M0 32 L400 46M0 64 L400 78M0 96 L400 110M0 128 L400 142M0 160 L400 174M0 192 L400 206"></path>
+                </g>
+                <path d="M-10 140 C 80 110, 160 170, 260 120 S 380 60, 420 80" stroke="rgba(var(--accent-rgb), 0.35)" stroke-width="10" fill="none"></path>
+                <circle cx="300" cy="62" r="34" fill="rgba(var(--accent-rgb), 0.12)"></circle>
+                <circle cx="300" cy="62" r="7" fill="var(--accent)"></circle>
+              </svg>
+              <span style="position: relative; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 14px; background: rgba(var(--scrim), 0.8);">
+                <span style="font-size: 17px; color: var(--strong);">{{ e.venue }}</span>
+                <span style="font-size: 14px; color: var(--ink-2);">{{ e.address }}</span>
+                <span style="font-size: 14px; color: var(--accent);">Open in Maps ↗</span>
+              </span>
+            </a>
+          </div>
+        </section>
+
+        <section aria-labelledby="host" style="display: flex; flex-direction: column; gap: 20px;">
+          <h2 id="host" style="font-size: 26px; font-weight: 400; color: var(--strong);">Hosted by</h2>
+          <a href="Host.dc.html" class="card card-link stack-sm" style="display: flex; align-items: center; gap: 20px; padding: 24px;">
+            <span style="display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; flex: none; border-radius: 50%; border: 1px solid var(--line-3); background: var(--avatar); color: var(--accent); font-size: 22px;">{{ host.initials }}</span>
+            <span style="display: flex; flex-direction: column; gap: 6px;">
+              <span class="eyebrow" style="font-size: 10px; color: var(--accent);">{{ host.type }}</span>
+              <span style="font-size: 20px; color: var(--strong);">{{ host.name }}</span>
+              <span style="font-size: 15px; line-height: 1.6; color: var(--body);">{{ host.bio }}</span>
+            </span>
+          </a>
+        </section>
+      </div>
+
+      <!-- Booking panel -->
+      <aside id="book" class="sticky" aria-label="Book" style="padding: 24px; border-radius: 24px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow);">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <h2 style="font-size: 22px; font-weight: 400; color: var(--strong);">{{ panelTitle }}</h2>
+          <span style="font-size: 13px; color: var(--faint);">GBP</span>
+        </div>
+        <ul style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+          <sc-for list="{{ tiers }}" as="t" hint-placeholder-count="2">
+            <li style="display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 16px; border: 1px solid {{ t.border }}; background: {{ t.bg }};">
+              <div style="display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px;">
+                <span style="font-size: 16px;">{{ t.name }}</span>
+                <sc-if value="{{ t.description }}" hint-placeholder-val="{{ true }}"><span style="font-size: 13px; color: var(--muted);">{{ t.description }}</span></sc-if>
+                <span style="font-size: 15px; color: var(--accent);">{{ t.priceLabel }}</span>
+                <sc-if value="{{ t.low }}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: var(--faint);">{{ t.lowLabel }}</span></sc-if>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;" role="group" aria-label="{{ t.groupLabel }}">
+                <button type="button" class="icon-btn" onClick="{{ t.dec }}" aria-label="{{ t.decLabel }}" style="width: 36px; height: 36px; color: var(--accent);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg>
+                </button>
+                <span style="width: 24px; text-align: center; font-size: 16px;">{{ t.qty }}</span>
+                <button type="button" class="icon-btn" onClick="{{ t.inc }}" aria-label="{{ t.incLabel }}" style="width: 36px; height: 36px; color: var(--accent);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+                </button>
+              </div>
+            </li>
+          </sc-for>
+        </ul>
+
+        <sc-if value="{{ donations }}" hint-placeholder-val="{{ true }}">
+          <fieldset style="margin: 20px 0 0; padding: 16px; border-radius: 16px; border: 1px solid var(--line);">
+            <legend style="padding: 0 4px; font-size: 14px;">Add a gift (optional)</legend>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+              <sc-for list="{{ gifts }}" as="g" hint-placeholder-count="4">
+                <button type="button" class="{{ g.cls }}" aria-pressed="{{ g.on }}" onClick="{{ g.pick }}">{{ g.label }}</button>
+              </sc-for>
+            </div>
+          </fieldset>
+        </sc-if>
+
+        <div class="rule-x" style="margin: 24px 0;"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 15px; color: var(--ink-2);">{{ countLabel }}</span>
+          <span style="font-size: 22px; color: var(--strong);">{{ totalLabel }}</span>
+        </div>
+        <sc-if value="{{ canBook }}" hint-placeholder-val="{{ true }}">
+          <a href="{{ ctaHref }}" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 20px;">{{ ctaLabel }}</a>
+        </sc-if>
+        <sc-if value="{{ cannotBook }}" hint-placeholder-val="{{ false }}">
+          <span class="btn btn-lg" style="width: 100%; margin-top: 20px; border: 1px solid var(--line); color: var(--faint);">Choose a ticket</span>
+        </sc-if>
+        <p style="margin-top: 16px; text-align: center; font-size: 12px; color: var(--faint);">{{ footnote }}</p>
+      </aside>
+    </div>
+
+    <!-- Mobile booking bar -->
+    <div class="only-sm" style="position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; border-top: 1px solid var(--line); background: rgba(var(--scrim), 0.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px;">
+        <span style="display: flex; flex-direction: column;">
+          <span style="font-size: 17px; color: var(--strong);">{{ e.price }}</span>
+          <span style="font-size: 12px; color: var(--accent);">{{ e.spots }}</span>
+        </span>
+        <a href="#book" class="btn btn-primary" style="height: 48px; padding: 0 24px;">{{ barCta }}</a>
+      </div>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px; padding-bottom: 0;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+  <div class="only-sm" style="height: 72px;" aria-hidden="true"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"event":{"editor":"enum","options":["charity-gala-dinner","city-outreach-day","alpha-course-winter","leaders-summit-2027","carols-by-candlelight","ignite-youth-night","night-of-prayer","sunday-celebration","marriage-course"],"default":"charity-gala-dinner"},"$preview":{"width":1440,"height":2400}}'>
+var DATA_URL = '../sample-data.json';
+var PAL = {
+  Worship: ['#3a1712', '#7e1d14', '#f98e80'], Conference: ['#1f1418', '#4a2a2e', '#d9564a'],
+  Class: ['#21161a', '#5e2a24', '#ffc9c2'], Outreach: ['#2a1410', '#9a3a2c', '#f98e80'],
+  Fundraiser: ['#2b0f0c', '#7e1d14', '#ffb4a8'], Youth: ['#2a1016', '#c4392c', '#ffc9c2'],
+  Prayer: ['#160f12', '#3b2226', '#f98e80'], Concert: ['#1d1013', '#5c1d17', '#ffd9d2']
+};
+function money(n) { return n === 0 ? 'Free' : '£' + n.toLocaleString('en-GB'); }
+var EMPTY = { title: '', category: '', description: [], tiers: [], start: '2026-12-05T19:00:00', end: '2026-12-05T23:00:00', going: 0, venue: '', address: '', city: '' };
+class Component extends DCLogic {
+  componentDidMount() {
+    fetch(DATA_URL).then(function (r) { return r.json(); }).then((d) => this.setState({ data: d })).catch(function () {});
+  }
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var data = s.data || { events: [], hosts: [] };
+    var slug = this.props.event || 'charity-gala-dinner';
+    var ev = data.events.filter(function (x) { return x.slug === slug; })[0] || EMPTY;
+    var host = data.hosts.filter(function (h) { return h.slug === ev.hostSlug; })[0] || { name: '', initials: '', type: '', bio: '' };
+    var tz = { timeZone: 'Europe/London' };
+    var d = new Date(ev.start), end = new Date(ev.end);
+    var t = function (x) { return x.toLocaleTimeString('en-GB', Object.assign({ hour: '2-digit', minute: '2-digit', hour12: false }, tz)); };
+    var left = ev.tiers.reduce(function (a, x) { return a + x.remaining; }, 0);
+    var prices = ev.tiers.map(function (x) { return x.price; });
+    var min = prices.length ? Math.min.apply(null, prices) : 0, max = prices.length ? Math.max.apply(null, prices) : 0;
+    var free = max === 0;
+    var h = 7; for (var i = 0; i < ev.title.length; i++) { h = (h * 31 + ev.title.charCodeAt(i)) >>> 0; }
+    var p = PAL[ev.category] || PAL.Worship;
+    var cx = 60 + (h % 280), cy = 20 + ((h >> 4) % 180);
+    var mx = ((h >> 8) % 2 === 0) ? 220 + ((h >> 3) % 60) : 10 + ((h >> 5) % 60), my = 40 + ((h >> 6) % 70);
+
+    var qty = s.qty || {};
+    var single = ev.tiers.length === 1;
+    var q = function (id, idx) { return qty[id] != null ? qty[id] : (single && idx === 0 ? 1 : 0); };
+    var count = 0, subtotal = 0;
+    ev.tiers.forEach(function (x, idx) { count += q(x.id, idx); subtotal += q(x.id, idx) * x.price; });
+    var gift = s.gift || 0;
+    var total = subtotal + (count ? gift : 0);
+    var tableQty = 0;
+    ev.tiers.forEach(function (x, idx) { if (/table/i.test(x.name)) tableQty += q(x.id, idx); });
+    var setQty = (id, v) => { var o = Object.assign({}, qty); o[id] = v; this.setState({ qty: o }); };
+    var tiers = ev.tiers.map(function (x, idx) {
+      var n = q(x.id, idx), cap = Math.min(x.remaining, 10);
+      return {
+        name: x.name, description: x.description || '', priceLabel: money(x.price), qty: n,
+        low: x.remaining <= 10, lowLabel: 'Only ' + x.remaining + ' left',
+        border: n ? 'var(--line-3)' : 'var(--line)', bg: n ? 'var(--softer)' : 'transparent',
+        groupLabel: x.name + ' quantity', decLabel: 'Remove one ' + x.name, incLabel: 'Add one ' + x.name,
+        dec: function () { setQty(x.id, Math.max(0, n - 1)); },
+        inc: function () { setQty(x.id, Math.min(cap, n + 1)); }
+      };
+    });
+    var gifts = [0, 5, 10, 25].map((g) => ({
+      label: g === 0 ? 'No gift' : money(g), on: gift === g, cls: gift === g ? 'chip on' : 'chip',
+      pick: () => this.setState({ gift: g })
+    }));
+    var saved = !!s.saved;
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      e: {
+        title: ev.title, category: ev.category, description: ev.description, venue: ev.venue, city: ev.city,
+        address: ev.address + ', ' + ev.city,
+        image: ev.image || '', hasImage: !!ev.image, noImage: !ev.image,
+        goingLong: ev.going + ' people going',
+        day: d.toLocaleDateString('en-GB', Object.assign({ weekday: 'short', day: 'numeric', month: 'short' }, tz)),
+        year: String(d.getFullYear()), time: t(d), until: 'until ' + t(end),
+        dateLong: d.toLocaleDateString('en-GB', Object.assign({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }, tz)),
+        timeRange: t(d) + ' – ' + t(end) + ' (UK time)', capacity: 'Capacity ' + (ev.capacity || ''),
+        spots: left + ' spots left',
+        price: free ? 'Free' : min === 0 ? 'Free – ' + money(max) : min === max ? money(min) : 'From ' + money(min),
+        maps: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(ev.venue + ', ' + ev.address),
+        art: {
+          bg: 'radial-gradient(120% 90% at ' + Math.round(cx / 4) + '% ' + Math.round(cy / 2.4) + '%, ' + p[1] + ' 0%, ' + p[0] + ' 55%, #0d0a0b 100%)',
+          stroke: p[2], cx: cx, cy: cy, transform: 'translate(' + mx + ' ' + my + ') scale(1.6)'
+        }
+      },
+      host: host,
+      saved: saved,
+      heartFill: saved ? 'currentColor' : 'none',
+      heartColor: saved ? 'var(--accent)' : 'var(--ink)',
+      heartBorder: saved ? 'var(--line-3)' : 'var(--line-2)',
+      toggleSave: () => this.setState({ saved: !saved }),
+      panelTitle: free ? 'Reserve your place' : 'Tickets',
+      tiers: tiers, donations: !!ev.donations, gifts: gifts,
+      countLabel: count + (count === 1 ? ' place' : ' places'),
+      totalLabel: total ? money(total) : 'Free',
+      canBook: count > 0, cannotBook: count === 0,
+      ctaLabel: free ? 'RSVP' : (tableQty ? 'Choose your table' : 'Continue · ' + money(total)),
+      ctaHref: free ? 'Rsvp.dc.html' : (tableQty ? 'Tables.dc.html' : 'Checkout.dc.html'),
+      footnote: free ? 'Sign in to confirm — it takes seconds.' : 'Secure checkout with card or Apple Pay.',
+      barCta: free ? 'Reserve a place' : 'Get tickets'
+    };
+  }
+}
+</script>
+</body>
+</html>

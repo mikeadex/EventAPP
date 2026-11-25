@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Site header</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<header class="{{ rootClass }}" style="position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--line); background: rgba(var(--scrim), 0.86); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); font-family: 'Alata', sans-serif; color: var(--ink);">
+  <div class="wrap" style="display: flex; height: 72px; align-items: center; justify-content: space-between; gap: 24px;">
+    <a href="Main.dc.html" aria-label="Ekklesia Events — home" style="display: inline-flex; align-items: center; gap: 12px;">
+      <svg width="34" height="31" viewBox="11.5 16.6 85 78" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="ek-mark-h" x1="18" y1="24" x2="92" y2="90" gradientUnits="userSpaceOnUse">
+            <stop offset="0" style="stop-color: var(--mark-a)"></stop>
+            <stop offset="0.55" style="stop-color: var(--mark-b)"></stop>
+            <stop offset="1" style="stop-color: var(--mark-c)"></stop>
+          </linearGradient>
+        </defs>
+        <g stroke="url(#ek-mark-h)" stroke-linecap="round" fill="none">
+          <path d="M18 50 H70" stroke-width="14"></path>
+          <path d="M70 50 A26 26 0 1 0 58 71" stroke-width="14"></path>
+          <path d="M76 62 V88" stroke-width="8"></path>
+          <path d="M76 79 L88 68" stroke-width="8"></path>
+          <path d="M76 79 L90 88" stroke-width="8"></path>
+        </g>
+      </svg>
+      <span style="display: flex; flex-direction: column; line-height: 1;">
+        <span style="font-size: 22px; letter-spacing: -0.01em; color: var(--strong);">ekklesia</span>
+        <span style="margin-top: 4px; padding-left: 2px; font-size: 9px; letter-spacing: 0.52em; color: var(--accent);">EVENTS</span>
+      </span>
+    </a>
+
+    <nav class="nav-desktop" aria-label="Main" style="align-items: center; gap: 4px;">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+        <a href="{{ n.href }}" aria-current="{{ n.current }}" style="padding: 8px 16px; border-radius: 999px; font-size: 15px; color: {{ n.color }}; background: {{ n.bg }};">{{ n.label }}</a>
+      </sc-for>
+    </nav>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button type="button" class="icon-btn" onClick="{{ toggleTheme }}" aria-label="{{ themeLabel }}">
+        <sc-if value="{{ isDark }}" hint-placeholder-val="{{ true }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+        </sc-if>
+        <sc-if value="{{ isLight }}" hint-placeholder-val="{{ false }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+        </sc-if>
+      </button>
+      <a href="Saved.dc.html" class="icon-btn hide-sm" aria-label="Saved events">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+      </a>
+      <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
+        <a href="SignIn.dc.html" class="btn btn-primary btn-sm hide-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+          Sign in
+        </a>
+      </sc-if>
+      <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
+        <a href="Tickets.dc.html" class="icon-btn hide-sm" aria-label="Your tickets">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2M13 17v2M13 11v2"></path></svg>
+        </a>
+        <a href="Dashboard.dc.html" class="btn btn-outline btn-sm hide-sm">Host dashboard</a>
+        <a href="Account.dc.html" aria-label="Your account" class="hide-sm" style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-3); background: var(--avatar); color: var(--accent); font-size: 15px;">M</a>
+      </sc-if>
+      <button type="button" class="icon-btn nav-mobile-btn" onClick="{{ toggleMenu }}" aria-expanded="{{ menuOpen }}" aria-label="{{ menuLabel }}" style="color: var(--ink);">
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </sc-if>
+        <sc-if value="{{ menuClosed }}" hint-placeholder-val="{{ true }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </sc-if>
+      </button>
+    </div>
+  </div>
+
+  <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+    <nav aria-label="Mobile" class="only-sm" style="border-top: 1px solid var(--line);">
+      <ul class="wrap" style="display: flex; flex-direction: column; gap: 4px; padding-top: 16px; padding-bottom: 16px;">
+        <sc-for list="{{ mobileNav }}" as="n" hint-placeholder-count="5">
+          <li><a href="{{ n.href }}" style="display: flex; align-items: center; padding: 14px 16px; border-radius: 16px; font-size: 17px; color: {{ n.color }}; background: {{ n.bg }};">{{ n.label }}</a></li>
+        </sc-for>
+      </ul>
+    </nav>
+  </sc-if>
+</header>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"active":{"editor":"enum","options":["home","discover","hosts","churches","tickets","saved","account","dashboard","none"],"default":"home"},"onToggle":{"editor":null},"signedIn":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":72}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = this.props.onToggle ? (this.props.theme || 'dark') : (s.theme || this.props.theme || 'dark');
+    var active = this.props.active || 'home';
+    var menuOpen = !!s.menu;
+    var signedIn = !!this.props.signedIn;
+    function item(key, label, href) {
+      var on = key === active;
+      return { label: label, href: href, current: on ? 'page' : undefined,
+        color: on ? 'var(--accent)' : 'var(--ink-2)', bg: on ? 'var(--soft)' : 'transparent' };
+    }
+    var nav = [item('discover', 'Discover', 'Discover.dc.html'), item('hosts', 'Hosts', 'Hosts.dc.html'), item('churches', 'For churches', 'ForChurches.dc.html')];
+    return {
+      rootClass: 't-' + theme,
+      isDark: theme === 'dark',
+      isLight: theme === 'light',
+      themeLabel: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode',
+      toggleTheme: () => {
+        if (this.props.onToggle) this.props.onToggle();
+        else this.setState({ theme: theme === 'dark' ? 'light' : 'dark' });
+      },
+      nav: nav,
+      signedIn: signedIn,
+      signedOut: !signedIn,
+      mobileNav: nav.concat(signedIn
+        ? [item('tickets', 'Your tickets', 'Tickets.dc.html'), item('saved', 'Saved', 'Saved.dc.html'), item('dashboard', 'Host dashboard', 'Dashboard.dc.html'), item('account', 'Account', 'Account.dc.html')]
+        : [item('saved', 'Saved', 'Saved.dc.html'), item('signin', 'Sign in', 'SignIn.dc.html')]),
+      menuOpen: menuOpen,
+      menuClosed: !menuOpen,
+      menuLabel: menuOpen ? 'Close menu' : 'Open menu',
+      toggleMenu: () => this.setState({ menu: !menuOpen })
+    };
+  }
+}
+</script>
+</body>
+</html>

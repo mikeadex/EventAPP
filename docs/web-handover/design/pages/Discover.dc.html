@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Discover</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="discover" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap" style="flex: 1; padding-top: 48px;">
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px;">
+      <span class="eyebrow" style="color: var(--accent);">Discover</span>
+      <h1 class="h1">What’s on</h1>
+      <p style="max-width: 560px; font-size: 16px; line-height: 1.6; color: var(--body);">Events from churches, ministries and faith communities. Browse freely — you only sign in to RSVP.</p>
+    </div>
+
+    <div class="split-side">
+      <aside aria-label="Filters" style="display: flex; flex-direction: column; gap: 32px;">
+        <fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
+          <legend class="eyebrow" style="margin-bottom: 12px; color: var(--faint);">Category</legend>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <sc-for list="{{ catChips }}" as="c" hint-placeholder-count="9">
+              <button type="button" class="{{ c.cls }}" aria-pressed="{{ c.on }}" onClick="{{ c.pick }}">{{ c.label }}</button>
+            </sc-for>
+          </div>
+        </fieldset>
+        <fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
+          <legend class="eyebrow" style="margin-bottom: 12px; color: var(--faint);">When</legend>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <sc-for list="{{ whenChips }}" as="c" hint-placeholder-count="4">
+              <button type="button" class="{{ c.cls }}" aria-pressed="{{ c.on }}" onClick="{{ c.pick }}">{{ c.label }}</button>
+            </sc-for>
+          </div>
+        </fieldset>
+        <fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
+          <legend class="eyebrow" style="margin-bottom: 12px; color: var(--faint);">Price</legend>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <sc-for list="{{ priceChips }}" as="c" hint-placeholder-count="3">
+              <button type="button" class="{{ c.cls }}" aria-pressed="{{ c.on }}" onClick="{{ c.pick }}">{{ c.label }}</button>
+            </sc-for>
+          </div>
+        </fieldset>
+        <sc-if value="{{ hasFilters }}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{ clear }}" style="align-self: flex-start; font-size: 14px; color: var(--accent);">× Clear filters</button>
+        </sc-if>
+      </aside>
+
+      <div style="display: flex; flex-direction: column; gap: 24px; min-width: 0;">
+        <div class="stack-sm" style="display: flex; gap: 12px; align-items: center;">
+          <label class="field" style="flex: 1; height: 52px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--muted); flex: none;"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+            <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search events</span>
+            <input type="search" placeholder="Search for events, venues or topics" value="{{ q }}" onChange="{{ onSearch }}">
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="{{ sortSoonCls }}" aria-pressed="{{ sortSoon }}" onClick="{{ sortBySoon }}" style="height: 52px; padding: 0 18px;">Soonest</button>
+            <button type="button" class="{{ sortPopCls }}" aria-pressed="{{ sortPop }}" onClick="{{ sortByPop }}" style="height: 52px; padding: 0 18px;">Most popular</button>
+          </div>
+        </div>
+
+        <p aria-live="polite" style="font-size: 14px; color: var(--faint);">{{ summary }}</p>
+
+        <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ true }}">
+          <div class="cards">
+            <sc-for list="{{ results }}" as="e" hint-placeholder-count="6">
+              <dc-import name="EventCard" event="{{ e }}" hint-size="100%,420px"></dc-import>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+          <div class="card" style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 80px 24px; text-align: center;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--faint);"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18M10 14l4 4M14 14l-4 4"></path></svg>
+            <h2 style="font-size: 22px; font-weight: 400; color: var(--strong);">No events match</h2>
+            <p style="max-width: 360px; font-size: 15px; color: var(--body);">Try a different search, or clear your filters to see everything on.</p>
+            <button type="button" class="btn btn-primary" onClick="{{ clear }}">Clear all</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1500}}'>
+var DATA_URL = '../sample-data.json';
+var PAL = {
+  Worship: ['#3a1712', '#7e1d14', '#f98e80'], Conference: ['#1f1418', '#4a2a2e', '#d9564a'],
+  Class: ['#21161a', '#5e2a24', '#ffc9c2'], Outreach: ['#2a1410', '#9a3a2c', '#f98e80'],
+  Fundraiser: ['#2b0f0c', '#7e1d14', '#ffb4a8'], Youth: ['#2a1016', '#c4392c', '#ffc9c2'],
+  Prayer: ['#160f12', '#3b2226', '#f98e80'], Concert: ['#1d1013', '#5c1d17', '#ffd9d2']
+};
+var NOW = new Date('2026-11-24T10:00:00').getTime();
+var DAY = 86400000;
+function money(n) { return n === 0 ? 'Free' : '£' + n.toLocaleString('en-GB'); }
+function enrich(e, hosts) {
+  var host = hosts.filter(function (h) { return h.slug === e.hostSlug; })[0] || {};
+  var d = new Date(e.start);
+  var tz = { timeZone: 'Europe/London' };
+  var day = d.toLocaleDateString('en-GB', Object.assign({ weekday: 'short', day: 'numeric', month: 'short' }, tz));
+  var time = d.toLocaleTimeString('en-GB', Object.assign({ hour: '2-digit', minute: '2-digit', hour12: false }, tz));
+  var prices = e.tiers.map(function (t) { return t.price; });
+  var min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
+  var price = max === 0 ? 'Free' : min === 0 ? 'Free – ' + money(max) : min === max ? money(min) : 'From ' + money(min);
+  var h = 7; for (var i = 0; i < e.title.length; i++) { h = (h * 31 + e.title.charCodeAt(i)) >>> 0; }
+  var p = PAL[e.category] || PAL.Worship;
+  var cx = 60 + (h % 280), cy = 20 + ((h >> 4) % 180);
+  var mx = ((h >> 8) % 2 === 0) ? 220 + ((h >> 3) % 60) : 10 + ((h >> 5) % 60);
+  var my = 40 + ((h >> 6) % 70);
+  return {
+    slug: e.slug, title: e.title, category: e.category, hostName: host.name,
+    when: (day + ' at ' + time).toUpperCase(), price: price, going: e.going + ' going',
+    image: e.image || '', hasImage: !!e.image, noImage: !e.image,
+    art: {
+      bg: 'radial-gradient(120% 90% at ' + Math.round(cx / 4) + '% ' + Math.round(cy / 2.4) + '%, ' + p[1] + ' 0%, ' + p[0] + ' 55%, #0d0a0b 100%)',
+      stroke: p[2], cx: cx, cy: cy, transform: 'translate(' + mx + ' ' + my + ') scale(1.6)'
+    }
+  };
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    fetch(DATA_URL).then(function (r) { return r.json(); }).then((d) => this.setState({ data: d })).catch(function () {});
+  }
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var data = s.data || { events: [], hosts: [], categories: [] };
+    var cat = s.cat || null, when = s.when || 'any', price = s.price || 'any', sort = s.sort || 'soonest', q = s.q || '';
+    var set = (patch) => this.setState(patch);
+    function chip(on) { return on ? 'chip on' : 'chip'; }
+    var catChips = [{ label: 'All', on: !cat, cls: chip(!cat), pick: function () { set({ cat: null }); } }].concat(
+      data.categories.map(function (c) { return { label: c, on: cat === c, cls: chip(cat === c), pick: function () { set({ cat: cat === c ? null : c }); } }; }));
+    var whenOpts = [['any', 'Any time'], ['week', 'Next 7 days'], ['month', 'Next 30 days'], ['later', 'Later']];
+    var whenChips = whenOpts.map(function (o) { return { label: o[1], on: when === o[0], cls: chip(when === o[0]), pick: function () { set({ when: o[0] }); } }; });
+    var priceOpts = [['any', 'Any price'], ['free', 'Free'], ['paid', 'Paid']];
+    var priceChips = priceOpts.map(function (o) { return { label: o[1], on: price === o[0], cls: chip(price === o[0]), pick: function () { set({ price: o[0] }); } }; });
+    var needle = q.trim().toLowerCase();
+    var list = data.events.filter(function (e) {
+      var t = new Date(e.start).getTime();
+      if (cat && e.category !== cat) return false;
+      if (needle && [e.title, e.summary, e.venue, e.category].join(' ').toLowerCase().indexOf(needle) < 0) return false;
+      var free = e.tiers.every(function (x) { return x.price === 0; });
+      if (price === 'free' && !free) return false;
+      if (price === 'paid' && free) return false;
+      if (when === 'week' && t > NOW + 7 * DAY) return false;
+      if (when === 'month' && t > NOW + 30 * DAY) return false;
+      if (when === 'later' && t <= NOW + 30 * DAY) return false;
+      return true;
+    }).sort(function (a, b) { return sort === 'popular' ? b.going - a.going : (a.start < b.start ? -1 : 1); });
+    var results = list.map(function (e) { return enrich(e, data.hosts); });
+    var n = results.length;
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      catChips: catChips, whenChips: whenChips, priceChips: priceChips,
+      hasFilters: !!cat || when !== 'any' || price !== 'any',
+      clear: function () { set({ cat: null, when: 'any', price: 'any', q: '' }); },
+      q: q,
+      onSearch: function (ev) { set({ q: ev.target.value }); },
+      sortSoon: sort === 'soonest', sortPop: sort === 'popular',
+      sortSoonCls: chip(sort === 'soonest'), sortPopCls: chip(sort === 'popular'),
+      sortBySoon: function () { set({ sort: 'soonest' }); },
+      sortByPop: function () { set({ sort: 'popular' }); },
+      results: results, hasResults: n > 0, noResults: data.events.length > 0 && n === 0,
+      summary: n + (n === 1 ? ' event' : ' events') + (cat ? ' in ' + cat : '') + (q ? ' matching “' + q + '”' : '')
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Pick a table</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.co{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:48px;align-items:start}
+@media (max-width:900px){.co{grid-template-columns:minmax(0,1fr)}}
+.tbl{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;aspect-ratio:1/1;width:100%;max-width:120px;margin:0 auto;border-radius:50%;font-size:20px}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="none" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap" style="flex: 1; padding-top: 40px; max-width: 1160px;">
+    <a href="Event.dc.html" style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 14px; color: var(--ink-2);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+      Back to event
+    </a>
+    <div class="co">
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <span class="eyebrow" style="color: var(--accent);">Charity Gala Dinner · Sat 5 Dec</span>
+          <h1 class="h1" style="font-size: 44px;">Pick a table</h1>
+        </div>
+        <ul style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 14px; color: var(--ink-2);" aria-label="Key">
+          <li style="display: flex; align-items: center; gap: 8px;"><span style="width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line-3);"></span>Available</li>
+          <li style="display: flex; align-items: center; gap: 8px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: var(--accent);"></span>Yours</li>
+          <li style="display: flex; align-items: center; gap: 8px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: var(--surface-2);"></span>Taken</li>
+        </ul>
+        <div class="card" style="padding: 32px; background: var(--raised);">
+          <div style="display: flex; align-items: center; justify-content: center; height: 48px; margin: 0 auto 36px; max-width: 420px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--surface);"><span class="eyebrow" style="color: var(--faint);">Stage</span></div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px 20px;">
+            <sc-for list="{{ tables }}" as="t" hint-placeholder-count="12">
+              <button type="button" class="tbl" onClick="{{ t.pick }}" disabled="{{ t.taken }}" aria-pressed="{{ t.mine }}" aria-label="{{ t.aria }}" style="border: 1px solid {{ t.border }}; background: {{ t.bg }}; color: {{ t.color }}; cursor: {{ t.cursor }};">
+                {{ t.n }}
+                <span style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8;">{{ t.sub }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <aside class="sticky" aria-label="Your table" style="padding: 24px; border-radius: 24px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow);">
+        <span class="eyebrow" style="font-size: 10px; color: var(--faint);">Your table</span>
+        <p style="margin-top: 8px; font-size: 28px; color: var(--strong);">{{ selTitle }}</p>
+        <p style="margin-top: 4px; font-size: 15px; color: var(--ink-2);">Seats ten · £60 per seat</p>
+        <p style="margin-top: 2px; font-size: 14px; color: var(--muted);">{{ selWhere }}</p>
+        <div class="rule-x" style="margin: 20px 0;"></div>
+        <div style="display: flex; justify-content: space-between; font-size: 15px;"><span style="color: var(--ink-2);">Table of 10</span><span>£600.00</span></div>
+        <p style="display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--accent);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></span>Held for 9:58</p>
+        <a href="Checkout.dc.html" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 16px;">Continue to checkout</a>
+        <p style="margin-top: 12px; text-align: center; font-size: 12px; color: var(--faint);">You can add guest names after booking.</p>
+      </aside>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1250}}'>
+var TAKEN = [1, 4, 7, 11];
+var WHERE = ['Front row, left', 'Front row, centre', 'Front row, centre', 'Front row, right', 'Second row, left', 'Second row, centre', 'Second row, centre', 'Second row, right', 'Back row, left', 'Back row, centre', 'Back row, centre', 'Back row, right'];
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var sel = s.sel || 2;
+    var tables = [];
+    for (var n = 1; n <= 12; n++) {
+      (function (n, self) {
+        var taken = TAKEN.indexOf(n) >= 0, mine = n === sel;
+        tables.push({
+          n: n, taken: taken, mine: mine,
+          sub: taken ? 'Taken' : mine ? 'Yours' : '10 seats',
+          aria: 'Table ' + n + (taken ? ', taken' : mine ? ', selected' : ', available'),
+          border: mine ? 'var(--accent)' : taken ? 'transparent' : 'var(--line-3)',
+          bg: mine ? 'var(--accent)' : taken ? 'var(--surface-2)' : 'var(--surface)',
+          color: mine ? 'var(--bg)' : taken ? 'var(--faint)' : 'var(--ink)',
+          cursor: taken ? 'not-allowed' : 'pointer',
+          pick: function () { if (!taken) self.setState({ sel: n }); }
+        });
+      })(n, this);
+    }
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      tables: tables, selTitle: 'Table ' + sel, selWhere: WHERE[sel - 1]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -7,8 +7,12 @@ import { LocationModePicker, modeOf, type LocationMode } from '@/components/loca
 import { CATEGORIES, categoryOf, type CategoryValue } from '@/lib/categories';
 import { fmtDay, fmtTime } from '@/lib/format';
 import { zonedInstant } from '@/lib/zoned-time';
+import { REPEAT_MAX_COUNT, REPEAT_MIN_COUNT, seriesOccurrences, type RepeatEvery } from '@ekklesia/shared';
 import type { ReactNode } from 'react';
 import { PressedChips } from './steps';
+
+/** How a new event repeats. Create only — each date is its own event once saved. */
+export type RepeatChoice = 'none' | RepeatEvery;
 
 /** The editable shape of an event, in the units the form works in. */
 export interface EventDraft {
@@ -28,6 +32,9 @@ export interface EventDraft {
   country: string;
   capacity: string;
   coverImageUrl: string | null;
+  repeat: RepeatChoice;
+  /** Dates in all, the first included; a string because it is typed. */
+  repeatCount: string;
 }
 
 export const emptyDraft = (country = 'GB'): EventDraft => ({
@@ -47,6 +54,8 @@ export const emptyDraft = (country = 'GB'): EventDraft => ({
   country,
   capacity: '',
   coverImageUrl: null,
+  repeat: 'none',
+  repeatCount: '6',
 });
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -85,6 +94,9 @@ export function draftFromEvent(e: {
     country: e.venue?.country ?? 'GB',
     capacity: e.capacity === null ? '' : String(e.capacity),
     coverImageUrl: e.coverImageUrl,
+    // Editing one date edits only that one; the series was set at creation.
+    repeat: 'none',
+    repeatCount: '6',
   };
 }
 
@@ -127,7 +139,18 @@ export function validateDraft(d: EventDraft): Partial<Record<keyof EventDraft, s
     if (!d.city.trim()) errs.city = 'Add the town or city.';
   }
   if (d.capacity && !(Number(d.capacity) >= 1)) errs.capacity = 'Use a number, or leave blank for no limit.';
+  if (d.repeat !== 'none') {
+    const n = Number(d.repeatCount);
+    if (!Number.isInteger(n) || n < REPEAT_MIN_COUNT || n > REPEAT_MAX_COUNT)
+      errs.repeatCount = `Between ${REPEAT_MIN_COUNT} and ${REPEAT_MAX_COUNT} dates.`;
+  }
   return errs;
+}
+
+/** The repeat rule the API takes, or undefined when the event does not repeat. */
+export function draftRepeat(d: EventDraft) {
+  if (d.repeat === 'none') return undefined;
+  return { every: d.repeat, count: Number(d.repeatCount) };
 }
 
 /**
@@ -151,6 +174,9 @@ export function draftToPayload(d: EventDraft, forUpdate: boolean, timeZone?: str
     onlineUrl: d.mode === 'in_person' ? blank : d.onlineUrl.trim(),
     capacity: d.capacity ? Number(d.capacity) : blank,
     coverImageUrl: d.coverImageUrl ?? blank,
+    // Only on create: a series is a set of dates to generate, not a property
+    // an existing date can change.
+    ...(!forUpdate && { repeat: draftRepeat(d) }),
     venue:
       d.mode === 'online'
         ? blank
@@ -240,8 +266,6 @@ export function WhenWhereFields({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      {/* TODO(confirm): the design has a "Repeats weekly" switch; the API has
-          no recurring events. */}
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
         <Field label="Date" error={errors.date}>
           {(p) => <input {...p} type="date" required className="input" value={d.date} onChange={(e) => set('date', e.target.value)} />}
@@ -312,6 +336,94 @@ export function WhenWhereFields({
       )}
     </div>
   );
+}
+
+const REPEAT_OPTIONS: { value: RepeatChoice; label: string }[] = [
+  { value: 'none', label: 'Does not repeat' },
+  { value: 'week', label: 'Weekly' },
+  { value: 'month', label: 'Monthly' },
+];
+
+/**
+ * The design's "Repeats weekly" switch, widened to weekly or monthly with a
+ * count. Create only: each date becomes its own event, edited and cancelled
+ * on its own, so there is nothing to change here afterwards.
+ */
+export function RepeatFields({
+  d,
+  set,
+  errors = {},
+  timeZone,
+}: {
+  d: EventDraft;
+  set: Setter;
+  errors?: Errors;
+  timeZone?: string;
+}) {
+  const t = draftTimes(d, timeZone);
+  const count = Number(d.repeatCount);
+  const dates =
+    d.repeat !== 'none' && t && Number.isInteger(count) && count >= REPEAT_MIN_COUNT && count <= REPEAT_MAX_COUNT
+      ? seriesOccurrences(t.startsAt, t.endsAt, { every: d.repeat, count }, timeZone ?? browserZone())
+      : null;
+  return (
+    <div className="flex flex-col gap-5 rounded-panel border border-line p-5">
+      <PressedChips
+        legend="Repeats"
+        value={d.repeat}
+        onChange={(v) => set('repeat', v)}
+        options={REPEAT_OPTIONS}
+        hint={
+          d.repeat === 'none'
+            ? 'A one-off. You can always create another.'
+            : d.repeat === 'week'
+              ? 'Same day and time every week.'
+              : 'Same day of the month, every month. The 31st falls on the last day of shorter months.'
+        }
+      />
+      {d.repeat !== 'none' && (
+        <>
+          <Field label="How many dates" hint="Each date is its own event with its own bookings." error={errors.repeatCount}>
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                inputMode="numeric"
+                min={REPEAT_MIN_COUNT}
+                max={REPEAT_MAX_COUNT}
+                className="input max-w-[160px]"
+                value={d.repeatCount}
+                onChange={(e) => set('repeatCount', e.target.value)}
+              />
+            )}
+          </Field>
+          {dates && (
+            <div className="flex flex-col gap-2">
+              <span className="eyebrow text-[10px] text-faint">The dates</span>
+              <ol className="flex flex-wrap gap-2" aria-label="Dates in this series">
+                {dates.slice(0, 8).map((o, i) => (
+                  <li key={i} className="rounded-full border border-line px-3 py-1.5 text-[13px] text-ink-2">
+                    {fmtDay(o.startsAt.toISOString(), timeZone)}
+                  </li>
+                ))}
+                {dates.length > 8 && (
+                  <li className="px-1 py-1.5 text-[13px] text-muted">and {dates.length - 8} more</li>
+                )}
+              </ol>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function browserZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London';
+  } catch {
+    return 'Europe/London';
+  }
 }
 
 export function CapacityField({ d, set, errors = {} }: { d: EventDraft; set: Setter; errors?: Errors }) {
@@ -432,6 +544,9 @@ export function ReviewList({ d }: { d: EventDraft }) {
       t ? `${fmtDay(t.startsAt.toISOString())} · ${fmtTime(t.startsAt.toISOString())}–${fmtTime(t.endsAt.toISOString())}` : '—',
     ],
     ['Where', draftWhere(d)],
+    ...(d.repeat !== 'none'
+      ? ([['Repeats', `${d.repeat === 'week' ? 'Weekly' : 'Monthly'} · ${d.repeatCount} dates`]] as [string, string][])
+      : []),
     ['Tickets', d.capacity ? `Free · ${d.capacity} places` : 'Free · no limit'],
   ];
   return (
