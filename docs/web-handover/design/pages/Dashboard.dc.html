@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Host overview</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.shell{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.hostside{flex:1 1 240px;max-width:260px}
+@media (max-width:760px){.hostside{flex-basis:100%;max-width:none}.shell{gap:24px}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl th{padding:12px 16px;text-align:left;font-weight:400;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--line)}
+.tbl td{padding:16px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="dashboard" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap shell" style="flex: 1; padding-top: 40px;">
+    <div class="hostside">
+      <dc-import name="HostNav" active="overview" theme="{{ theme }}" hint-size="100%,560px"></dc-import>
+    </div>
+
+    <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 28px;">
+      <div class="row-between">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <span class="eyebrow" style="color: var(--accent);">Grace Community Church</span>
+          <h1 class="h1" style="font-size: 40px;">Overview</h1>
+        </div>
+        <div style="display: flex; gap: 8px;" role="group" aria-label="Date range">
+          <sc-for list="{{ ranges }}" as="r" hint-placeholder-count="3">
+            <button type="button" class="{{ r.cls }}" aria-pressed="{{ r.on }}" onClick="{{ r.pick }}">{{ r.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+          <div class="card" style="display: flex; flex-direction: column; gap: 8px; padding: 20px;">
+            <span class="eyebrow" style="font-size: 10px; color: var(--faint);">{{ k.label }}</span>
+            <span style="font-size: 30px; color: var(--strong);">{{ k.value }}</span>
+            <span style="font-size: 13px; color: {{ k.deltaColor }};">{{ k.delta }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <section class="card" style="padding: 24px;" aria-labelledby="h-sales">
+        <div class="row-between" style="align-items: center;">
+          <h2 id="h-sales" style="font-size: 20px; font-weight: 400; color: var(--strong);">Gross sales</h2>
+          <span style="font-size: 13px; color: var(--muted);">{{ rangeNote }}</span>
+        </div>
+        <div style="display: flex; align-items: flex-end; gap: 6px; height: 200px; margin-top: 24px;" role="img" aria-label="{{ chartLabel }}">
+          <sc-for list="{{ bars }}" as="b" hint-placeholder-count="24">
+            <span style="flex: 1; height: {{ b.h }}; border-radius: 6px 6px 0 0; background: {{ b.bg }};"></span>
+          </sc-for>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: var(--faint);">
+          <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="3"><span>{{ t }}</span></sc-for>
+        </div>
+      </section>
+
+      <section class="card" style="overflow: hidden;" aria-labelledby="h-events">
+        <div class="row-between" style="align-items: center; padding: 20px 24px;">
+          <h2 id="h-events" style="font-size: 20px; font-weight: 400; color: var(--strong);">Your events</h2>
+          <a href="CreateEvent.dc.html" class="btn btn-outline btn-sm">+ New event</a>
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="tbl">
+            <thead><tr><th>Event</th><th>Status</th><th>Sold</th><th>Sales</th><th></th></tr></thead>
+            <tbody>
+              <sc-for list="{{ events }}" as="e" hint-placeholder-count="4">
+                <tr>
+                  <td><span style="display: flex; flex-direction: column; gap: 2px;"><span style="color: var(--strong);">{{ e.title }}</span><span style="font-size: 13px; color: var(--muted);">{{ e.when }}</span></span></td>
+                  <td><span class="tag" style="border-color: {{ e.statusBorder }}; color: {{ e.statusColor }};">{{ e.status }}</span></td>
+                  <td>
+                    <span style="display: flex; flex-direction: column; gap: 6px; min-width: 120px;">
+                      <span style="font-size: 14px;">{{ e.sold }}</span>
+                      <span style="height: 4px; border-radius: 4px; background: var(--line-2);"><span style="display: block; width: {{ e.pct }}; height: 100%; border-radius: 4px; background: var(--accent);"></span></span>
+                    </span>
+                  </td>
+                  <td>{{ e.sales }}</td>
+                  <td style="text-align: right; white-space: nowrap;"><a href="Attendees.dc.html" style="font-size: 14px; color: var(--accent);">Attendees</a> · <a href="CreateEvent.dc.html" style="font-size: 14px; color: var(--ink-2);">Edit</a></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <a href="Payouts.dc.html" class="card card-link row-between" style="align-items: center; padding: 24px; background: var(--raised);">
+        <span style="display: flex; flex-direction: column; gap: 4px;">
+          <span class="eyebrow" style="font-size: 10px; color: var(--faint);">Next payout</span>
+          <span style="font-size: 28px; color: var(--strong);">£2,148.30</span>
+          <span style="font-size: 14px; color: var(--muted);">Tuesday 1 Dec · to •••• 8842</span>
+        </span>
+        <span class="btn btn-outline">View payouts →</span>
+      </a>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1500}}'>
+var DATA = {
+  d30: { gross: '£8,420', delta: '↑ 18% on previous 30 days', tickets: '642', avg: '£26', checkin: '—', ticks: ['25 Oct', '9 Nov', '24 Nov'], n: 30, seed: 3 },
+  d90: { gross: '£19,860', delta: '↑ 9% on previous 90 days', tickets: '1,488', avg: '£24', checkin: '91%', ticks: ['Aug', 'Sep', 'Oct', 'Nov'], n: 26, seed: 7 },
+  year: { gross: '£41,230', delta: 'Since you joined in March', tickets: '3,104', avg: '£23', checkin: '89%', ticks: ['Mar', 'May', 'Jul', 'Sep', 'Nov'], n: 36, seed: 11 }
+};
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var range = s.range || 'd30';
+    var d = DATA[range];
+    var h = d.seed, bars = [];
+    for (var i = 0; i < d.n; i++) { h = (h * 9301 + 49297) % 233280; var v = 18 + (h / 233280) * 70 + i * (40 / d.n); bars.push({ h: Math.min(100, Math.round(v)) + '%', bg: i === d.n - 1 ? 'var(--accent)' : 'linear-gradient(180deg, rgba(var(--accent-rgb), .5), rgba(var(--accent-rgb), .12))' }); }
+    var ev = [
+      ['Charity Gala Dinner', 'Sat 5 Dec · 19:00', 'Live', 202, 240, '£5,760'],
+      ['Alpha Course', 'Wed 13 Jan · 19:30', 'Live', 16, 40, '£1,940 gifts'],
+      ['Worship Night', 'Fri 18 Dec · 19:30', 'Live', 64, 150, '£720'],
+      ['Easter Sunrise Service', 'Sun 4 Apr · 06:30', 'Draft', 0, 300, '—']
+    ];
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      ranges: [['d30', '30 days'], ['d90', '90 days'], ['year', 'Year']].map((r) => ({ label: r[1], on: range === r[0], cls: range === r[0] ? 'chip on' : 'chip', pick: () => this.setState({ range: r[0] }) })),
+      kpis: [
+        { label: 'Gross sales', value: d.gross, delta: d.delta, deltaColor: 'var(--accent)' },
+        { label: 'Tickets', value: d.tickets, delta: 'Paid and free', deltaColor: 'var(--muted)' },
+        { label: 'Avg. order', value: d.avg, delta: 'Per booking', deltaColor: 'var(--muted)' },
+        { label: 'Check-in rate', value: d.checkin, delta: 'Of tickets scanned', deltaColor: 'var(--muted)' }
+      ],
+      rangeNote: range === 'year' ? 'Monthly' : 'Daily',
+      chartLabel: 'Bar chart of gross sales, ' + d.gross + ' in total',
+      bars: bars, ticks: d.ticks,
+      events: ev.map(function (e) {
+        var draft = e[2] === 'Draft';
+        return {
+          title: e[0], when: e[1], status: e[2], sold: e[3] + ' / ' + e[4], pct: Math.round(e[3] / e[4] * 100) + '%', sales: e[5],
+          statusColor: draft ? 'var(--muted)' : 'var(--accent)', statusBorder: draft ? 'var(--line-2)' : 'var(--line-3)'
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

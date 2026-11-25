@@ -1,0 +1,148 @@
+/* =====================================================================
+   Ekklesia Events — web design tokens
+   Source of truth: the approved design canvas (design/ekklesia.css).
+   Drop into app/globals.css (Tailwind v4). Works without Tailwind too:
+   every value is a plain CSS variable.
+
+   Theme is chosen by data-theme="dark|light" on <html>.
+   Dark is the default. See docs/03-behaviour.md › Theme for the
+   no-flash script.
+   ===================================================================== */
+
+@import "tailwindcss";
+
+/* Self-hosted fonts (npm i @fontsource/alata @fontsource/jetbrains-mono) */
+@import "@fontsource/alata/400.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0a0b;          /* page */
+  --raised: #131013;      /* footer, inset panels, inputs */
+  --surface: #1b1517;     /* cards */
+  --surface-2: #241618;   /* image placeholders, off switches */
+  --avatar: #2a1f21;      /* initials avatars */
+
+  --strong: #f7f5f4;      /* headings */
+  --ink: #f2f0ef;         /* body text on surfaces */
+  --ink-2: #c3b8ba;       /* secondary */
+  --body: #a79b9e;        /* long-form paragraphs */
+  --muted: #8e8386;       /* meta */
+  --faint: #8b8083;       /* eyebrows, captions — still ≥4.5:1 on --surface */
+
+  --accent: #f98e80;      /* coral */
+  --accent-ink: #ffc9c2;  /* text on tinted accent fills */
+  --accent-rgb: 249, 142, 128;
+
+  --badge: #7e1d14;       /* solid category tag */
+  --badge-ink: #ffe3de;
+  --scrim: 13, 10, 11;    /* rgb for photo scrims & glass */
+  --shadow: 0 22px 60px rgba(0, 0, 0, 0.55);
+
+  --mark-a: #ffc9c2;      /* "ek" mark gradient */
+  --mark-b: #f98e80;
+  --mark-c: #d9564a;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #fffaf9;
+  --raised: #fff1ee;
+  --surface: #ffffff;
+  --surface-2: #f6e9e5;
+  --avatar: #fce5e0;
+
+  --strong: #1a0f0d;
+  --ink: #241618;
+  --ink-2: #574446;
+  --body: #5e4a4c;
+  --muted: #6b5457;
+  --faint: #7a6062;
+
+  /* #F98E80 fails contrast on white, so light steps down to brand deep coral */
+  --accent: #c4392c;
+  --accent-ink: #a32c21;
+  --accent-rgb: 196, 57, 44;
+
+  --badge: #c4392c;
+  --badge-ink: #ffffff;
+  --scrim: 255, 250, 249;
+  --shadow: 0 22px 60px rgba(120, 52, 42, 0.16);
+
+  --mark-a: #c4392c;
+  --mark-b: #a32c21;
+  --mark-c: #7e1d14;
+}
+
+/* Derived — computed per theme from --accent-rgb */
+:root,
+[data-theme] {
+  --line: rgba(var(--accent-rgb), 0.16);    /* card borders, dividers */
+  --line-2: rgba(var(--accent-rgb), 0.28);  /* outline buttons, inputs */
+  --line-3: rgba(var(--accent-rgb), 0.5);   /* selected / primary border */
+  --soft: rgba(var(--accent-rgb), 0.12);    /* primary button fill, selected chip */
+  --softer: rgba(var(--accent-rgb), 0.07);  /* selected row fill */
+}
+
+@theme inline {
+  --font-sans: "Alata", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-bg: var(--bg);
+  --color-raised: var(--raised);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-avatar: var(--avatar);
+  --color-strong: var(--strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-badge: var(--badge);
+  --color-badge-ink: var(--badge-ink);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-line-3: var(--line-3);
+  --color-soft: var(--soft);
+  --color-softer: var(--softer);
+
+  --radius-card: 20px;   /* cards */
+  --radius-panel: 24px;  /* booking / summary panels */
+  --radius-hero: 28px;   /* feature bands, auth cards */
+  --radius-field: 14px;  /* form inputs */
+  --shadow-panel: var(--shadow);
+}
+
+html { background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-sans); font-weight: 400; }
+::selection { background: rgba(var(--accent-rgb), 0.3); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+/* ---------- Signature details (keep these — they ARE the look) ---------- */
+
+/* Dividers fade to transparent at both ends */
+.rule-x { height: 1px; background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), .28) 18%, rgba(var(--accent-rgb), .28) 82%, transparent); }
+.rule-y { width: 1px; background: linear-gradient(180deg, transparent, rgba(var(--accent-rgb), .28) 30%, rgba(var(--accent-rgb), .28) 70%, transparent); }
+
+/* Photo scrims invert with the theme so overlaid type stays legible */
+.scrim-hero { background: linear-gradient(180deg, rgba(var(--scrim), .72) 0%, rgba(var(--scrim), .15) 34%, rgba(var(--scrim), .96) 100%); }
+.scrim-card { background: linear-gradient(180deg, rgba(var(--scrim), .35) 0%, transparent 40%, rgba(var(--scrim), .92) 100%); }
+.glass { background: rgba(var(--scrim), .55); backdrop-filter: blur(12px); }
+
+/* Generated cover art (events without a photo) turns blush on light */
+[data-theme="light"] .cover-art { filter: invert(1) hue-rotate(180deg) saturate(.9) brightness(1.02); }
+
+/* Uppercase tracked labels */
+.eyebrow { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

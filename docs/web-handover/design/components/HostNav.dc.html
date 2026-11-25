@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Host sidebar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.hn{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;font-size:15px;color:var(--ink-2)}
+.hn:hover{color:var(--ink)}
+.hn.on{background:var(--soft);color:var(--accent)}
+@media (max-width:760px){
+.hnav{flex-direction:row!important;flex-wrap:nowrap;overflow-x:auto;gap:6px!important;padding-bottom:4px}
+.hnav .hn-id,.hnav .hn-extra{display:none!important}
+.hnav .hn,.hnav .btn{flex:none;white-space:nowrap;margin:0!important}
+}
+</style>
+</helmet>
+<nav class="{{ rootClass }} hnav" aria-label="Host dashboard" style="display: flex; flex-direction: column; gap: 4px; font-family: 'Alata', sans-serif;">
+  <div class="hn-id" style="display: flex; align-items: center; gap: 12px; padding: 14px; margin-bottom: 8px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface);">
+    <span style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex: none; border-radius: 50%; border: 1px solid var(--line-3); background: var(--avatar); color: var(--accent); font-size: 14px;">GC</span>
+    <span style="display: flex; min-width: 0; flex-direction: column;">
+      <span style="font-size: 15px; color: var(--strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Grace Community Church</span>
+      <span style="font-size: 12px; color: var(--muted);">Church · Owner</span>
+    </span>
+  </div>
+  <a href="CreateEvent.dc.html" class="btn btn-primary" style="margin-bottom: 12px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+    New event
+  </a>
+  <sc-for list="{{ items }}" as="i" hint-placeholder-count="6">
+    <a href="{{ i.href }}" class="{{ i.cls }}" aria-current="{{ i.current }}">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ i.icon }}"></path></svg>
+      {{ i.label }}
+    </a>
+  </sc-for>
+  <div class="rule-x hn-extra" style="margin: 12px 0;"></div>
+  <a href="Host.dc.html" class="hn hn-extra">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+    View host page
+  </a>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["overview","create","attendees","checkin","payouts","settings"],"default":"overview"},"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":260,"height":720}}'>
+var ITEMS = [
+  ['overview', 'Overview', 'Dashboard.dc.html', 'M3 3v18h18M7 14l4-4 4 4 5-5'],
+  ['create', 'Events', 'CreateEvent.dc.html', 'M3 4h18v18H3zM16 2v4M8 2v4M3 10h18'],
+  ['attendees', 'Attendees', 'Attendees.dc.html', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85'],
+  ['checkin', 'Check-in', 'CheckIn.dc.html', 'M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10'],
+  ['payouts', 'Payouts', 'Payouts.dc.html', 'M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3'],
+  ['settings', 'Host settings', 'BecomeHost.dc.html', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-2.82-1.17l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3.6 15H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.17-2.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 3.6V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 2.82 1.17l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 20.4 9H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z']
+];
+class Component extends DCLogic {
+  renderVals() {
+    var active = this.props.active || 'overview';
+    return {
+      rootClass: 't-' + (this.props.theme || 'dark'),
+      items: ITEMS.map(function (i) {
+        return { label: i[1], href: i[2], icon: i[3], cls: i[0] === active ? 'hn on' : 'hn', current: i[0] === active ? 'page' : undefined };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

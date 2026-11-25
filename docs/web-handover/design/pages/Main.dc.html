@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Home</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+    <defs>
+      <linearGradient id="ek-mark" x1="18" y1="24" x2="92" y2="90" gradientUnits="userSpaceOnUse">
+        <stop offset="0" style="stop-color: var(--mark-a)"></stop>
+        <stop offset="0.55" style="stop-color: var(--mark-b)"></stop>
+        <stop offset="1" style="stop-color: var(--mark-c)"></stop>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <dc-import name="Header" theme="{{ theme }}" active="home" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main style="flex: 1;">
+    <!-- Hero -->
+    <section style="position: relative; overflow: hidden;">
+      <div aria-hidden="true" style="position: absolute; right: -160px; top: -160px; width: 720px; height: 720px; border-radius: 50%; background: radial-gradient(circle, rgba(var(--accent-rgb), 0.18), transparent 65%); filter: blur(40px); pointer-events: none;"></div>
+      <div class="wrap split" style="position: relative; padding-top: 64px; padding-bottom: 112px;">
+        <div style="display: flex; flex-direction: column; gap: 28px;">
+          <span class="eyebrow" style="color: var(--accent);">Church &amp; community events · London</span>
+          <h1 class="display" style="text-wrap: balance;">Gatherings worth <span style="color: var(--accent);">showing up</span> for.</h1>
+          <p class="lead" style="max-width: 560px;">Worship nights, conferences, courses and outreach from churches near you. RSVP in seconds and keep every ticket in one place.</p>
+          <form class="stack-sm" style="display: flex; gap: 12px; max-width: 580px;" onSubmit="{{ noSubmit }}">
+            <label class="field" style="flex: 1;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--muted); flex: none;"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+              <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search events</span>
+              <input type="search" placeholder="Search for events">
+            </label>
+            <a href="Discover.dc.html" class="btn btn-primary btn-lg">Find events
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            </a>
+          </form>
+          <ul style="display: flex; flex-wrap: wrap; gap: 8px;" aria-label="Popular categories">
+            <li><a href="Discover.dc.html" class="chip">Worship</a></li>
+            <li><a href="Discover.dc.html" class="chip">Conference</a></li>
+            <li><a href="Discover.dc.html" class="chip">Youth</a></li>
+            <li><a href="Discover.dc.html" class="chip">Outreach</a></li>
+            <li><a href="Discover.dc.html" class="chip">Class</a></li>
+          </ul>
+        </div>
+
+        <div style="position: relative;">
+          <article style="position: relative; overflow: hidden; min-height: 440px; border-radius: 20px; border: 1px solid var(--line); background: var(--surface-2);">
+            <img src="../../assets/images/city-outreach.jpg" alt="Volunteers carrying boxes of food parcels" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">
+            <div class="scrim-card"></div>
+            <div style="position: absolute; left: 16px; right: 16px; top: 16px; display: flex; justify-content: space-between; align-items: flex-start;">
+              <span class="tag-solid">Outreach</span>
+              <button type="button" class="icon-btn glass" aria-label="Save City Outreach Day" style="color: var(--ink);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+              </button>
+            </div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+              <a href="Event.dc.html" style="font-size: 34px; line-height: 1.05; color: var(--strong);">City Outreach Day</a>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 14px; color: var(--ink-2);">
+                <span>Sat 12 Dec</span><span class="dot"></span><span>09:00</span><span class="dot"></span><span>Grace Hall</span>
+              </div>
+            </div>
+          </article>
+
+          <div class="hide-sm" style="position: absolute; right: -32px; top: 96px; width: 280px; padding: 20px; border-radius: 20px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow);">
+            <div style="display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span class="eyebrow" style="font-size: 10px; color: var(--faint);">Next up</span>
+                <span style="font-size: 17px; line-height: 1.2; color: var(--strong);">Charity Gala Dinner</span>
+                <span style="font-size: 13px; color: var(--ink-2);">Sat 5 Dec · 19:00</span>
+              </div>
+              <span style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; background: var(--soft); color: var(--accent); flex: none;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"></path></svg>
+              </span>
+            </div>
+            <div class="rule-x" style="margin: 16px 0;"></div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="mono" style="font-size: 12px; letter-spacing: 0.14em; color: var(--ink-2);">EK-6BB5LAGSL3G</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--accent);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></span>Valid</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Happening soon -->
+    <section class="wrap" aria-label="Happening soon">
+      <div class="row-between" style="margin-bottom: 40px;">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <span class="eyebrow" style="color: var(--accent);">This month</span>
+          <h2 class="h2">Happening soon</h2>
+        </div>
+        <a href="Discover.dc.html" class="btn btn-outline">See all events
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+        </a>
+      </div>
+      <div class="cards">
+        <sc-for list="{{ soon }}" as="e" hint-placeholder-count="6">
+          <dc-import name="EventCard" event="{{ e }}" hint-size="100%,420px"></dc-import>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Categories -->
+    <section class="wrap" style="margin-top: 112px;" aria-label="Browse by category">
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px;">
+        <span class="eyebrow" style="color: var(--accent);">Browse</span>
+        <h2 class="h2">Find your kind of gathering</h2>
+      </div>
+      <ul class="cats">
+        <sc-for list="{{ cats }}" as="c" hint-placeholder-count="8">
+          <li>
+            <a href="Discover.dc.html" class="card card-link" style="display: flex; flex-direction: column; gap: 24px; padding: 24px; height: 100%;">
+              <span style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--softer); color: var(--accent);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ c.icon }}"></path></svg>
+              </span>
+              <span style="display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;">
+                <span style="font-size: 19px; color: var(--strong);">{{ c.name }}</span>
+                <span style="font-size: 13px; color: var(--faint);">{{ c.count }}</span>
+              </span>
+            </a>
+          </li>
+        </sc-for>
+      </ul>
+    </section>
+
+    <!-- How it works -->
+    <section class="wrap" style="margin-top: 112px;" aria-label="How it works">
+      <div style="border-radius: 28px; border: 1px solid var(--line); background: var(--raised); padding: 64px 48px;">
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px;">
+          <span class="eyebrow" style="color: var(--accent);">How it works</span>
+          <h2 class="h2" style="max-width: 720px;">From discovering to the door in three taps</h2>
+        </div>
+        <ol class="steps">
+          <li style="display: flex; flex-direction: column; gap: 16px;">
+            <span class="mono" style="font-size: 13px; color: var(--accent);">01</span>
+            <span style="font-size: 22px; color: var(--strong);">Discover</span>
+            <span style="font-size: 15px; line-height: 1.65; color: var(--body);">Browse events from churches and ministries near you — no account needed.</span>
+          </li>
+          <li class="rule-y" aria-hidden="true"></li>
+          <li style="display: flex; flex-direction: column; gap: 16px;">
+            <span class="mono" style="font-size: 13px; color: var(--accent);">02</span>
+            <span style="font-size: 22px; color: var(--strong);">RSVP or book</span>
+            <span style="font-size: 15px; line-height: 1.65; color: var(--body);">Reserve a free place or buy tickets, choose a tier or a table, and add a gift if you like.</span>
+          </li>
+          <li class="rule-y" aria-hidden="true"></li>
+          <li style="display: flex; flex-direction: column; gap: 16px;">
+            <span class="mono" style="font-size: 13px; color: var(--accent);">03</span>
+            <span style="font-size: 22px; color: var(--strong);">Show your QR</span>
+            <span style="font-size: 15px; line-height: 1.65; color: var(--body);">Your ticket lives in the app and your inbox. The host scans it at the door.</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Hosts -->
+    <section class="wrap" style="margin-top: 112px;" aria-label="Featured hosts">
+      <div class="row-between" style="margin-bottom: 40px;">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <span class="eyebrow" style="color: var(--accent);">Hosts</span>
+          <h2 class="h2">Churches and ministries on Ekklesia</h2>
+        </div>
+        <a href="Hosts.dc.html" class="btn btn-outline">Browse hosts
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+        </a>
+      </div>
+      <div class="cards">
+        <sc-for list="{{ hosts }}" as="h" hint-placeholder-count="3">
+          <a href="Host.dc.html" class="card card-link" style="display: flex; flex-direction: column; gap: 20px; padding: 24px;">
+            <span style="display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; border: 1px solid var(--line-3); background: var(--avatar); color: var(--accent); font-size: 19px;">{{ h.initials }}</span>
+            <span style="display: flex; flex-direction: column; gap: 8px;">
+              <span class="eyebrow" style="font-size: 10px; color: var(--accent);">{{ h.type }}</span>
+              <span style="font-size: 21px; color: var(--strong);">{{ h.name }}</span>
+              <span style="font-size: 15px; line-height: 1.6; color: var(--body);">{{ h.bio }}</span>
+            </span>
+            <span style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); margin-top: auto;">{{ h.area }}<span class="dot"></span>{{ h.upcoming }}</span>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- For churches -->
+    <section class="wrap" style="margin-top: 112px;" aria-label="For churches">
+      <div class="split" style="gap: 0; align-items: stretch; overflow: hidden; border-radius: 28px; border: 1px solid var(--line-2); background: var(--surface);">
+        <div style="display: flex; flex-direction: column; gap: 24px; padding: 48px;">
+          <span class="eyebrow" style="color: var(--accent);">For churches &amp; ministries</span>
+          <h2 class="h2">Publish events, sell tickets and check people in.</h2>
+          <p style="font-size: 16px; line-height: 1.65; color: var(--body);">Everything your team needs to run a great gathering, from a free Sunday RSVP to a 500-seat conference.</p>
+          <ul style="display: flex; flex-direction: column; gap: 12px;">
+            <li style="display: flex; align-items: center; gap: 12px; font-size: 15px;"><span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--soft); color: var(--accent); flex: none;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>Free RSVPs, ticket tiers, tables and donations</li>
+            <li style="display: flex; align-items: center; gap: 12px; font-size: 15px;"><span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--soft); color: var(--accent); flex: none;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>QR check-in from any phone</li>
+            <li style="display: flex; align-items: center; gap: 12px; font-size: 15px;"><span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--soft); color: var(--accent); flex: none;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>Live sales, attendee lists and payouts</li>
+          </ul>
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; padding-top: 8px;">
+            <a href="ForChurches.dc.html" class="btn btn-primary btn-lg">Become a host
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            </a>
+            <a href="ForChurches.dc.html" class="btn btn-outline btn-lg">See features</a>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: center; padding: 48px; background: var(--raised);">
+          <div aria-hidden="true" style="width: 100%; max-width: 420px; padding: 24px; border-radius: 20px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="eyebrow" style="font-size: 10px; color: var(--faint);">Leaders Summit 2027</span>
+              <span style="padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line-3); font-size: 11px; color: var(--accent);">Live</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 20px;">
+              <div style="display: flex; flex-direction: column; gap: 4px;"><span class="eyebrow" style="font-size: 9px; color: var(--faint);">Sold</span><span style="font-size: 22px; color: var(--strong);">268</span></div>
+              <div style="display: flex; flex-direction: column; gap: 4px;"><span class="eyebrow" style="font-size: 9px; color: var(--faint);">Revenue</span><span style="font-size: 22px; color: var(--strong);">£8,940</span></div>
+              <div style="display: flex; flex-direction: column; gap: 4px;"><span class="eyebrow" style="font-size: 9px; color: var(--faint);">Checked in</span><span style="font-size: 22px; color: var(--strong);">0</span></div>
+            </div>
+            <div class="rule-x" style="margin: 20px 0;"></div>
+            <div style="display: flex; align-items: flex-end; gap: 10px; height: 112px;">
+              <div style="flex: 1; height: 34%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, rgba(var(--accent-rgb), .45), rgba(var(--accent-rgb), .12));"></div>
+              <div style="flex: 1; height: 52%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, rgba(var(--accent-rgb), .45), rgba(var(--accent-rgb), .12));"></div>
+              <div style="flex: 1; height: 41%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, rgba(var(--accent-rgb), .45), rgba(var(--accent-rgb), .12));"></div>
+              <div style="flex: 1; height: 68%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, rgba(var(--accent-rgb), .45), rgba(var(--accent-rgb), .12));"></div>
+              <div style="flex: 1; height: 59%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, rgba(var(--accent-rgb), .45), rgba(var(--accent-rgb), .12));"></div>
+              <div style="flex: 1; height: 84%; border-radius: 6px 6px 0 0; background: var(--accent);"></div>
+              <div style="flex: 1; height: 72%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, rgba(var(--accent-rgb), .45), rgba(var(--accent-rgb), .12));"></div>
+            </div>
+            <div style="display: flex; margin-top: 8px; font-size: 11px; color: var(--faint);">
+              <span style="flex: 1; text-align: center;">M</span><span style="flex: 1; text-align: center;">T</span><span style="flex: 1; text-align: center;">W</span><span style="flex: 1; text-align: center;">T</span><span style="flex: 1; text-align: center;">F</span><span style="flex: 1; text-align: center;">S</span><span style="flex: 1; text-align: center;">S</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- App -->
+    <section class="wrap split" style="margin-top: 112px;" aria-label="Get the app">
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <span class="eyebrow" style="color: var(--accent);">The Ekklesia app</span>
+        <h2 class="h2">Your tickets, in your pocket.</h2>
+        <p style="max-width: 500px; font-size: 16px; line-height: 1.65; color: var(--body);">Save events, get reminders before doors open and show your QR ticket at the door — even when signal is patchy.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+          <a href="#" class="card" style="display: inline-flex; align-items: center; gap: 12px; height: 52px; padding: 0 18px; border-radius: 12px; border-color: var(--line-2);">
+            <span style="display: flex; flex-direction: column; line-height: 1.1;"><span style="font-size: 10px; color: var(--faint);">Download on the</span><span style="font-size: 16px; color: var(--ink);">App Store</span></span>
+          </a>
+          <a href="#" class="card" style="display: inline-flex; align-items: center; gap: 12px; height: 52px; padding: 0 18px; border-radius: 12px; border-color: var(--line-2);">
+            <span style="display: flex; flex-direction: column; line-height: 1.1;"><span style="font-size: 10px; color: var(--faint);">Get it on</span><span style="font-size: 16px; color: var(--ink);">Google Play</span></span>
+          </a>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <div aria-hidden="true" style="position: relative; width: 300px; height: 620px; overflow: hidden; border-radius: 44px; border: 6px solid #241618; background: #0d0a0b; color: #f2f0ef; box-shadow: var(--shadow);">
+          <img src="../../assets/images/alpha-course.jpg" alt="" style="position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 300px; object-fit: cover;">
+          <div style="position: absolute; left: 0; right: 0; top: 0; height: 300px; background: linear-gradient(180deg, rgba(13,10,11,.72) 0%, rgba(13,10,11,.18) 34%, rgba(13,10,11,.97) 100%);"></div>
+          <div style="position: relative; height: 100%; display: flex; flex-direction: column; padding: 12px 16px 16px;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px;"><span>9:41</span><span style="letter-spacing: .1em; color: #c9bfc2;">▮▮▮</span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+              <span style="padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(249,142,128,.3); background: rgba(13,10,11,.6); font-size: 11px;">All locations</span>
+              <span style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(249,142,128,.4); color: #f98e80; font-size: 11px;">M</span>
+            </div>
+            <div style="margin-top: 118px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
+              <span style="padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(249,142,128,.45); color: #f98e80; font-size: 8px; letter-spacing: .2em; text-transform: uppercase;">Class</span>
+              <span style="font-size: 26px; line-height: 1; color: #f7f5f4;">Alpha Course</span>
+              <span style="font-size: 11px; color: #c3b8ba;">Grace Community · 16 going</span>
+            </div>
+            <div style="margin-top: 16px; padding: 10px 14px; border-radius: 999px; border: 1px solid rgba(249,142,128,.15); background: #1b1517; font-size: 12px; color: #8b8083;">Search for events</div>
+            <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 15px;">Happening soon</span><span style="font-size: 11px; color: #f98e80;">See all</span></div>
+            <div style="position: relative; margin-top: 10px; height: 132px; overflow: hidden; border-radius: 16px; background: #1b1517;">
+              <img src="../../assets/images/city-outreach.jpg" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+              <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(13,10,11,.4) 0%, transparent 40%, rgba(13,10,11,.92) 100%);"></div>
+              <span style="position: absolute; left: 12px; bottom: 12px; font-size: 15px; color: #f7f5f4;">City Outreach Day</span>
+            </div>
+            <div style="margin-top: auto; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 999px; border: 1px solid rgba(249,142,128,.15); background: #1b1517;">
+              <span style="padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(249,142,128,.5); background: rgba(249,142,128,.15); color: #f98e80; font-size: 11px;">Discover</span>
+              <span style="flex: 1; display: flex; justify-content: space-around; color: #8b8083; font-size: 11px;"><span>Hosts</span><span>Tickets</span><span>Saved</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="wrap split-faq" style="margin-top: 112px;" aria-label="Frequently asked questions">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <span class="eyebrow" style="color: var(--accent);">FAQ</span>
+        <h2 class="h2">Questions, answered</h2>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <sc-for list="{{ faqs }}" as="f" hint-placeholder-count="4">
+          <div style="border-bottom: 1px solid var(--line);">
+            <button type="button" onClick="{{ f.toggle }}" aria-expanded="{{ f.open }}" style="display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 0; text-align: left; font-size: 18px; color: var(--strong);">
+              {{ f.q }}
+              <span style="color: var(--accent); font-size: 22px; line-height: 1;">{{ f.sign }}</span>
+            </button>
+            <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+              <p style="max-width: 640px; padding-bottom: 20px; font-size: 15px; line-height: 1.65; color: var(--body);">{{ f.a }}</p>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":5600}}'>
+var DATA_URL = '../sample-data.json';
+var ICONS = {
+  Worship: 'M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
+  Conference: 'M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3ZM19 10v1a7 7 0 0 1-14 0v-1M12 18v4',
+  Class: 'M2 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H2ZM22 4h-7a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h8Z',
+  Outreach: 'M11 14h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16M7 20l1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9M2 15l6 6',
+  Fundraiser: 'M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4',
+  Youth: 'M13 2 3 14h9l-1 8 10-12h-9l1-8z',
+  Prayer: 'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z',
+  Concert: 'M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z'
+};
+var PAL = {
+  Worship: ['#3a1712', '#7e1d14', '#f98e80'], Conference: ['#1f1418', '#4a2a2e', '#d9564a'],
+  Class: ['#21161a', '#5e2a24', '#ffc9c2'], Outreach: ['#2a1410', '#9a3a2c', '#f98e80'],
+  Fundraiser: ['#2b0f0c', '#7e1d14', '#ffb4a8'], Youth: ['#2a1016', '#c4392c', '#ffc9c2'],
+  Prayer: ['#160f12', '#3b2226', '#f98e80'], Concert: ['#1d1013', '#5c1d17', '#ffd9d2']
+};
+function money(n) { return n === 0 ? 'Free' : '£' + n.toLocaleString('en-GB'); }
+function enrich(e, hosts) {
+  var host = hosts.filter(function (h) { return h.slug === e.hostSlug; })[0] || {};
+  var d = new Date(e.start);
+  var tz = { timeZone: 'Europe/London' };
+  var day = d.toLocaleDateString('en-GB', Object.assign({ weekday: 'short', day: 'numeric', month: 'short' }, tz));
+  var time = d.toLocaleTimeString('en-GB', Object.assign({ hour: '2-digit', minute: '2-digit', hour12: false }, tz));
+  var prices = e.tiers.map(function (t) { return t.price; });
+  var min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
+  var price = max === 0 ? 'Free' : min === 0 ? 'Free – ' + money(max) : min === max ? money(min) : 'From ' + money(min);
+  var h = 7; for (var i = 0; i < e.title.length; i++) { h = (h * 31 + e.title.charCodeAt(i)) >>> 0; }
+  var p = PAL[e.category] || PAL.Worship;
+  var cx = 60 + (h % 280), cy = 20 + ((h >> 4) % 180);
+  var mx = ((h >> 8) % 2 === 0) ? 220 + ((h >> 3) % 60) : 10 + ((h >> 5) % 60);
+  var my = 40 + ((h >> 6) % 70);
+  return {
+    slug: e.slug, title: e.title, category: e.category, hostName: host.name,
+    when: (day + ' at ' + time).toUpperCase(), day: day, time: time, price: price,
+    going: e.going + ' going', image: e.image || '', hasImage: !!e.image, noImage: !e.image,
+    art: {
+      bg: 'radial-gradient(120% 90% at ' + Math.round(cx / 4) + '% ' + Math.round(cy / 2.4) + '%, ' + p[1] + ' 0%, ' + p[0] + ' 55%, #0d0a0b 100%)',
+      stroke: p[2], cx: cx, cy: cy, transform: 'translate(' + mx + ' ' + my + ') scale(1.6)'
+    }
+  };
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    fetch(DATA_URL).then(function (r) { return r.json(); }).then((d) => this.setState({ data: d })).catch(function () {});
+  }
+  renderVals() {
+    var theme = (this.state && this.state.theme) || this.props.theme || 'dark';
+    var data = (this.state && this.state.data) || { events: [], hosts: [], categories: [] };
+    var open = (this.state && this.state.open) || {};
+    var soon = data.events.slice().sort(function (a, b) { return a.start < b.start ? -1 : 1; }).slice(0, 6)
+      .map(function (e) { return enrich(e, data.hosts); });
+    var cats = data.categories.map(function (c) {
+      var n = data.events.filter(function (e) { return e.category === c; }).length;
+      return { name: c, count: n + (n === 1 ? ' event' : ' events'), icon: ICONS[c] };
+    });
+    var hosts = data.hosts.slice(0, 3).map(function (h) {
+      var n = data.events.filter(function (e) { return e.hostSlug === h.slug; }).length;
+      return Object.assign({}, h, { upcoming: n + ' upcoming ' + (n === 1 ? 'event' : 'events') });
+    });
+    var faqSrc = [
+      ['Do I need an account to browse events?', 'No. Anyone can browse every event and host. You only need to sign in when you RSVP or buy a ticket, so we can keep your tickets safe in one place.'],
+      ['How do tickets work on the day?', 'Each booking comes with a QR ticket in the app and in your confirmation email. The host scans it at the door — one scan per ticket.'],
+      ['Can my church list its events?', 'Yes. Churches, ministries and faith-based community groups can set up a host page in a few minutes and start publishing events straight away.'],
+      ['Where is Ekklesia available?', 'We’re starting in London and the UK, with hosts in Ireland and the US able to join too. Events are shown in your local currency.']
+    ];
+    var faqs = faqSrc.map((f, i) => ({
+      q: f[0], a: f[1], open: !!open[i], sign: open[i] ? '−' : '+',
+      toggle: () => { var o = Object.assign({}, open); o[i] = !o[i]; this.setState({ open: o }); }
+    }));
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      noSubmit: function (ev) { ev.preventDefault(); },
+      soon: soon, cats: cats, hosts: hosts, faqs: faqs
+    };
+  }
+}
+</script>
+</body>
+</html>

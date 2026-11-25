@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Reserve a place</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.box{border-radius:14px;border-color:var(--line-2);background:var(--raised);height:52px}
+.co{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:48px;align-items:start}
+@media (max-width:900px){.co{grid-template-columns:minmax(0,1fr)}}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="none" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap" style="flex: 1; padding-top: 40px; max-width: 1080px;">
+    <a href="Event.dc.html" style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 14px; color: var(--ink-2);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+      Back to event
+    </a>
+    <div class="co">
+      <div style="display: flex; flex-direction: column; gap: 32px;">
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <span class="eyebrow" style="color: var(--accent);">Reserve a place</span>
+          <h1 class="h1" style="font-size: 44px;">City Outreach Day</h1>
+          <p style="font-size: 15px; color: var(--ink-2);">Sat 12 Dec · 09:00 · Grace Hall, London</p>
+        </div>
+
+        <section class="card" style="padding: 24px;" aria-labelledby="h-places">
+          <h2 id="h-places" style="font-size: 20px; font-weight: 400; color: var(--strong);">How many places?</h2>
+          <div style="display: flex; align-items: center; gap: 16px; margin-top: 16px; padding: 16px; border-radius: 16px; border: 1px solid var(--line-3); background: var(--softer);">
+            <span style="display: flex; flex: 1; flex-direction: column; gap: 4px;"><span style="font-size: 16px;">Volunteer</span><span style="font-size: 13px; color: var(--muted);">Free · lunch included · 76 left</span></span>
+            <span style="display: flex; align-items: center; gap: 8px;" role="group" aria-label="Number of places">
+              <button type="button" class="icon-btn" onClick="{{ dec }}" aria-label="Remove a place" style="width: 36px; height: 36px; color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+              <span style="width: 24px; text-align: center; font-size: 16px;">{{ qty }}</span>
+              <button type="button" class="icon-btn" onClick="{{ inc }}" aria-label="Add a place" style="width: 36px; height: 36px; color: var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+            </span>
+          </div>
+        </section>
+
+        <section class="card" style="padding: 24px;" aria-labelledby="h-guests">
+          <h2 id="h-guests" style="font-size: 20px; font-weight: 400; color: var(--strong);">Who’s coming with you?</h2>
+          <p style="margin-top: 4px; font-size: 14px; color: var(--muted);">Names help the host print badges and check people in.</p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 20px;">
+            <sc-for list="{{ guests }}" as="g" hint-placeholder-count="2">
+              <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">{{ g.label }}</span><span class="field box"><input placeholder="{{ g.placeholder }}" value="{{ g.value }}"></span></label>
+            </sc-for>
+          </div>
+        </section>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-radius: 16px; border: 1px solid var(--line);">
+          <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px;">Remind me 24 hours before</span><span style="font-size: 13px; color: var(--muted);">By email and in the app</span></span>
+          <button type="button" role="switch" aria-checked="{{ remind }}" aria-label="Remind me 24 hours before" onClick="{{ flipRemind }}" style="position: relative; width: 52px; height: 30px; flex: none; border-radius: 999px; border: 1px solid var(--line-2); background: {{ swBg }};"><span style="position: absolute; top: 3px; left: {{ swLeft }}; width: 22px; height: 22px; border-radius: 50%; background: {{ swKnob }};"></span></button>
+        </div>
+      </div>
+
+      <aside class="sticky" aria-label="Summary" style="padding: 24px; border-radius: 24px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow);">
+        <div style="position: relative; height: 150px; overflow: hidden; border-radius: 16px;">
+          <img src="../../assets/images/city-outreach.jpg" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        <p class="eyebrow" style="margin-top: 16px; color: var(--ink-2);">Sat 12 Dec at 09:00</p>
+        <p style="margin-top: 6px; font-size: 20px; color: var(--strong);">City Outreach Day</p>
+        <p style="margin-top: 2px; font-size: 14px; color: var(--muted);">Love Salvation Church</p>
+        <div class="rule-x" style="margin: 20px 0;"></div>
+        <div style="display: flex; justify-content: space-between; font-size: 15px;"><span style="color: var(--ink-2);">{{ qtyLabel }}</span><span>Free</span></div>
+        <a href="Confirmation.dc.html" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 20px;">Confirm places</a>
+        <p style="margin-top: 12px; text-align: center; font-size: 12px; color: var(--faint);">You can cancel any time from Your tickets.</p>
+      </aside>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var qty = s.qty || 2;
+    var remind = s.remind == null ? true : s.remind;
+    var guests = [];
+    for (var i = 0; i < qty; i++) guests.push({ label: i === 0 ? 'Your name' : 'Guest ' + (i + 1) + ' — full name', placeholder: i === 0 ? 'Your full name' : 'Add a name', value: i === 0 ? 'Mike Adex' : '' });
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      qty: qty, qtyLabel: qty + (qty === 1 ? ' place' : ' places'),
+      dec: () => this.setState({ qty: Math.max(1, qty - 1) }),
+      inc: () => this.setState({ qty: Math.min(10, qty + 1) }),
+      guests: guests,
+      remind: remind,
+      swBg: remind ? 'var(--accent)' : 'var(--surface-2)', swLeft: remind ? '25px' : '3px', swKnob: remind ? '#ffffff' : 'var(--muted)',
+      flipRemind: () => this.setState({ remind: !remind })
+    };
+  }
+}
+</script>
+</body>
+</html>

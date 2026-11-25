@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Hosts</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="hosts" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap" style="flex: 1; padding-top: 48px;">
+    <div class="row-between" style="margin-bottom: 40px;">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <span class="eyebrow" style="color: var(--accent);">Host directory</span>
+        <h1 class="h1">Browse hosts</h1>
+        <p style="max-width: 560px; font-size: 16px; line-height: 1.6; color: var(--body);">Follow the churches and ministries you love to see their events first.</p>
+      </div>
+      <a href="ForChurches.dc.html" class="btn btn-outline">List your church
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </a>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 48px;" role="group" aria-label="Filter hosts by type">
+      <sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="4">
+        <button type="button" class="{{ c.cls }}" aria-pressed="{{ c.on }}" onClick="{{ c.pick }}">{{ c.label }}</button>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 64px;">
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+        <section style="display: flex; flex-direction: column; gap: 20px;">
+          <h2 class="eyebrow" style="font-weight: 400; color: var(--faint);">{{ g.title }}</h2>
+          <div class="cards">
+            <sc-for list="{{ g.list }}" as="h" hint-placeholder-count="3">
+              <a href="Host.dc.html" class="card card-link" style="display: flex; flex-direction: column; gap: 20px; padding: 24px;">
+                <span style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <span style="display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; border: 1px solid var(--line-3); background: var(--avatar); color: var(--accent); font-size: 19px;">{{ h.initials }}</span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--faint);"><path d="M7 17 17 7M8 7h9v9"></path></svg>
+                </span>
+                <span style="display: flex; flex-direction: column; gap: 8px;">
+                  <span class="eyebrow" style="font-size: 10px; color: var(--accent);">{{ h.type }}</span>
+                  <span style="font-size: 21px; color: var(--strong);">{{ h.name }}</span>
+                  <span style="font-size: 15px; line-height: 1.6; color: var(--body);">{{ h.bio }}</span>
+                </span>
+                <span style="display: flex; align-items: center; gap: 10px; margin-top: auto; font-size: 13px; color: var(--ink-2);">{{ h.area }}<span class="dot"></span>{{ h.upcoming }}</span>
+              </a>
+            </sc-for>
+          </div>
+        </section>
+      </sc-for>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1800}}'>
+var DATA_URL = '../sample-data.json';
+class Component extends DCLogic {
+  componentDidMount() {
+    fetch(DATA_URL).then(function (r) { return r.json(); }).then((d) => this.setState({ data: d })).catch(function () {});
+  }
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var data = s.data || { events: [], hosts: [] };
+    var type = s.type || 'All';
+    var titles = { Church: 'Churches', Ministry: 'Ministries', Community: 'Communities' };
+    var groups = ['Church', 'Ministry', 'Community']
+      .filter(function (t) { return type === 'All' || type === t; })
+      .map(function (t) {
+        return {
+          title: titles[t],
+          list: data.hosts.filter(function (h) { return h.type === t; }).map(function (h) {
+            var n = data.events.filter(function (e) { return e.hostSlug === h.slug; }).length;
+            return Object.assign({}, h, { upcoming: n + ' upcoming ' + (n === 1 ? 'event' : 'events') });
+          })
+        };
+      })
+      .filter(function (g) { return g.list.length > 0; });
+    var typeChips = ['All', 'Church', 'Ministry', 'Community'].map((t) => ({
+      label: t === 'All' ? 'All hosts' : titles[t], on: type === t, cls: type === t ? 'chip on' : 'chip',
+      pick: () => this.setState({ type: t })
+    }));
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      groups: groups, typeChips: typeChips
+    };
+  }
+}
+</script>
+</body>
+</html>

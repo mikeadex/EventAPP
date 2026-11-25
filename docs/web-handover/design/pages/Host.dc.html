@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Host profile</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="hosts" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main style="flex: 1;">
+    <section style="position: relative; overflow: hidden; border-bottom: 1px solid var(--line);">
+      <div aria-hidden="true" style="position: absolute; inset: 0; background: radial-gradient(80% 120% at 90% 0%, rgba(var(--accent-rgb), 0.18), transparent 60%), radial-gradient(60% 80% at 0% 100%, rgba(var(--accent-rgb), 0.08), transparent 60%);"></div>
+      <div class="wrap" style="position: relative; display: flex; flex-direction: column; gap: 32px; padding-top: 48px; padding-bottom: 64px;">
+        <a href="Hosts.dc.html" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+          All hosts
+        </a>
+        <div class="row-between" style="gap: 32px;">
+          <div class="stack-sm" style="display: flex; align-items: center; gap: 24px;">
+            <span style="display: flex; align-items: center; justify-content: center; width: 104px; height: 104px; flex: none; border-radius: 50%; border: 1px solid var(--line-3); background: var(--avatar); color: var(--accent); font-size: 35px;">{{ host.initials }}</span>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <span class="tag">{{ host.type }}</span>
+              <h1 class="h1">{{ host.name }}</h1>
+              <p style="display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink-2);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                {{ host.place }}
+              </p>
+            </div>
+          </div>
+          <button type="button" class="{{ followCls }}" onClick="{{ toggleFollow }}" aria-pressed="{{ following }}">{{ followLabel }}</button>
+        </div>
+        <p style="max-width: 680px; font-size: 17px; line-height: 1.7; color: var(--body);">{{ host.bio }}</p>
+        <dl style="display: flex; flex-wrap: wrap; gap: 16px 48px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <dt class="eyebrow" style="font-size: 10px; color: var(--faint);">Upcoming events</dt>
+            <dd style="font-size: 24px; color: var(--strong);">{{ count }}</dd>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <dt class="eyebrow" style="font-size: 10px; color: var(--faint);">Followers</dt>
+            <dd style="font-size: 24px; color: var(--strong);">{{ followers }}</dd>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <dt class="eyebrow" style="font-size: 10px; color: var(--faint);">On Ekklesia since</dt>
+            <dd style="font-size: 24px; color: var(--strong);">{{ host.since }}</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="wrap" style="padding-top: 56px;" aria-labelledby="upcoming">
+      <h2 id="upcoming" style="margin-bottom: 32px; font-size: 30px; font-weight: 400; color: var(--strong);">Upcoming events</h2>
+      <div class="cards">
+        <sc-for list="{{ events }}" as="e" hint-placeholder-count="2">
+          <dc-import name="EventCard" event="{{ e }}" hint-size="100%,420px"></dc-import>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"host":{"editor":"enum","options":["grace-community","love-salvation-church","kingdom-youth-network","the-upper-room","harvest-mission-trust","st-marks-greenwich"],"default":"grace-community"},"$preview":{"width":1440,"height":1700}}'>
+var DATA_URL = '../sample-data.json';
+var PAL = {
+  Worship: ['#3a1712', '#7e1d14', '#f98e80'], Conference: ['#1f1418', '#4a2a2e', '#d9564a'],
+  Class: ['#21161a', '#5e2a24', '#ffc9c2'], Outreach: ['#2a1410', '#9a3a2c', '#f98e80'],
+  Fundraiser: ['#2b0f0c', '#7e1d14', '#ffb4a8'], Youth: ['#2a1016', '#c4392c', '#ffc9c2'],
+  Prayer: ['#160f12', '#3b2226', '#f98e80'], Concert: ['#1d1013', '#5c1d17', '#ffd9d2']
+};
+function money(n) { return n === 0 ? 'Free' : '£' + n.toLocaleString('en-GB'); }
+function enrich(e, hosts) {
+  var host = hosts.filter(function (h) { return h.slug === e.hostSlug; })[0] || {};
+  var d = new Date(e.start);
+  var tz = { timeZone: 'Europe/London' };
+  var day = d.toLocaleDateString('en-GB', Object.assign({ weekday: 'short', day: 'numeric', month: 'short' }, tz));
+  var time = d.toLocaleTimeString('en-GB', Object.assign({ hour: '2-digit', minute: '2-digit', hour12: false }, tz));
+  var prices = e.tiers.map(function (t) { return t.price; });
+  var min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
+  var price = max === 0 ? 'Free' : min === 0 ? 'Free – ' + money(max) : min === max ? money(min) : 'From ' + money(min);
+  var h = 7; for (var i = 0; i < e.title.length; i++) { h = (h * 31 + e.title.charCodeAt(i)) >>> 0; }
+  var p = PAL[e.category] || PAL.Worship;
+  var cx = 60 + (h % 280), cy = 20 + ((h >> 4) % 180);
+  var mx = ((h >> 8) % 2 === 0) ? 220 + ((h >> 3) % 60) : 10 + ((h >> 5) % 60);
+  var my = 40 + ((h >> 6) % 70);
+  return {
+    slug: e.slug, title: e.title, category: e.category, hostName: host.name,
+    when: (day + ' at ' + time).toUpperCase(), price: price, going: e.going + ' going',
+    image: e.image || '', hasImage: !!e.image, noImage: !e.image,
+    art: {
+      bg: 'radial-gradient(120% 90% at ' + Math.round(cx / 4) + '% ' + Math.round(cy / 2.4) + '%, ' + p[1] + ' 0%, ' + p[0] + ' 55%, #0d0a0b 100%)',
+      stroke: p[2], cx: cx, cy: cy, transform: 'translate(' + mx + ' ' + my + ') scale(1.6)'
+    }
+  };
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    fetch(DATA_URL).then(function (r) { return r.json(); }).then((d) => this.setState({ data: d })).catch(function () {});
+  }
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var data = s.data || { events: [], hosts: [] };
+    var slug = this.props.host || 'grace-community';
+    var host = data.hosts.filter(function (h) { return h.slug === slug; })[0] || { name: '', initials: '', type: '', bio: '', area: '', city: '', followers: 0, since: '' };
+    var list = data.events.filter(function (e) { return e.hostSlug === slug; })
+      .sort(function (a, b) { return a.start < b.start ? -1 : 1; })
+      .map(function (e) { return enrich(e, data.hosts); });
+    var following = !!s.following;
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      host: Object.assign({}, host, { place: host.area + ', ' + host.city }),
+      count: list.length,
+      followers: (host.followers + (following ? 1 : 0)).toLocaleString('en-GB'),
+      events: list,
+      following: following,
+      followLabel: following ? '✓ Following' : '+ Follow',
+      followCls: following ? 'btn btn-outline btn-lg' : 'btn btn-primary btn-lg',
+      toggleFollow: () => this.setState({ following: !following })
+    };
+  }
+}
+</script>
+</body>
+</html>

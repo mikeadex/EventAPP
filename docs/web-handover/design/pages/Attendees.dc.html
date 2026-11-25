@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Attendees</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.shell{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.hostside{flex:1 1 240px;max-width:260px}
+@media (max-width:760px){.hostside{flex-basis:100%;max-width:none}.shell{gap:24px}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px}
+.tbl{width:100%;min-width:640px;border-collapse:collapse;font-size:15px}
+.tbl th{padding:12px 16px;text-align:left;font-weight:400;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--line)}
+.tbl td{padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="dashboard" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap shell" style="flex: 1; padding-top: 40px;">
+    <div class="hostside">
+      <dc-import name="HostNav" active="attendees" theme="{{ theme }}" hint-size="100%,560px"></dc-import>
+    </div>
+
+    <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+      <div class="row-between">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <span class="eyebrow" style="color: var(--accent);">Attendees</span>
+          <h1 class="h1" style="font-size: 40px;">City Outreach Day</h1>
+          <p style="font-size: 15px; color: var(--ink-2);">Sat 12 Dec · 09:00 · Grace Hall</p>
+        </div>
+        <span style="display: flex; flex-wrap: wrap; gap: 10px;">
+          <button type="button" class="btn btn-outline">Export CSV</button>
+          <button type="button" class="btn btn-outline">Message attendees</button>
+          <a href="CheckIn.dc.html" class="btn btn-primary">Open scanner</a>
+        </span>
+      </div>
+
+      <div class="kpis">
+        <div class="card" style="display: flex; flex-direction: column; gap: 6px; padding: 20px;"><span class="eyebrow" style="font-size: 10px; color: var(--faint);">Booked</span><span style="font-size: 30px; color: var(--strong);">124</span></div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 6px; padding: 20px;"><span class="eyebrow" style="font-size: 10px; color: var(--faint);">Checked in</span><span style="font-size: 30px; color: var(--accent);">{{ checkedIn }}</span></div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 6px; padding: 20px;"><span class="eyebrow" style="font-size: 10px; color: var(--faint);">Spots left</span><span style="font-size: 30px; color: var(--strong);">76</span></div>
+      </div>
+
+      <div class="stack-sm" style="display: flex; gap: 12px; align-items: center;">
+        <label class="field" style="flex: 1; height: 48px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--muted); flex: none;"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search attendees</span>
+          <input type="search" placeholder="Search names or ticket codes" value="{{ q }}" onChange="{{ onSearch }}">
+        </label>
+        <span style="display: flex; gap: 8px;">
+          <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+            <button type="button" class="{{ f.cls }}" aria-pressed="{{ f.on }}" onClick="{{ f.pick }}">{{ f.label }}</button>
+          </sc-for>
+        </span>
+      </div>
+
+      <div class="card" style="overflow-x: auto;">
+        <table class="tbl">
+          <thead><tr><th>Name</th><th>Tickets</th><th>Code</th><th>Booked</th><th style="text-align: right;">Status</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+              <tr>
+                <td><span style="display: flex; align-items: center; gap: 12px;"><span style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: none; border-radius: 50%; border: 1px solid var(--line-3); background: var(--avatar); color: var(--accent); font-size: 12px;">{{ r.initials }}</span><span style="color: var(--strong);">{{ r.name }}</span></span></td>
+                <td>{{ r.qty }}</td>
+                <td class="mono" style="font-size: 13px; color: var(--ink-2);">{{ r.code }}</td>
+                <td style="font-size: 14px; color: var(--muted);">{{ r.booked }}</td>
+                <td style="text-align: right;">
+                  <sc-if value="{{ r.isIn }}" hint-placeholder-val="{{ false }}">
+                    <button type="button" onClick="{{ r.toggle }}" style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--accent);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></span>In · {{ r.at }}</button>
+                  </sc-if>
+                  <sc-if value="{{ r.isOut }}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="btn btn-primary btn-sm" onClick="{{ r.toggle }}">Check in</button>
+                  </sc-if>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size: 13px; color: var(--faint);">{{ showing }}</p>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1300}}'>
+var PEOPLE = [
+  ['David Adeyemi', 2, 'EK-6BB5LAG', '2 Nov', true, '08:52'],
+  ['Mike Adex', 2, 'EK-CEMUDPN', '4 Nov', false],
+  ['Sarah Okonkwo', 1, 'EK-9KLP2ZQ', '5 Nov', true, '08:57'],
+  ['Tunde Balogun', 4, 'EK-4RTY8WM', '9 Nov', false],
+  ['Grace Mensah', 2, 'EK-7HJ3KQP', '11 Nov', true, '09:03'],
+  ['Joseph Okafor', 1, 'EK-2MNB8VC', '14 Nov', false],
+  ['Ruth Bello', 3, 'EK-5XCV9LK', '17 Nov', false],
+  ['Daniel Owusu', 1, 'EK-8QWE4RT', '20 Nov', true, '09:10']
+];
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var q = s.q || '', filter = s.filter || 'all';
+    var ins = s.ins || PEOPLE.map(function (p) { return p[4]; });
+    var needle = q.trim().toLowerCase();
+    var rows = [];
+    PEOPLE.forEach((p, i) => {
+      var isIn = ins[i];
+      if (needle && (p[0] + ' ' + p[2]).toLowerCase().indexOf(needle) < 0) return;
+      if (filter === 'in' && !isIn) return;
+      if (filter === 'out' && isIn) return;
+      rows.push({
+        name: p[0], initials: p[0].split(' ').map(function (w) { return w[0]; }).join(''), qty: '×' + p[1], code: p[2], booked: p[3],
+        isIn: isIn, isOut: !isIn, at: p[5] || '09:41',
+        toggle: () => { var c = ins.slice(); c[i] = !c[i]; this.setState({ ins: c }); }
+      });
+    });
+    var base = 78 + ins.filter(Boolean).length;
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      q: q, onSearch: (ev) => this.setState({ q: ev.target.value }),
+      filters: [['all', 'All'], ['in', 'Checked in'], ['out', 'Not yet']].map((f) => ({ label: f[1], on: filter === f[0], cls: filter === f[0] ? 'chip on' : 'chip', pick: () => this.setState({ filter: f[0] }) })),
+      rows: rows, checkedIn: base,
+      showing: 'Showing ' + rows.length + ' of 124 bookings'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Your ticket</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tq{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:48px;align-items:start}
+@media (max-width:900px){.tq{grid-template-columns:minmax(0,1fr)}}
+.act{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;border:1px solid var(--line);background:var(--surface);font-size:15px}
+.act:hover{border-color:var(--line-2)}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="tickets" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap" style="flex: 1; padding-top: 40px; max-width: 1040px;">
+    <a href="Tickets.dc.html" style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 32px; font-size: 14px; color: var(--ink-2);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg>
+      Your tickets
+    </a>
+
+    <div class="tq">
+      <!-- Ticket -->
+      <article style="position: relative; padding: 32px 28px; border-radius: 28px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow); text-align: center;">
+        <p class="eyebrow" style="letter-spacing: 0.3em; color: var(--ink-2);">Love Salvation Church</p>
+        <h1 style="margin-top: 10px; font-size: 32px; line-height: 1.15; font-weight: 400; color: var(--strong);">City Outreach Day</h1>
+        <p style="margin-top: 16px; font-size: 15px; color: var(--body);">Ticket will be active from</p>
+        <div style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-top: 16px; text-align: left;">
+          <div style="display: flex; flex-direction: column; gap: 4px;"><span class="eyebrow" style="font-size: 10px; color: var(--faint);">Starts</span><span style="font-size: 30px; color: var(--strong);">09:00</span><span style="font-size: 13px; color: var(--muted);">12 Dec 2026</span></div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--faint);"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+          <div style="display: flex; flex-direction: column; gap: 4px;"><span class="eyebrow" style="font-size: 10px; color: var(--faint);">Ends</span><span style="font-size: 30px; color: var(--strong);">15:00</span><span style="font-size: 13px; color: var(--muted);">12 Dec 2026</span></div>
+        </div>
+
+        <div aria-hidden="true" style="position: relative; height: 1px; margin: 28px -28px; border-top: 1px dashed var(--line-2);">
+          <span style="position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 50%; background: var(--bg);"></span>
+          <span style="position: absolute; right: -14px; top: -14px; width: 28px; height: 28px; border-radius: 50%; background: var(--bg);"></span>
+        </div>
+
+        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;" role="tablist" aria-label="Tickets in this booking">
+          <sc-for list="{{ tabs }}" as="b" hint-placeholder-count="2">
+            <button type="button" role="tab" class="{{ b.cls }}" aria-selected="{{ b.on }}" onClick="{{ b.pick }}">{{ b.label }}</button>
+          </sc-for>
+        </div>
+
+        <div style="display: inline-block; padding: 18px; border-radius: 20px; background: #ffffff;">
+          <svg width="200" height="200" viewBox="0 0 25 25" shape-rendering="crispEdges" role="img" aria-label="{{ qrLabel }}">
+            <sc-for list="{{ cells }}" as="c" hint-placeholder-count="0">
+              <rect x="{{ c.x }}" y="{{ c.y }}" width="1" height="1" fill="#0d0a0b"></rect>
+            </sc-for>
+          </svg>
+        </div>
+        <p class="mono" style="margin-top: 18px; font-size: 18px; letter-spacing: 0.22em; color: var(--strong);">{{ code }}</p>
+        <p style="margin-top: 6px; font-size: 13px; letter-spacing: 0.12em; color: var(--faint);">Show at registration</p>
+        <p style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 18px; font-size: 15px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent);"></span>Valid · one scan per ticket</p>
+        <p style="margin-top: 6px; font-size: 15px; color: var(--ink-2);">Grace Hall, 14 Powis Street, London SE18</p>
+
+        <div class="rule-x" style="margin: 24px 0;"></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; text-align: left;">
+          <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px;">Show me as going</span><span style="font-size: 13px; color: var(--muted);">Visible on the event page</span></span>
+          <button type="button" role="switch" aria-label="Show me as going" aria-checked="{{ going }}" onClick="{{ toggleGoing }}" style="position: relative; width: 52px; height: 30px; flex: none; border-radius: 999px; background: {{ switchBg }}; border: 1px solid var(--line-2);">
+            <span style="position: absolute; top: 3px; left: {{ knobLeft }}; width: 22px; height: 22px; border-radius: 50%; background: {{ knobBg }}; transition: left .2s;"></span>
+          </button>
+        </div>
+      </article>
+
+      <!-- Actions -->
+      <div style="display: flex; flex-direction: column; gap: 28px;">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <span class="eyebrow" style="color: var(--accent);">Saturday 12 December 2026</span>
+          <h2 style="font-size: 26px; font-weight: 400; color: var(--strong);">Keep this handy — the host scans the code at the door.</h2>
+          <p style="font-size: 15px; line-height: 1.6; color: var(--body);">Your QR also works from your confirmation email and the Ekklesia app, even offline.</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+          <a href="#" class="act"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>Add to Apple Wallet</a>
+          <a href="#" class="act"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>Add to Google Wallet</a>
+          <a href="#" class="act"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"></path></svg>Add to calendar</a>
+          <a href="#" class="act"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>Download PDF</a>
+          <a href="#" class="act"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>Get directions</a>
+          <a href="Event.dc.html" class="act"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>Event details</a>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 14px; padding: 24px;">
+          <span class="eyebrow" style="font-size: 10px; color: var(--faint);">Booking</span>
+          <div style="display: flex; justify-content: space-between; font-size: 15px;"><span style="color: var(--ink-2);">Reference</span><span class="mono">EK-CEMUDPNWLFM</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 15px;"><span style="color: var(--ink-2);">Tickets</span><span>2 × Volunteer</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 15px;"><span style="color: var(--ink-2);">Paid</span><span>Free</span></div>
+          <div class="rule-x" style="margin: 4px 0;"></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <button type="button" class="btn btn-outline btn-sm">Transfer a ticket</button>
+            <button type="button" class="btn btn-outline btn-sm">Cancel my place</button>
+            <a href="Host.dc.html" class="btn btn-sm" style="color: var(--accent);">Contact the host</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1300}}'>
+var CODES = ['EK-CEMUDPNWLFM', 'EK-CEMUDPNWLFN'];
+function qr(code) {
+  var n = 25, cells = [];
+  var h = 2166136261;
+  for (var i = 0; i < code.length; i++) { h ^= code.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  function rnd() { h ^= h << 13; h >>>= 0; h ^= h >> 17; h ^= h << 5; h >>>= 0; return h / 4294967296; }
+  function finder(x, y) { return x >= 0 && x < 7 && y >= 0 && y < 7 && (x === 0 || x === 6 || y === 0 || y === 6 || (x >= 2 && x <= 4 && y >= 2 && y <= 4)); }
+  function inFinderZone(x, y) { return (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9); }
+  for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) {
+    var on;
+    if (inFinderZone(x, y)) {
+      on = finder(x, y) || finder(x - (n - 7), y) || finder(x, y - (n - 7));
+    } else if (y === 6 || x === 6) { on = (x + y) % 2 === 0; }
+    else { on = rnd() > 0.52; }
+    if (on) cells.push({ x: x, y: y });
+  }
+  return cells;
+}
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var idx = s.idx || 0;
+    var going = s.going == null ? true : s.going;
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      tabs: CODES.map((c, i) => ({ label: 'Ticket ' + (i + 1) + ' of ' + CODES.length, on: i === idx, cls: i === idx ? 'chip on' : 'chip', pick: () => this.setState({ idx: i }) })),
+      code: CODES[idx],
+      qrLabel: 'QR code for ticket ' + CODES[idx],
+      cells: qr(CODES[idx]),
+      going: going,
+      switchBg: going ? 'var(--accent)' : 'var(--surface-2)',
+      knobLeft: going ? '25px' : '3px',
+      knobBg: going ? '#ffffff' : 'var(--muted)',
+      toggleGoing: () => this.setState({ going: !going })
+    };
+  }
+}
+</script>
+</body>
+</html>
