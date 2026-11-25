@@ -26,8 +26,8 @@ export const HN_ITEM =
  * Pages with no organisation in the URL (the picker, "Become a host") get no
  * sidebar at all.
  *
- * TODO(confirm): the design's nav also has "Payouts" and "Host settings".
- * There's no payouts API and no web settings page yet, so neither is shown.
+ * TODO(confirm): the design's nav also has "Host settings"; there's no web
+ * settings page yet. Payouts is shown to members who can see payout status.
  */
 export function HostShell({ children }: { children: ReactNode }) {
   const { ready } = useRequireSession();
@@ -59,6 +59,9 @@ export function HostShell({ children }: { children: ReactNode }) {
       icon: 'calendar',
       active: pathname.startsWith(`${base}/events/new`) || (!!eventBase && pathname.startsWith(`${eventBase}/edit`)),
     },
+    ...(params.orgId && me.data?.permissionsByOrg[params.orgId]?.includes('payout:view')
+      ? [{ href: `${base}/payouts`, label: 'Payouts', icon: 'bank' as const, active: pathname.startsWith(`${base}/payouts`) }]
+      : []),
     // Attendees and the scanner belong to one event: there's no list or
     // scanner across all of a host's events.
     ...(eventBase

@@ -16,14 +16,17 @@ import {
   draftToPayload,
   validateDraft,
   type EventDraft,
+  type TicketKindValue,
 } from '@/components/host/event-form';
 import { StepTabs } from '@/components/host/steps';
 import { Icon } from '@/components/icons';
-import { TicketTypesEditor } from '@/components/ticket-types-editor';
+import { TicketTypesEditor, type TicketType } from '@/components/ticket-types-editor';
 import { ErrorCard, Skeleton } from '@/components/ui';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { tiersPrice } from '@/lib/format';
 import type { Venue } from '@/lib/types';
 import { useMe } from '@/lib/use-api';
+import { usePaidTicketsGate } from '@/lib/use-payouts';
 
 interface OrganizerEvent {
   id: string;
@@ -67,7 +70,16 @@ export default function EditEventPage() {
   const me = useMe();
   const membership = me.data?.memberships.find((m) => m.organizationId === orgId);
   const orgSlug = membership?.slug;
+  const gate = usePaidTicketsGate(orgId);
   const [step, setStep] = useState(0);
+  // The kind follows the types that exist (any priced type = paid) until
+  // the host switches it, which changes what the editor below adds.
+  const [kind, setKind] = useState<TicketKindValue | null>(null);
+  const [types, setTypes] = useState<TicketType[]>([]);
+  const onTypesLoaded = useCallback((items: TicketType[]) => {
+    setTypes(items);
+    setKind((k) => k ?? (items.some((t) => t.priceMinor > 0) ? 'paid' : 'free'));
+  }, []);
 
   const [event, setEvent] = useState<OrganizerEvent | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -207,7 +219,13 @@ export default function EditEventPage() {
                 )}
                 {step === 1 && (
                   <>
-                    <TicketKind />
+                    <TicketKind
+                      value={kind ?? 'free'}
+                      onChange={setKind}
+                      gate={gate}
+                      payoutsHref={`/organizer/organizations/${orgId}/payouts`}
+                      disabled={cancelled}
+                    />
                     <CapacityField d={d} set={set} errors={visibleErrors} />
                   </>
                 )}
@@ -256,7 +274,7 @@ export default function EditEventPage() {
 
           {step === 1 && (
             <section className="card p-6 sm:p-8">
-              <TicketTypesEditor eventId={eventId} disabled={cancelled} />
+              <TicketTypesEditor eventId={eventId} disabled={cancelled} paid={kind === 'paid'} onLoaded={onTypesLoaded} />
             </section>
           )}
 
@@ -286,7 +304,7 @@ export default function EditEventPage() {
           )}
         </div>
         <aside className="xl:sticky xl:top-24">
-          <EventPreview d={d} host={membership?.name ?? 'Your organisation'} />
+          <EventPreview d={d} host={membership?.name ?? 'Your organisation'} price={tiersPrice(types)} />
         </aside>
       </div>
     </div>

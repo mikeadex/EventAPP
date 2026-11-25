@@ -114,6 +114,57 @@ export interface Me {
   profile: { displayName: string; city: string | null; avatarUrl: string | null } | null;
   memberships: Membership[];
   permissionsByOrg: Record<string, string[]>;
+  /** Feature flags resolved for this user (`paid_tickets`, …). Older API builds leave it out. */
+  capabilities?: Record<string, boolean>;
+}
+
+/** `Organization.payoutStatus`: where a host is with Stripe Connect. */
+export type PayoutStatus = 'NOT_STARTED' | 'ONBOARDING' | 'RESTRICTED' | 'ENABLED' | 'DISABLED';
+
+/** GET /v1/organizations/:orgId/connect/payouts — read from the host's Stripe account. */
+export interface ConnectPayouts {
+  balance: {
+    available: { amountMinor: number; currency: string } | null;
+    pending: { amountMinor: number; currency: string } | null;
+  } | null;
+  schedule: {
+    interval: 'manual' | 'daily' | 'weekly' | 'monthly';
+    weeklyAnchor: string | null;
+    monthlyAnchor: number | null;
+    delayDays: number;
+  } | null;
+  items: {
+    id: string;
+    amountMinor: number;
+    currency: string;
+    status: 'paid' | 'pending' | 'in_transit' | 'canceled' | 'failed';
+    arrivalDate: string;
+    createdAt: string;
+    method: string;
+    failureMessage: string | null;
+  }[];
+}
+
+/** GET /v1/organizations/:orgId/connect/summary?days= — ticket sales from our own payment records. */
+export interface SalesSummary {
+  days: number;
+  since: string;
+  currency: string;
+  orders: number;
+  tickets: number;
+  salesMinor: number;
+  feesMinor: number;
+  refundsMinor: number;
+  netMinor: number;
+}
+
+/** GET /v1/organizations/:orgId/connect/status */
+export interface ConnectStatus {
+  status: PayoutStatus;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  requirementsDue: string[];
+  country: string;
 }
 
 export interface Ticket {

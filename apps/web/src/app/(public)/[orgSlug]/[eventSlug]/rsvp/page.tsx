@@ -44,10 +44,10 @@ export default async function RsvpPage({
   } else if (paid) {
     blocker = {
       title: 'This event has paid tickets',
-      body: 'Online payment isn’t available yet. Contact the host to book.',
+      body: 'Choose your tickets on the event page to pay by card.',
       action: (
-        <Link href={href as never} className="btn btn-primary">
-          Back to event
+        <Link href={`${href}#book` as never} className="btn btn-primary">
+          Get tickets
         </Link>
       ),
     };
