@@ -4,6 +4,21 @@ import { EmailService } from '../email/email.service.js';
 import { passwordResetEmail } from '../email/templates/password-reset.js';
 import { verifyEmailTemplate } from '../email/templates/verify-email.js';
 import { buildSocialProviders } from './social-providers.js';
+import {
+  afterCodeCheck,
+  afterSignIn,
+  afterTrustedDeviceSignIn,
+  afterTwoFactorDisabled,
+  afterTwoFactorEnrolled,
+  auditTwoFactorChange,
+  guardStaffCodeCheck,
+  guardStaffSignIn,
+  refuseStaffSession,
+  refuseTwoFactorEnable,
+  withoutTwoFactorFlag,
+  type CodeOutcome,
+  type SignInOutcome,
+} from './staff-signin.js';
 
 /**
  * better-auth is published as pure ESM: `"type": "module"`, a single
@@ -18,6 +33,7 @@ import { buildSocialProviders } from './social-providers.js';
  */
 import {
   loadBetterAuth,
+  loadBetterAuthApi,
   loadBetterAuthPlugins,
   loadBetterAuthPrismaAdapter,
 } from '../../../lib/load-esm.js';
@@ -44,6 +60,27 @@ const emailService = new EmailService();
 
 const RESET_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
 const VERIFY_TOKEN_TTL_SECONDS = 60 * 60 * 24; // 1 day — signing up is not always finished at a desk
+const TRUST_DEVICE_SECONDS = 60 * 60 * 24 * 7; // "Trust this device for 7 days" on the staff code step
+
+/** Two-factor routes whose outcome the staff hooks act on. */
+const CODE_CHECK_PATHS = ['/two-factor/verify-totp', '/two-factor/verify-backup-code'];
+const TWO_FACTOR_ACCOUNT_PATHS = [
+  '/two-factor/enable',
+  '/two-factor/disable',
+  '/two-factor/generate-backup-codes',
+];
+
+/**
+ * Who a two-factor request is for, as the before hook found it, handed to the
+ * after hook. Keyed by the per-request auth context object, which Better Auth
+ * passes to both hooks and drops when the request ends.
+ */
+type TwoFactorSubject = {
+  user: { id: string; email: string; twoFactorEnabled: boolean } | undefined;
+  /** The request came with a session (setup), rather than a pending sign-in. */
+  signedIn: boolean;
+};
+const twoFactorSubjects = new WeakMap<object, TwoFactorSubject>();
 
 // Origins the API will accept auth requests from. Includes the mobile deep-link
 // scheme so the native app's bearer-token flow is trusted.
@@ -172,11 +209,19 @@ export function getAuth(): Promise<AuthInstance> {
 }
 
 async function createAuth() {
-  const [{ betterAuth }, { prismaAdapter }, { bearer, oneTimeToken }] = await Promise.all([
+  const [
+    { betterAuth },
+    { prismaAdapter },
+    { bearer, oneTimeToken, twoFactor },
+    { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError },
+  ] = await Promise.all([
     loadBetterAuth(),
     loadBetterAuthPrismaAdapter(),
     loadBetterAuthPlugins(),
+    loadBetterAuthApi(),
   ]);
+
+  const bearerPlugin = bearer();
 
   return betterAuth({
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -190,11 +235,195 @@ async function createAuth() {
     // app persists it in SecureStore and replays it, so login survives restarts.
     // (Web continues to use cookies — bearer is purely additive.)
     plugins: [
-      bearer(),
+      bearerPlugin,
       // Used only to hand a web-view session to the native app after social
       // sign-in; see native-handoff.controller.ts. Short-lived and single-use.
       oneTimeToken({ expiresIn: 3 }),
+      // 2-step codes for the staff admin console. Model `twoFactor` maps to
+      // Prisma's `TwoFactor` by the adapter's default camelCase naming, like
+      // user/session/account. Only staff can enable it (see hooks below), so
+      // no app user ever gets the code step the mobile app cannot show.
+      twoFactor({ issuer: 'Ekklesia Admin', trustDeviceMaxAge: TRUST_DEVICE_SECONDS }),
+      // Must stay after twoFactor: plugin after-hooks run in array order, and
+      // this one needs to see whether twoFactor turned the sign-in into a
+      // code step. When it did not (a trusted device), the password step was
+      // the whole sign-in, so it clears the staff lockout counter here.
+      {
+        id: 'staff-sign-in-complete',
+        hooks: {
+          after: [
+            {
+              matcher: (ctx) => ctx.path === '/sign-in/email',
+              handler: createAuthMiddleware(async (ctx) => {
+                const returned = ctx.context.returned;
+                const session = ctx.context.newSession;
+                if (!session || !returned || isAPIError(returned)) return;
+                if ((returned as { twoFactorRedirect?: unknown }).twoFactorRedirect) return;
+                await afterTrustedDeviceSignIn(prisma, session.user, ctx.headers, new Date());
+              }),
+            },
+          ],
+        },
+      },
     ],
+    // Staff-only sign-in protection; see staff-signin.ts. These run before the
+    // plugins' hooks, and for anyone who is not staff they change nothing.
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        // This hook runs before the bearer plugin turns `Authorization:
+        // Bearer` into a session cookie, so a mobile-style request would look
+        // signed out here. Apply the bearer plugin's own conversion first, so
+        // these checks resolve exactly the session the endpoint will.
+        // Optional all the way down: if the plugin ever changes shape this
+        // resolves no session and the enable gate refuses (deny by default).
+        const sessionOf = async () => {
+          const viaBearer = await bearerPlugin.hooks?.before?.[0]?.handler?.(ctx);
+          const headers = viaBearer?.context?.headers ?? ctx.headers;
+          return getSessionFromCtx({ ...ctx, headers });
+        };
+        const subjectOf = (
+          user: { id: string; email: string; twoFactorEnabled?: boolean | null } | null | undefined,
+          signedIn: boolean,
+        ): TwoFactorSubject => ({
+          user: user
+            ? { id: user.id, email: user.email, twoFactorEnabled: !!user.twoFactorEnabled }
+            : undefined,
+          signedIn,
+        });
+
+        let refusal = null;
+        if (ctx.path === '/sign-in/email') {
+          refusal = await guardStaffSignIn(prisma, ctx.body?.email, ctx.headers, new Date());
+        } else if (TWO_FACTOR_ACCOUNT_PATHS.includes(ctx.path)) {
+          const session = await sessionOf();
+          twoFactorSubjects.set(ctx.context, subjectOf(session?.user, !!session));
+          if (ctx.path === '/two-factor/enable') {
+            refusal = await refuseTwoFactorEnable(prisma, session?.user.id);
+          }
+        } else if (CODE_CHECK_PATHS.includes(ctx.path)) {
+          // The account the code is for, found the way the plugin finds it
+          // (verify-two-factor.mjs): the signed-in account during setup,
+          // otherwise the pending sign-in named by the signed two_factor
+          // cookie, which points at a verification row holding the user id.
+          const session = await sessionOf();
+          let subject = subjectOf(session?.user, !!session);
+          if (!session) {
+            const cookie = ctx.context.createAuthCookie('two_factor');
+            const identifier = await ctx.getSignedCookie(cookie.name, ctx.context.secret);
+            const pending = identifier
+              ? await ctx.context.internalAdapter.findVerificationValue(identifier)
+              : null;
+            const user = pending
+              ? await ctx.context.internalAdapter.findUserById(pending.value)
+              : null;
+            subject = subjectOf(user as Parameters<typeof subjectOf>[0], false);
+          }
+          twoFactorSubjects.set(ctx.context, subject);
+          refusal = await guardStaffCodeCheck(prisma, subject.user, ctx.headers, new Date());
+        }
+        if (refusal) throw new APIError(refusal.status, refusal.body);
+      }),
+      after: createAuthMiddleware(async (ctx) => {
+        const returned = ctx.context.returned;
+        // Sign-up answers with the same user object; keep it as it was too.
+        if (ctx.path === '/sign-up/email' && returned && !isAPIError(returned)) {
+          return ctx.json(withoutTwoFactorFlag(returned as Record<string, unknown>));
+        }
+        if (CODE_CHECK_PATHS.includes(ctx.path)) {
+          const subject = twoFactorSubjects.get(ctx.context);
+          let outcome: CodeOutcome = 'other';
+          if (!isAPIError(returned)) outcome = 'ok';
+          else {
+            const err = returned as { statusCode?: number; body?: { code?: string } };
+            if (
+              err.statusCode === 401 &&
+              (err.body?.code === 'INVALID_CODE' || err.body?.code === 'INVALID_BACKUP_CODE')
+            ) {
+              outcome = 'bad_code';
+            }
+          }
+          await afterCodeCheck(prisma, {
+            user: subject?.user,
+            outcome,
+            headers: ctx.headers,
+            now: new Date(),
+          });
+          // First accepted code for an account that had 2-step off: setup is
+          // complete. Only the session this request came with was replaced,
+          // so end the rest (see afterTwoFactorEnrolled).
+          if (
+            outcome === 'ok' &&
+            ctx.path === '/two-factor/verify-totp' &&
+            subject?.signedIn &&
+            subject.user &&
+            !subject.user.twoFactorEnabled
+          ) {
+            await afterTwoFactorEnrolled(
+              prisma,
+              subject.user,
+              ctx.context.newSession?.session.id,
+              ctx.headers,
+            );
+          }
+          return;
+        }
+        if (TWO_FACTOR_ACCOUNT_PATHS.includes(ctx.path)) {
+          const user = twoFactorSubjects.get(ctx.context)?.user;
+          if (!user || isAPIError(returned)) return;
+          if (ctx.path === '/two-factor/disable') {
+            await afterTwoFactorDisabled(prisma, user, ctx.headers);
+          } else {
+            await auditTwoFactorChange(
+              prisma,
+              user,
+              ctx.path === '/two-factor/enable' ? 'staff.2fa.enable' : 'staff.2fa.backup_codes',
+              ctx.headers,
+            );
+          }
+          return;
+        }
+        if (ctx.path !== '/sign-in/email') return;
+        let outcome: SignInOutcome = 'other';
+        if (ctx.context.newSession) outcome = 'ok';
+        else if (isAPIError(returned)) {
+          // Wrong password and unknown address answer alike (401); other
+          // refusals (unverified email, bad input) are not guesses at a password.
+          const err = returned as { statusCode?: number; body?: { code?: string } };
+          if (err.statusCode === 401 && err.body?.code === 'INVALID_EMAIL_OR_PASSWORD') {
+            outcome = 'failed';
+          }
+        }
+        await afterSignIn(prisma, {
+          email: ctx.body?.email,
+          outcome,
+          headers: ctx.headers,
+          now: new Date(),
+        });
+        // Keep the sign-in body exactly as it was before the twoFactor plugin
+        // (withoutTwoFactorFlag). A 2-step redirect is built by the plugin's own
+        // after-hook, which runs later and replaces this body for staff.
+        if (outcome === 'ok' && returned && !isAPIError(returned)) {
+          return ctx.json(withoutTwoFactorFlag(returned as Record<string, unknown>));
+        }
+      }),
+    },
+    // A staff account gets a session only from the staff sign-in routes —
+    // never from Google/Microsoft, email-verification auto sign-in or any
+    // other path that would skip the code step. See refuseStaffSession.
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session, endpointCtx) => {
+            const refusal = await refuseStaffSession(prisma, {
+              userId: session.userId,
+              path: endpointCtx?.path,
+              currentSessionUserId: endpointCtx?.context.session?.user.id,
+            });
+            if (refusal) throw new APIError(refusal.status, refusal.body);
+          },
+        },
+      },
+    },
     // Only providers whose credentials are present; see social-providers.ts.
     socialProviders: buildSocialProviders(),
     // Verification applies to email/password signups only. Google and Apple

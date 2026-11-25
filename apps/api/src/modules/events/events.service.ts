@@ -17,6 +17,7 @@ import {
   checkContent,
 } from '@ekklesia/shared';
 import type { Prisma } from '@prisma/client';
+import { PUBLIC_HOST_WHERE } from '../../common/public-host.js';
 import { randomId } from '../../common/random-id.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditLogService } from '../../common/audit-log.service.js';
@@ -44,7 +45,7 @@ export class EventsService {
       status: 'PUBLISHED',
       visibility: 'PUBLIC',
       deletedAt: null,
-      ...(includeDemo ? {} : { organization: { is: { isDemo: false } } }),
+      organization: { is: { ...PUBLIC_HOST_WHERE, ...(includeDemo ? {} : { isDemo: false }) } },
       ...(input.category && {
         category: input.category.toUpperCase() as Prisma.EventWhereInput['category'],
       }),
@@ -141,7 +142,7 @@ export class EventsService {
         venueId: { not: null },
         // Same filter as searchPublic, or the picker offers a city whose only
         // events vanish the moment it is chosen.
-        ...(includeDemo ? {} : { organization: { is: { isDemo: false } } }),
+        organization: { is: { ...PUBLIC_HOST_WHERE, ...(includeDemo ? {} : { isDemo: false }) } },
       },
       select: { venue: { select: { city: true, country: true } } },
       distinct: ['venueId'],
@@ -242,7 +243,14 @@ export class EventsService {
         ticketTypes: { orderBy: { createdAt: 'asc' } },
         venue: true,
         organization: {
-          select: { id: true, slug: true, name: true, logoUrl: true, country: true },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            logoUrl: true,
+            country: true,
+            claimStatus: true,
+          },
         },
       },
     });
@@ -510,7 +518,8 @@ export class EventsService {
     });
   }
 
-  async cancel(eventId: string, actorUserId: string, reason: string | undefined) {
+  /** `actorUserId` is null when no one is signed in, e.g. a church's take-down link. */
+  async cancel(eventId: string, actorUserId: string | null, reason: string | undefined) {
     const evt = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: { id: true, status: true, organizationId: true },
@@ -524,7 +533,7 @@ export class EventsService {
       data: { status: 'CANCELLED', cancelledAt: new Date() },
     });
     await this.audit.write({
-      actorUserId,
+      actorUserId: actorUserId ?? undefined,
       organizationId: evt.organizationId,
       action: 'event.cancel',
       targetType: 'event',

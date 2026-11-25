@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { requestClientIp } from './client-ip.js';
 
 export interface AuditLogEntry {
   actorUserId?: string;
@@ -23,10 +24,9 @@ export class AuditLogService {
 
   async write(entry: AuditLogEntry): Promise<void> {
     const client = entry.tx ?? this.prisma;
-    const ipAddress =
-      (entry.req?.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
-      entry.req?.socket?.remoteAddress ??
-      undefined;
+    // Same trusted header order as the staff sign-in audit: never the
+    // client-supplied left-most X-Forwarded-For entry.
+    const ipAddress = requestClientIp(entry.req);
     const userAgent = entry.req?.headers['user-agent'];
 
     await client.auditLog.create({

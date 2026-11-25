@@ -41,10 +41,13 @@ export function StepTabs({
   steps,
   current,
   onSelect,
+  disabledSteps,
 }: {
   steps: string[];
   current: number;
   onSelect: (i: number) => void;
+  /** Steps that can't be opened yet. */
+  disabledSteps?: number[];
 }) {
   return (
     <ol aria-label="Steps" className="flex flex-wrap gap-2">
@@ -53,6 +56,7 @@ export function StepTabs({
           <button
             type="button"
             onClick={() => onSelect(i)}
+            disabled={disabledSteps?.includes(i) || undefined}
             aria-current={i === current ? 'step' : undefined}
             className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[14px] transition-colors ${
               i === current ? 'border-line-3 bg-soft text-accent-ink' : 'border-line text-ink-2 hover:text-ink'

@@ -23,3 +23,4 @@
 exports.loadBetterAuth = () => import('better-auth');
 exports.loadBetterAuthPrismaAdapter = () => import('better-auth/adapters/prisma');
 exports.loadBetterAuthPlugins = () => import('better-auth/plugins');
+exports.loadBetterAuthApi = () => import('better-auth/api');

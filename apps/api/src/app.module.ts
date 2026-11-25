@@ -18,6 +18,7 @@ import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module
 import { ModerationModule } from './modules/moderation/moderation.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { PushModule } from './modules/push/push.module.js';
+import { ClaimsModule } from './modules/claims/claims.module.js';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { PushModule } from './modules/push/push.module.js';
     AdminModule,
     UploadsModule,
     PushModule,
+    ClaimsModule,
   ],
 })
 export class AppModule {}

@@ -67,10 +67,21 @@ export interface EventDetail {
   capacity: number | null;
   attendeeCount: number;
   coverImageUrl: string | null;
-  organization: { id: string; slug: string; name: string; logoUrl: string | null; country: string };
+  organization: {
+    id: string;
+    slug: string;
+    name: string;
+    logoUrl: string | null;
+    country: string;
+    /** Older API builds leave it out; treat that as claimed. */
+    claimStatus?: ClaimStatus;
+  };
   venue: Venue | null;
   ticketTypes: TicketTypeData[];
 }
+
+/** Whether a church page was added by staff and not yet taken on by the church. */
+export type ClaimStatus = 'CLAIMED' | 'UNCLAIMED' | 'DISPUTED';
 
 export interface Organization {
   id: string;
@@ -84,6 +95,7 @@ export interface Organization {
   coverImageUrl: string | null;
   country: string;
   verificationStatus: string;
+  claimStatus?: ClaimStatus;
 }
 
 export interface Membership {
@@ -165,4 +177,17 @@ export interface AttendeeList {
   items: Attendee[];
   total: number;
   checkedIn: number;
+}
+
+/** GET /v1/claims/:token — the page behind the link in a claim email. */
+export interface ClaimInfo {
+  organization: { name: string; slug: string; kind: string };
+  email: string;
+  events: { title: string; startsAt: string }[];
+  hasAccount: boolean;
+}
+
+/** GET /v1/takedown/:token */
+export interface TakedownInfo {
+  organization: { name: string };
 }
