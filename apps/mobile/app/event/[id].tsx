@@ -63,6 +63,8 @@ interface EventDetail {
   organization: { slug: string; name: string };
   venue: { name: string; city: string; postalCode: string } | null;
   ticketTypes: { priceMinor: number; currency: string; sold: number; quantity: number }[];
+  /** Set when this event is one occurrence of a repeating series. */
+  recurrence: { id: string; description: string } | null;
 }
 
 /** Translucent circular control overlaid on the hero. */
@@ -164,9 +166,9 @@ export default function EventDetailScreen() {
           );
           setEvent(e);
         } else if (params.id) {
-          const feed = await api<{ items: { id: string; slug: string; organization: { slug: string } }[] }>(
-            '/v1/events?limit=50',
-          );
+          const feed = await api<{
+            items: { id: string; slug: string; organization: { slug: string } }[];
+          }>('/v1/events?limit=50');
           const match = feed.items.find((i) => i.id === params.id);
           if (!match) throw new Error('Event not in current feed');
           const e = await api<EventDetail>(
@@ -239,7 +241,12 @@ export default function EventDetailScreen() {
     const next = !saved;
     setSaved(next);
     Animated.sequence([
-      Animated.spring(heartScale, { toValue: 1.3, speed: 40, bounciness: 12, useNativeDriver: true }),
+      Animated.spring(heartScale, {
+        toValue: 1.3,
+        speed: 40,
+        bounciness: 12,
+        useNativeDriver: true,
+      }),
       Animated.spring(heartScale, { toValue: 1, speed: 30, bounciness: 8, useNativeDriver: true }),
     ]).start();
     showToast(next ? 'Saved for later' : 'Removed from Saved', next ? 'heart' : undefined);
@@ -425,7 +432,11 @@ export default function EventDetailScreen() {
   const seatsLeft = event.capacity !== null ? event.capacity - event.attendeeCount : null;
   const soldOut = seatsLeft !== null && seatsLeft <= 0;
   const start = new Date(event.startsAt);
-  const dateStr = start.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  const dateStr = start.toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
   const timeStr = start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const locStr = locationLabel(event);
   const mode = locationMode(event);
@@ -439,10 +450,10 @@ export default function EventDetailScreen() {
     ? null
     : event.ticketTypes
         .filter((t) => t.priceMinor > 0 && t.sold < t.quantity)
-        .reduce<{ priceMinor: number; currency: string } | null>(
-          (lo, t) => (lo === null || t.priceMinor < lo.priceMinor ? t : lo),
-          null,
-        );
+        .reduce<{
+          priceMinor: number;
+          currency: string;
+        } | null>((lo, t) => (lo === null || t.priceMinor < lo.priceMinor ? t : lo), null);
   const priceLabel = isFree
     ? 'Free'
     : cheapest
@@ -452,210 +463,234 @@ export default function EventDetailScreen() {
     rsvpState === 'done'
       ? "You're going ✓"
       : soldOut
-      ? 'Sold out'
-      : isFree
-      ? 'Get a Ticket · Free'
-      : `Get a Ticket · ${priceLabel}`;
+        ? 'Sold out'
+        : isFree
+          ? 'Get a Ticket · Free'
+          : `Get a Ticket · ${priceLabel}`;
 
   return (
     <View style={styles.c}>
       <StatusBar style="light" />
       <FadeIn>
-      <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
-        {/* Hero */}
-        <View style={[styles.hero, { height: HERO_H }]}>
-          {event.coverImageUrl ? (
-            <Image source={{ uri: event.coverImageUrl }} style={StyleSheet.absoluteFill} />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, styles.heroFallback]}>
-              <Ionicons name="calendar-outline" size={56} color={theme.dark.textMuted} />
-            </View>
-          )}
-          {/* Drawn with SVG, like Discover's — a flat 55% wash over the
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 140 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero */}
+          <View style={[styles.hero, { height: HERO_H }]}>
+            {event.coverImageUrl ? (
+              <Image source={{ uri: event.coverImageUrl }} style={StyleSheet.absoluteFill} />
+            ) : (
+              <View style={[StyleSheet.absoluteFill, styles.heroFallback]}>
+                <Ionicons name="calendar-outline" size={56} color={theme.dark.textMuted} />
+              </View>
+            )}
+            {/* Drawn with SVG, like Discover's — a flat 55% wash over the
               lower third was what this used before, and it both muddied the
               photograph and left the top bar sitting on bare image. */}
-          <Scrim stops={scrimPreset.hero} />
+            <Scrim stops={scrimPreset.hero} />
 
-          {/* Top bar */}
-          <View style={[styles.topBar, { top: insets.top + spacing[1] }]}>
-            <RoundButton icon="chevron-back" onPress={() => router.back()} label="Go back" />
-            <Text variant="monoLabel" tone="secondary" style={styles.topTitle}>
-              Details
-            </Text>
-            <View style={styles.topActions}>
-              <RoundButton icon="share-outline" onPress={shareEvent} label="Share event" />
-              <RoundButton
-                icon="flag-outline"
-                onPress={() => setReporting(true)}
-                label="Report this event"
-              />
-            </View>
-          </View>
-
-          {/* Title + social proof overlaid at the bottom of the hero */}
-          <View style={styles.heroFooter}>
-            <View style={{ flex: 1 }}>
-              <Text variant="hero" tone="onPhoto" style={styles.title} numberOfLines={2}>
-                {event.title}
+            {/* Top bar */}
+            <View style={[styles.topBar, { top: insets.top + spacing[1] }]}>
+              <RoundButton icon="chevron-back" onPress={() => router.back()} label="Go back" />
+              <Text variant="monoLabel" tone="secondary" style={styles.topTitle}>
+                Details
               </Text>
-              <View style={styles.proofRow}>
-                <View style={styles.avatars}>
-                  {attendees.length > 0
-                    ? attendees.slice(0, 4).map((a, i) => (
-                        <View
-                          key={`${a.name}-${i}`}
-                          style={[styles.proofAvatar, { marginLeft: i === 0 ? 0 : -10 }]}
-                        >
-                          {a.image ? (
-                            <Image source={{ uri: a.image }} style={styles.proofAvatarImg} />
-                          ) : (
-                            <Text variant="caption" style={styles.proofAvatarInitial}>
-                              {a.name.charAt(0).toUpperCase()}
-                            </Text>
-                          )}
-                        </View>
-                      ))
-                    : [0, 1, 2].map((i) => (
-                        <View
-                          key={i}
-                          style={[styles.proofAvatar, { marginLeft: i === 0 ? 0 : -10 }]}
-                        >
-                          <Ionicons name="person" size={11} color={theme.dark.accent} />
-                        </View>
-                      ))}
-                </View>
-                <Text variant="footnote" style={styles.proofText} numberOfLines={1}>
-                  {attendees.length > 0
-                    ? `${attendees[0].name.split(' ')[0]}${
-                        event.attendeeCount > 1 ? ` and ${event.attendeeCount - 1} others` : ''
-                      } going`
-                    : event.attendeeCount > 0
-                    ? `+${event.attendeeCount} going`
-                    : 'Be the first to go'}
-                </Text>
+              <View style={styles.topActions}>
+                <RoundButton icon="share-outline" onPress={shareEvent} label="Share event" />
+                <RoundButton
+                  icon="flag-outline"
+                  onPress={() => setReporting(true)}
+                  label="Report this event"
+                />
               </View>
             </View>
-            <Pressable
-              onPress={toggleSave}
-              style={[styles.heart, saved && styles.heartActive]}
-              accessibilityLabel={saved ? 'Unsave' : 'Save'}
-            >
-              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                <Ionicons
-                  name={saved ? 'heart' : 'heart-outline'}
-                  size={22}
-                  color={saved ? palette.coral[300] : theme.dark.textPrimary}
-                />
-              </Animated.View>
-            </Pressable>
+
+            {/* Title + social proof overlaid at the bottom of the hero */}
+            <View style={styles.heroFooter}>
+              <View style={{ flex: 1 }}>
+                <Text variant="hero" tone="onPhoto" style={styles.title} numberOfLines={2}>
+                  {event.title}
+                </Text>
+                <View style={styles.proofRow}>
+                  <View style={styles.avatars}>
+                    {attendees.length > 0
+                      ? attendees.slice(0, 4).map((a, i) => (
+                          <View
+                            key={`${a.name}-${i}`}
+                            style={[styles.proofAvatar, { marginLeft: i === 0 ? 0 : -10 }]}
+                          >
+                            {a.image ? (
+                              <Image source={{ uri: a.image }} style={styles.proofAvatarImg} />
+                            ) : (
+                              <Text variant="caption" style={styles.proofAvatarInitial}>
+                                {a.name.charAt(0).toUpperCase()}
+                              </Text>
+                            )}
+                          </View>
+                        ))
+                      : [0, 1, 2].map((i) => (
+                          <View
+                            key={i}
+                            style={[styles.proofAvatar, { marginLeft: i === 0 ? 0 : -10 }]}
+                          >
+                            <Ionicons name="person" size={11} color={theme.dark.accent} />
+                          </View>
+                        ))}
+                  </View>
+                  <Text variant="footnote" style={styles.proofText} numberOfLines={1}>
+                    {attendees.length > 0
+                      ? `${attendees[0].name.split(' ')[0]}${
+                          event.attendeeCount > 1 ? ` and ${event.attendeeCount - 1} others` : ''
+                        } going`
+                      : event.attendeeCount > 0
+                        ? `+${event.attendeeCount} going`
+                        : 'Be the first to go'}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={toggleSave}
+                style={[styles.heart, saved && styles.heartActive]}
+                accessibilityLabel={saved ? 'Unsave' : 'Save'}
+              >
+                <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                  <Ionicons
+                    name={saved ? 'heart' : 'heart-outline'}
+                    size={22}
+                    color={saved ? palette.coral[300] : theme.dark.textPrimary}
+                  />
+                </Animated.View>
+              </Pressable>
+            </View>
           </View>
-        </View>
 
-        {/* Info strip */}
-        <View style={styles.infoStrip}>
-          <InfoCol
-            label="Location"
-            value={locStr}
-            onPress={event.venue ? openMaps : undefined}
-          />
-          <Divider orientation="vertical" inset={0.3} opacity={0.28} style={styles.vDivider} />
-          <InfoCol label="Date" value={dateStr} onPress={addToCalendar} actionIcon="add-circle" />
-          <Divider orientation="vertical" inset={0.3} opacity={0.28} style={styles.vDivider} />
-          <InfoCol label="Time" value={timeStr} onPress={addToCalendar} actionIcon="add-circle" />
-        </View>
+          {/* Info strip */}
+          <View style={styles.infoStrip}>
+            <InfoCol label="Location" value={locStr} onPress={event.venue ? openMaps : undefined} />
+            <Divider orientation="vertical" inset={0.3} opacity={0.28} style={styles.vDivider} />
+            <InfoCol label="Date" value={dateStr} onPress={addToCalendar} actionIcon="add-circle" />
+            <Divider orientation="vertical" inset={0.3} opacity={0.28} style={styles.vDivider} />
+            <InfoCol label="Time" value={timeStr} onPress={addToCalendar} actionIcon="add-circle" />
+          </View>
 
-        {/* The stream. Previously the link was never shown here at all — even an
-            online-only event only revealed it on the ticket after registering. */}
-        {mode !== 'in_person' && (
-          <Pressable
-            style={styles.onlineRow}
-            disabled={!event.onlineUrl}
-            onPress={() => event.onlineUrl && Linking.openURL(event.onlineUrl)}
-          >
-            <Ionicons name="videocam-outline" size={18} color={theme.dark.accent} />
-            <View style={{ flex: 1 }}>
-              <Text variant="footnote" style={styles.onlineTitle}>
-                {mode === 'hybrid' ? 'Also streaming online' : 'Watch online'}
-              </Text>
-              <Text variant="caption" tone="secondary" numberOfLines={1}>
-                {event.onlineUrl ?? 'Link to follow'}
+          {/* Says this is one of a series, next to the single date above it.
+            Without this the page shows one Wednesday and gives no hint the
+            others exist — and discovery deliberately shows only one, so this
+            is the only place someone learns it repeats. */}
+          {event.recurrence ? (
+            <View style={styles.repeatRow}>
+              <Ionicons name="repeat" size={15} color={theme.dark.accent} />
+              <Text variant="footnote" tone="secondary">
+                {event.recurrence.description}
               </Text>
             </View>
-            {event.onlineUrl ? (
-              <Ionicons name="open-outline" size={16} color={theme.dark.textMuted} />
-            ) : null}
-          </Pressable>
-        )}
+          ) : null}
 
-        {/* About */}
-        <View style={styles.section}>
-          <Text style={styles.byLine} onPress={() =>
-            router.push({ pathname: '/host/[slug]', params: { slug: event.organization.slug } })
-          }>
-            By <Text variant="footnote" style={styles.byName}>{event.organization.name}</Text>
-          </Text>
-          <Text variant="subtitle" style={styles.sectionTitle}>About this event</Text>
-          <Text variant="body" style={styles.about}>
-            {event.description || event.summary || 'Details coming soon.'}
-          </Text>
-          {seatsLeft !== null ? (
-            <Text variant="label" tone="accent" style={styles.capacity}>
-              {soldOut ? 'At capacity' : `${seatsLeft} spots left`}
+          {/* The stream. Previously the link was never shown here at all — even an
+            online-only event only revealed it on the ticket after registering. */}
+          {mode !== 'in_person' && (
+            <Pressable
+              style={styles.onlineRow}
+              disabled={!event.onlineUrl}
+              onPress={() => event.onlineUrl && Linking.openURL(event.onlineUrl)}
+            >
+              <Ionicons name="videocam-outline" size={18} color={theme.dark.accent} />
+              <View style={{ flex: 1 }}>
+                <Text variant="footnote" style={styles.onlineTitle}>
+                  {mode === 'hybrid' ? 'Also streaming online' : 'Watch online'}
+                </Text>
+                <Text variant="caption" tone="secondary" numberOfLines={1}>
+                  {event.onlineUrl ?? 'Link to follow'}
+                </Text>
+              </View>
+              {event.onlineUrl ? (
+                <Ionicons name="open-outline" size={16} color={theme.dark.textMuted} />
+              ) : null}
+            </Pressable>
+          )}
+
+          {/* About */}
+          <View style={styles.section}>
+            <Text
+              style={styles.byLine}
+              onPress={() =>
+                router.push({ pathname: '/host/[slug]', params: { slug: event.organization.slug } })
+              }
+            >
+              By{' '}
+              <Text variant="footnote" style={styles.byName}>
+                {event.organization.name}
+              </Text>
+            </Text>
+            <Text variant="subtitle" style={styles.sectionTitle}>
+              About this event
+            </Text>
+            <Text variant="body" style={styles.about}>
+              {event.description || event.summary || 'Details coming soon.'}
+            </Text>
+            {seatsLeft !== null ? (
+              <Text variant="label" tone="accent" style={styles.capacity}>
+                {soldOut ? 'At capacity' : `${seatsLeft} spots left`}
+              </Text>
+            ) : null}
+
+            {gallery.length > 0 ? (
+              <View style={styles.gallery}>
+                <Text variant="subtitle" style={styles.sectionTitle}>
+                  Photos and video
+                </Text>
+                <EventGallery items={gallery} />
+              </View>
+            ) : null}
+          </View>
+        </ScrollView>
+
+        {/* Fixed bottom CTA pill */}
+        <View style={[styles.bottomWrap, { paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>
+          {rsvpErr ? (
+            <Text variant="label" style={styles.rsvpErr}>
+              {rsvpErr}
             </Text>
           ) : null}
-
-          {gallery.length > 0 ? (
-            <View style={styles.gallery}>
-              <Text variant="subtitle" style={styles.sectionTitle}>Photos and video</Text>
-              <EventGallery items={gallery} />
-            </View>
-          ) : null}
-        </View>
-      </ScrollView>
-
-      {/* Fixed bottom CTA pill */}
-      <View style={[styles.bottomWrap, { paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>
-        {rsvpErr ? (
-          <Text variant="label" style={styles.rsvpErr}>
-            {rsvpErr}
-          </Text>
-        ) : null}
-        <Pressable
-          style={[styles.ctaPill, rsvpDisabled && rsvpState !== 'done' && styles.ctaPillDisabled]}
-          disabled={rsvpDisabled}
-          onPress={
-            isFree
-              ? rsvp
-              : () =>
-                  router.push({
-                    pathname: '/checkout/tickets',
-                    params: {
-                      orgSlug: event.organization.slug,
-                      eventSlug: event.slug,
-                    },
-                  })
-          }
-        >
-          {rsvpState === 'pending' ? (
-            <ActivityIndicator color={theme.dark.accent} size="small" />
-          ) : (
-            <Ionicons
-              name={rsvpState === 'done' ? 'checkmark' : 'ticket'}
-              size={18}
-              color={rsvpDisabled && rsvpState !== 'done' ? theme.dark.textMuted : theme.dark.accent}
-            />
-          )}
-          <Text
-            variant="bodyLg"
-            style={{
-              color:
-                rsvpDisabled && rsvpState !== 'done' ? theme.dark.textMuted : palette.coral[200],
-            }}
+          <Pressable
+            style={[styles.ctaPill, rsvpDisabled && rsvpState !== 'done' && styles.ctaPillDisabled]}
+            disabled={rsvpDisabled}
+            onPress={
+              isFree
+                ? rsvp
+                : () =>
+                    router.push({
+                      pathname: '/checkout/tickets',
+                      params: {
+                        orgSlug: event.organization.slug,
+                        eventSlug: event.slug,
+                      },
+                    })
+            }
           >
-            {ctaText}
-          </Text>
-        </Pressable>
-      </View>
+            {rsvpState === 'pending' ? (
+              <ActivityIndicator color={theme.dark.accent} size="small" />
+            ) : (
+              <Ionicons
+                name={rsvpState === 'done' ? 'checkmark' : 'ticket'}
+                size={18}
+                color={
+                  rsvpDisabled && rsvpState !== 'done' ? theme.dark.textMuted : theme.dark.accent
+                }
+              />
+            )}
+            <Text
+              variant="bodyLg"
+              style={{
+                color:
+                  rsvpDisabled && rsvpState !== 'done' ? theme.dark.textMuted : palette.coral[200],
+              }}
+            >
+              {ctaText}
+            </Text>
+          </Pressable>
+        </View>
       </FadeIn>
 
       {/* Post-RSVP celebration: calendar + who's-going opt-in. */}
@@ -678,17 +713,21 @@ export default function EventDetailScreen() {
 
           <Pressable style={styles.sheetAction} onPress={addToCalendar}>
             <Ionicons name="calendar-outline" size={20} color={theme.dark.textSecondary} />
-            <Text variant="bodyLg" style={styles.sheetActionText}>Add to calendar</Text>
+            <Text variant="bodyLg" style={styles.sheetActionText}>
+              Add to calendar
+            </Text>
             <Ionicons name="chevron-forward" size={18} color={theme.dark.textMuted} />
           </Pressable>
 
           <View style={styles.sheetAction}>
             <Ionicons name="people-outline" size={20} color={theme.dark.textSecondary} />
             <View style={{ flex: 1 }}>
-              <Text variant="bodyLg" style={styles.sheetActionText}>Show me as going</Text>
+              <Text variant="bodyLg" style={styles.sheetActionText}>
+                Show me as going
+              </Text>
               <Text variant="caption" style={styles.sheetCaption}>
-                Your name appears on this event&apos;s page. Off by default; change it anytime
-                from your ticket.
+                Your name appears on this event&apos;s page. Off by default; change it anytime from
+                your ticket.
               </Text>
             </View>
             <Switch
@@ -842,6 +881,13 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 10, letterSpacing: 2, color: palette.warm[550], marginBottom: spacing[1] },
   infoValueRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
   infoValue: { flexShrink: 1 },
+  repeatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: spacing[5],
+    paddingTop: spacing[3],
+  },
   vDivider: { height: 42, marginHorizontal: spacing[3] },
 
   onlineRow: {
