@@ -9,6 +9,7 @@ import {
   Module,
   Param,
   Post,
+  Query,
   RawBodyRequest,
   Req,
   UseGuards,
@@ -91,6 +92,14 @@ class ConnectController {
   @RequirePermissions(Permission.PAYOUT_VIEW)
   payouts(@Param('orgId') orgId: string) {
     return this.connect.payouts(orgId);
+  }
+
+  /** Ticket sales over the last 30, 90 or 365 days (`?days=`). */
+  @Get('summary')
+  @RequirePermissions(Permission.PAYOUT_VIEW)
+  summary(@Param('orgId') orgId: string, @Query('days') days?: string) {
+    const n = Number(days);
+    return this.connect.salesSummary(orgId, [30, 90, 365].includes(n) ? n : 30);
   }
 
   @Post('onboard')

@@ -5,9 +5,9 @@ import { useEffect, useState } from 'react';
 import { Icon } from '@/components/icons';
 import { ErrorCard, Skeleton } from '@/components/ui';
 import { apiClient, ApiError } from '@/lib/api-client';
-import { amount, fmtDateShort } from '@/lib/format';
+import { amount, fmtDateShort, plural } from '@/lib/format';
 import { PLATFORM_FEE_BPS } from '@/lib/payments';
-import type { ConnectPayouts, ConnectStatus, PayoutStatus } from '@/lib/types';
+import type { ConnectPayouts, ConnectStatus, PayoutStatus, SalesSummary } from '@/lib/types';
 import { useApi, useMe } from '@/lib/use-api';
 
 /**
@@ -15,10 +15,10 @@ import { useApi, useMe } from '@/lib/use-api';
  *
  * The design (Payouts.dc.html) shows a host already taking money: a next
  * payout, a period breakdown, a bank card ending. The next payout and the
- * past payouts come from the host's own Stripe account via the API; the
- * period breakdown and bank card ending don't (TODO(confirm #3): no sales
- * ledger of our own, and Stripe keeps the bank details), so the page leads
- * with where the host is and shows the figures once there are any.
+ * past payouts come from the host's own Stripe account via the API, and the
+ * period breakdown from our payment records. The bank card ending doesn't
+ * (Stripe keeps the bank details), so the page leads with where the host
+ * is and shows the figures once there are any.
  */
 const HEADLINE: Record<PayoutStatus, string> = {
   NOT_STARTED: 'Set up payouts',
@@ -46,6 +46,10 @@ export default function PayoutsPage() {
   const status = useApi<ConnectStatus>(`/v1/organizations/${orgId}/connect/status`);
   const payouts = useApi<ConnectPayouts>(
     status.data?.status === 'ENABLED' ? `/v1/organizations/${orgId}/connect/payouts` : null,
+  );
+  const [days, setDays] = useState<30 | 90 | 365>(30);
+  const summary = useApi<SalesSummary>(
+    status.data?.status === 'ENABLED' ? `/v1/organizations/${orgId}/connect/summary?days=${days}` : null,
   );
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,9 +85,20 @@ export default function PayoutsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <span className="eyebrow text-accent [overflow-wrap:anywhere]">{membership?.name ?? 'Your organisation'}</span>
-        <h1 className="text-[34px] leading-[1.1] text-strong sm:text-[40px]">Payouts</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          <span className="eyebrow text-accent [overflow-wrap:anywhere]">{membership?.name ?? 'Your organisation'}</span>
+          <h1 className="text-[34px] leading-[1.1] text-strong sm:text-[40px]">Payouts</h1>
+        </div>
+        {live && (
+          <div role="group" aria-label="Sales period" className="flex flex-wrap gap-2">
+            {([30, 90, 365] as const).map((d) => (
+              <button key={d} type="button" aria-pressed={days === d} className="chip" onClick={() => setDays(d)}>
+                {d === 365 ? 'Year' : `${d} days`}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {status.status === 'error' ? (
@@ -143,7 +158,7 @@ export default function PayoutsPage() {
         </section>
       )}
 
-      {live && <PayoutFigures data={payouts} />}
+      {live && <PayoutFigures data={payouts} summary={summary} days={days} />}
 
       <p className="text-[13px] text-faint">
         Attendees pay one booking fee of {PLATFORM_FEE_BPS / 100}% on top of the ticket price; you receive the ticket
@@ -182,7 +197,15 @@ function ordinal(n: number) {
 }
 
 /** Next payout (Stripe's available balance) and the past payouts table. */
-function PayoutFigures({ data }: { data: ReturnType<typeof useApi<ConnectPayouts>> }) {
+function PayoutFigures({
+  data,
+  summary,
+  days,
+}: {
+  data: ReturnType<typeof useApi<ConnectPayouts>>;
+  summary: ReturnType<typeof useApi<SalesSummary>>;
+  days: number;
+}) {
   if (data.status === 'error') {
     return (
       <ErrorCard
@@ -227,6 +250,11 @@ function PayoutFigures({ data }: { data: ReturnType<typeof useApi<ConnectPayouts
           <span className="relative text-[15px] text-ink-2">
             {next && next.amountMinor > 0 ? 'Ready to pay out from your Stripe balance' : 'Nothing waiting to be paid out'}
           </span>
+          {pending && pending.amountMinor > 0 && (
+            <span className="relative text-[13px] text-muted">
+              {amount(pending.amountMinor, pending.currency)} more is still settling with Stripe.
+            </span>
+          )}
           {schedule && (
             <span className="relative mt-2 inline-flex items-center gap-2 text-[13px] text-accent">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
@@ -234,24 +262,7 @@ function PayoutFigures({ data }: { data: ReturnType<typeof useApi<ConnectPayouts
             </span>
           )}
         </section>
-        <section className="card flex flex-col gap-3 p-6" aria-labelledby="h-balance">
-          <h2 id="h-balance" className="eyebrow text-[10px] text-faint">
-            Your Stripe balance
-          </h2>
-          <div className="flex justify-between gap-4 text-[15px]">
-            <span className="text-ink-2">Available</span>
-            <span>{next ? amount(next.amountMinor, next.currency) : amount(0)}</span>
-          </div>
-          <div className="flex justify-between gap-4 text-[15px]">
-            <span className="text-ink-2">Still settling</span>
-            <span>{pending ? amount(pending.amountMinor, pending.currency) : amount(0)}</span>
-          </div>
-          <div className="rule-x my-1" />
-          <p className="text-[13px] leading-relaxed text-muted">
-            Ticket money reaches your balance after each sale, less the booking fee, and settles over a few days before
-            Stripe pays it out.
-          </p>
-        </section>
+        <PeriodCard summary={summary} days={days} />
       </div>
 
       <section className="card overflow-hidden" aria-labelledby="h-past">
@@ -301,5 +312,51 @@ function PayoutFigures({ data }: { data: ReturnType<typeof useApi<ConnectPayouts
         )}
       </section>
     </>
+  );
+}
+
+/** The design's "This period" card: sales, fees, refunds, net, from our own payment records. */
+function PeriodCard({ summary, days }: { summary: ReturnType<typeof useApi<SalesSummary>>; days: number }) {
+  const label = days === 365 ? 'Last year' : `Last ${days} days`;
+  if (summary.status === 'error') {
+    return (
+      <section className="card flex flex-col gap-3 p-6">
+        <span className="eyebrow text-[10px] text-faint">{label}</span>
+        <p className="text-[14px] text-body">{summary.error}</p>
+        <button type="button" className="btn btn-outline btn-sm self-start" onClick={() => void summary.reload()}>
+          Try again
+        </button>
+      </section>
+    );
+  }
+  const s = summary.data;
+  const row = (k: string, v: string, strong = false) => (
+    <div className="flex justify-between gap-4 text-[15px]">
+      <span className="text-ink-2">{k}</span>
+      <span className={strong ? 'text-strong' : ''}>{v}</span>
+    </div>
+  );
+  return (
+    <section className="card flex flex-col gap-3 p-6" aria-labelledby="h-period" aria-busy={!s}>
+      <h2 id="h-period" className="eyebrow text-[10px] text-faint">
+        {label}
+        {s && s.orders > 0 ? ` · ${plural(s.orders, 'order')} · ${plural(s.tickets, 'ticket')}` : ''}
+      </h2>
+      {!s ? (
+        <Skeleton className="h-28" />
+      ) : (
+        <>
+          {row('Ticket sales', amount(s.salesMinor, s.currency))}
+          {row('Booking fees (paid by attendees)', amount(s.feesMinor, s.currency))}
+          {row('Refunds', s.refundsMinor > 0 ? `−${amount(s.refundsMinor, s.currency)}` : amount(0, s.currency))}
+          <div className="rule-x my-1" />
+          {row('Net to you', amount(s.netMinor, s.currency), true)}
+          <p className="text-[12px] leading-relaxed text-muted">
+            Booking fees go to Ekklesia, not out of your ticket sales. Stripe’s own processing fees are shown in your
+            Stripe dashboard.
+          </p>
+        </>
+      )}
+    </section>
   );
 }

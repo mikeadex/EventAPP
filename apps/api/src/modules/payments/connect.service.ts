@@ -197,6 +197,60 @@ export class ConnectService {
   }
 
   /**
+   * Ticket sales over the last `days`, from our own payment records.
+   *
+   * The fee is charged on top of the ticket price, so "ticket sales" is what
+   * the host earned and "booking fees" is what attendees paid Ekklesia —
+   * shown so the figures add up to what Stripe took, never subtracted from
+   * the host. Refunds come from our Refund rows; a payment marked REFUNDED
+   * with none (refunded in the Stripe dashboard) counts in full.
+   */
+  async salesSummary(orgId: string, days: number) {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        organizationId: orgId,
+        orderId: { not: null },
+        status: { in: ['SUCCEEDED', 'REFUNDED', 'PARTIALLY_REFUNDED'] },
+        createdAt: { gte: since },
+      },
+      select: {
+        amountMinor: true,
+        platformFeeMinor: true,
+        currency: true,
+        status: true,
+        order: { select: { items: { select: { quantity: true } } } },
+        refunds: { select: { amountMinor: true, status: true } },
+      },
+    });
+    let salesMinor = 0;
+    let feesMinor = 0;
+    let refundsMinor = 0;
+    let tickets = 0;
+    for (const p of payments) {
+      salesMinor += p.amountMinor - p.platformFeeMinor;
+      feesMinor += p.platformFeeMinor;
+      tickets += p.order?.items.reduce((n, i) => n + i.quantity, 0) ?? 0;
+      const recorded = p.refunds
+        .filter((r) => r.status !== 'failed' && r.status !== 'canceled')
+        .reduce((n, r) => n + r.amountMinor, 0);
+      refundsMinor +=
+        recorded > 0 ? recorded : p.status === 'REFUNDED' ? p.amountMinor - p.platformFeeMinor : 0;
+    }
+    return {
+      days,
+      since: since.toISOString(),
+      currency: payments[0]?.currency.toUpperCase() ?? 'GBP',
+      orders: payments.length,
+      tickets,
+      salesMinor,
+      feesMinor,
+      refundsMinor,
+      netMinor: salesMinor - refundsMinor,
+    };
+  }
+
+  /**
    * Stripe's account flags collapsed into our enum.
    *
    * `payouts_enabled` is the one that matters for the rule above: an account

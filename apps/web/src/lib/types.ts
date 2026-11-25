@@ -145,6 +145,19 @@ export interface ConnectPayouts {
   }[];
 }
 
+/** GET /v1/organizations/:orgId/connect/summary?days= — ticket sales from our own payment records. */
+export interface SalesSummary {
+  days: number;
+  since: string;
+  currency: string;
+  orders: number;
+  tickets: number;
+  salesMinor: number;
+  feesMinor: number;
+  refundsMinor: number;
+  netMinor: number;
+}
+
 /** GET /v1/organizations/:orgId/connect/status */
 export interface ConnectStatus {
   status: PayoutStatus;
