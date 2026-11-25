@@ -90,6 +90,10 @@ export default function OrganizerEventScreen() {
       date: start.date,
       startTime: start.time,
       endTime: end.time,
+      // Editing never changes whether an event repeats; the form hides the
+      // control and these just satisfy the shape.
+      repeat: 'once',
+      repeatCount: '',
       locationMode: locationMode(e),
       onlineUrl: e.onlineUrl ?? '',
       venueName: e.venue?.name ?? '',
@@ -148,10 +152,14 @@ export default function OrganizerEventScreen() {
       }
     };
     if (action === 'cancel') {
-      Alert.alert('Cancel this event?', 'It closes to new registrations. Existing tickets stay valid.', [
-        { text: 'Keep it', style: 'cancel' },
-        { text: 'Cancel event', style: 'destructive', onPress: () => void run() },
-      ]);
+      Alert.alert(
+        'Cancel this event?',
+        'It closes to new registrations. Existing tickets stay valid.',
+        [
+          { text: 'Keep it', style: 'cancel' },
+          { text: 'Cancel event', style: 'destructive', onPress: () => void run() },
+        ],
+      );
       return;
     }
     await run();
@@ -245,9 +253,7 @@ export default function OrganizerEventScreen() {
           onPress={() => router.push(`/organizer/event/${id}/attendees`)}
         >
           <Ionicons name="people-outline" size={18} color={palette.coral[200]} />
-          <Text style={styles.attendeesText}>
-            {event.attendeeCount} going · check people in
-          </Text>
+          <Text style={styles.attendeesText}>{event.attendeeCount} going · check people in</Text>
           <Ionicons name="chevron-forward" size={18} color={palette.coral[200]} />
         </Pressable>
 
@@ -342,7 +348,10 @@ export default function OrganizerEventScreen() {
                 />
               </View>
               <View style={{ flexDirection: 'row', gap: spacing[3] }}>
-                <Pressable style={[styles.secondaryBtn, { flex: 1 }]} onPress={() => setTtOpen(false)}>
+                <Pressable
+                  style={[styles.secondaryBtn, { flex: 1 }]}
+                  onPress={() => setTtOpen(false)}
+                >
                   <Text style={styles.secondaryBtnText}>Cancel</Text>
                 </Pressable>
                 <Pressable
@@ -435,7 +444,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
   divider: { height: 1, backgroundColor: theme.dark.surfaceRaised },
-  sectionTitle: { fontSize: fontSize.lg, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  sectionTitle: {
+    fontSize: fontSize.lg,
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
+  },
   sectionHint: { fontSize: fontSize.sm, color: theme.dark.textSecondary, marginTop: 4 },
   ttRow: {
     flexDirection: 'row',
@@ -446,7 +459,11 @@ const styles = StyleSheet.create({
     borderColor: theme.dark.borderSubtle,
     borderRadius: radius.md,
   },
-  ttName: { fontSize: fontSize.base, fontFamily: 'Alata_400Regular', color: theme.dark.textPrimary },
+  ttName: {
+    fontSize: fontSize.base,
+    fontFamily: 'Alata_400Regular',
+    color: theme.dark.textPrimary,
+  },
   ttSub: { fontSize: fontSize.xs, color: theme.dark.textSecondary, marginTop: 2 },
   ttForm: { gap: spacing[3], marginTop: spacing[3] },
   input: {
@@ -464,7 +481,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
     alignItems: 'center',
   },
-  primaryBtnText: { color: palette.coral[200], fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
+  primaryBtnText: {
+    color: palette.coral[200],
+    fontFamily: 'Alata_400Regular',
+    fontSize: fontSize.base,
+  },
   secondaryBtn: {
     borderWidth: 1,
     borderColor: 'rgba(249,142,128,0.22)',
@@ -473,5 +494,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing[3],
   },
-  secondaryBtnText: { color: theme.dark.textPrimary, fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
+  secondaryBtnText: {
+    color: theme.dark.textPrimary,
+    fontFamily: 'Alata_400Regular',
+    fontSize: fontSize.base,
+  },
 });

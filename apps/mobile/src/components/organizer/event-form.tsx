@@ -28,8 +28,18 @@ const LOCATION_MODES = [
 ];
 
 const CATEGORIES = [
-  'service', 'worship', 'prayer', 'youth', 'kids', 'small_group',
-  'conference', 'outreach', 'social', 'fundraiser', 'class', 'other',
+  'service',
+  'worship',
+  'prayer',
+  'youth',
+  'kids',
+  'small_group',
+  'conference',
+  'outreach',
+  'social',
+  'fundraiser',
+  'class',
+  'other',
 ] as const;
 
 export interface EventFormValues {
@@ -49,7 +59,24 @@ export interface EventFormValues {
   capacity: string;
   /** Public URL of an already-uploaded image, or null for no cover. */
   coverImageUrl: string | null;
+  /**
+   * 'once' is a normal event. Anything else creates a series, which goes to
+   * a different endpoint and produces many events rather than one — so this
+   * is only offered when creating.
+   */
+  repeat: RepeatMode;
+  /** How many occurrences to make. Blank means "until the horizon". */
+  repeatCount: string;
 }
+
+export type RepeatMode = 'once' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY_BY_WEEKDAY';
+
+export const REPEAT_LABELS: Record<RepeatMode, string> = {
+  once: 'Just once',
+  WEEKLY: 'Weekly',
+  FORTNIGHTLY: 'Fortnightly',
+  MONTHLY_BY_WEEKDAY: 'Monthly',
+};
 
 export function emptyEventForm(): EventFormValues {
   return {
@@ -61,6 +88,8 @@ export function emptyEventForm(): EventFormValues {
     startTime: '',
     endTime: '',
     locationMode: 'in_person',
+    repeat: 'once',
+    repeatCount: '',
     onlineUrl: '',
     venueName: '',
     addressLine1: '',
@@ -109,14 +138,16 @@ export function validateEventForm(v: EventFormValues): string | null {
   if (end <= start) return 'The end time must be after the start time.';
   // A hybrid event needs both halves; the other two need one each.
   if (v.locationMode !== 'in_person') {
-    if (!/^https?:\/\//i.test(v.onlineUrl.trim())) return 'Enter the stream link, starting with https://';
+    if (!/^https?:\/\//i.test(v.onlineUrl.trim()))
+      return 'Enter the stream link, starting with https://';
   }
   if (v.locationMode !== 'online') {
     if (!v.venueName.trim()) return 'Enter the venue name.';
     if (!v.addressLine1.trim()) return 'Enter the venue address.';
     if (!v.city.trim()) return 'Enter the town or city.';
   }
-  if (v.capacity.trim() && !/^\d+$/.test(v.capacity.trim())) return 'Capacity must be a whole number.';
+  if (v.capacity.trim() && !/^\d+$/.test(v.capacity.trim()))
+    return 'Capacity must be a whole number.';
   return null;
 }
 
@@ -175,14 +206,47 @@ export function toEventBody(v: EventFormValues, mode: 'create' | 'update') {
   };
 }
 
+/**
+ * The `recurrence` block for the series endpoint, or null for a one-off.
+ *
+ * The weekday and the monthly "which one" are both read from the chosen
+ * date rather than asked for separately — someone picking Wednesday the 2nd
+ * and "monthly" means the first Wednesday, and asking them to say so twice
+ * is a chance to disagree with themselves.
+ */
+export function toRecurrence(v: EventFormValues) {
+  if (v.repeat === 'once') return null;
+  const start = toInstant(v.date, v.startTime);
+  if (!start) return null;
+
+  const weekday = start.getDay();
+  const count = v.repeatCount.trim() ? Number(v.repeatCount.trim()) : null;
+
+  if (v.repeat === 'MONTHLY_BY_WEEKDAY') {
+    // Which occurrence of that weekday the chosen date is: the 15th of a
+    // month that starts on the right day is the third, not the first.
+    const nth = Math.floor((start.getDate() - 1) / 7) + 1;
+    return { freq: 'MONTHLY_BY_WEEKDAY', byWeekday: [weekday], nthWeekday: nth, count };
+  }
+  return { freq: v.repeat, byWeekday: [weekday], count };
+}
+
 export function EventForm({
   value,
   onChange,
   disabled,
+  showRepeat,
 }: {
   value: EventFormValues;
   onChange: (next: EventFormValues) => void;
   disabled?: boolean;
+  /**
+   * Only on create. Changing an existing event into a series, or a series
+   * into a single event, is a different operation from editing one — it
+   * would have to decide what happens to occurrences people already hold
+   * tickets for.
+   */
+  showRepeat?: boolean;
 }) {
   const set = <K extends keyof EventFormValues>(key: K, v: EventFormValues[K]) =>
     onChange({ ...value, [key]: v });
@@ -246,7 +310,9 @@ export function EventForm({
                 onPress={() => set('category', c)}
                 style={[styles.chip, on && styles.chipOn]}
               >
-                <Text style={[styles.chipText, on && styles.chipTextOn]}>{c.replace('_', ' ')}</Text>
+                <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                  {c.replace('_', ' ')}
+                </Text>
               </Pressable>
             );
           })}
@@ -301,7 +367,9 @@ export function EventForm({
             );
           })}
         </View>
-        <Text style={styles.hint}>{LOCATION_MODES.find((m) => m.value === value.locationMode)?.hint}</Text>
+        <Text style={styles.hint}>
+          {LOCATION_MODES.find((m) => m.value === value.locationMode)?.hint}
+        </Text>
       </View>
 
       {value.locationMode !== 'in_person' && (
@@ -371,6 +439,46 @@ export function EventForm({
         </View>
       )}
 
+      {showRepeat ? (
+        <Field
+          label="Repeats"
+          hint={
+            value.repeat === 'once'
+              ? 'A single event on the date above.'
+              : 'Each date becomes its own event with its own capacity and tickets.'
+          }
+        >
+          <View style={styles.chips}>
+            {(Object.keys(REPEAT_LABELS) as RepeatMode[]).map((mode) => {
+              const on = value.repeat === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  onPress={() => set('repeat', mode)}
+                  disabled={disabled}
+                  style={[styles.chip, on && styles.chipOn]}
+                >
+                  <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                    {REPEAT_LABELS[mode]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {value.repeat !== 'once' ? (
+            <TextInput
+              value={value.repeatCount}
+              onChangeText={(t) => set('repeatCount', t)}
+              placeholder="How many? (blank for 6 months)"
+              placeholderTextColor={theme.dark.textMuted}
+              style={[styles.input, styles.repeatCount]}
+              editable={!disabled}
+              keyboardType="number-pad"
+            />
+          ) : null}
+        </Field>
+      ) : null}
+
       <Field label="Capacity" hint="Leave blank for no limit.">
         <TextInput
           value={value.capacity}
@@ -428,6 +536,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
   },
   chipOn: { backgroundColor: 'rgba(249,142,128,0.14)', borderColor: 'rgba(249,142,128,0.55)' },
+  repeatCount: { marginTop: spacing[2] },
   chipText: { fontSize: fontSize.xs, color: theme.dark.textSecondary, textTransform: 'capitalize' },
   chipTextOn: { color: palette.coral[200] },
   segmented: {

@@ -18,6 +18,7 @@ import {
   EventForm,
   emptyEventForm,
   toEventBody,
+  toRecurrence,
   validateEventForm,
   type EventFormValues,
 } from '@/components/organizer/event-form';
@@ -36,6 +37,29 @@ export default function NewEventScreen() {
     }
     setPending(true);
     try {
+      const recurrence = toRecurrence(form);
+
+      // A series is a different endpoint with a different outcome: many
+      // events rather than one. Publishing is per-series too, because
+      // publishing twelve occurrences one at a time is not a thing anyone
+      // should have to do.
+      if (recurrence) {
+        const made = await api<{ series: { id: string }; occurrences: { id: string }[] }>(
+          `/v1/organizations/${orgId}/event-series`,
+          { method: 'POST', body: { ...toEventBody(form, 'create'), recurrence } },
+        );
+        if (publish) {
+          await api(`/v1/event-series/${made.series.id}/publish`, { method: 'POST', body: {} });
+        }
+        const n = made.occurrences.length;
+        showToast(
+          `${n} ${n === 1 ? 'date' : 'dates'} ${publish ? 'published' : 'saved as drafts'}`,
+          'checkmark-circle',
+        );
+        router.replace(`/organizer/event/${made.occurrences[0]!.id}?orgId=${orgId}`);
+        return;
+      }
+
       const created = await api<{ id: string }>(`/v1/organizations/${orgId}/events`, {
         method: 'POST',
         body: toEventBody(form, 'create'),
@@ -75,7 +99,7 @@ export default function NewEventScreen() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        <EventForm value={form} onChange={setForm} disabled={pending} />
+        <EventForm value={form} onChange={setForm} disabled={pending} showRepeat />
 
         <Pressable
           style={[styles.primaryBtn, pending && { opacity: 0.6 }]}
@@ -113,7 +137,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
     alignItems: 'center',
   },
-  primaryBtnText: { color: palette.coral[200], fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
+  primaryBtnText: {
+    color: palette.coral[200],
+    fontFamily: 'Alata_400Regular',
+    fontSize: fontSize.base,
+  },
   secondaryBtn: {
     borderWidth: 1,
     borderColor: 'rgba(249,142,128,0.22)',
@@ -121,5 +149,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
     alignItems: 'center',
   },
-  secondaryBtnText: { color: theme.dark.textPrimary, fontFamily: 'Alata_400Regular', fontSize: fontSize.base },
+  secondaryBtnText: {
+    color: theme.dark.textPrimary,
+    fontFamily: 'Alata_400Regular',
+    fontSize: fontSize.base,
+  },
 });
