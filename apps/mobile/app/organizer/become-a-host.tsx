@@ -81,10 +81,19 @@ export default function BecomeAHostScreen() {
       ? 'Use lowercase letters, numbers and hyphens.'
       : null;
 
+  // Optional, but if given it must be a link the API will accept (http or
+  // https only). Said here rather than after a round trip that comes back as
+  // a generic validation error.
+  const site = websiteUrl.trim();
+  const websiteProblem =
+    site && !/^https?:\/\/\S/i.test(site) ? 'Enter the full link, starting with https://' : null;
+
   const stepValid = [
     name.trim().length >= 2 && slug.length >= 3 && !slugProblem,
     addressLine1.trim().length > 0 && city.trim().length > 0,
-    contactName.trim().length > 0 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contactEmail.trim()),
+    contactName.trim().length > 0 &&
+      /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contactEmail.trim()) &&
+      !websiteProblem,
   ][step];
 
   async function submit() {
@@ -100,7 +109,7 @@ export default function BecomeAHostScreen() {
           currency: CURRENCY_FOR[country],
           shortDescription: shortDescription.trim() || undefined,
           description: description.trim() || undefined,
-          websiteUrl: websiteUrl.trim() || undefined,
+          websiteUrl: site || undefined,
           contactName: contactName.trim(),
           contactEmail: contactEmail.trim(),
           contactPhone: contactPhone.trim() || undefined,
@@ -352,6 +361,7 @@ export default function BecomeAHostScreen() {
                 autoCorrect={false}
                 keyboardType="url"
               />
+              {websiteProblem ? <Text style={styles.error}>{websiteProblem}</Text> : null}
             </Field>
 
             <Field label="One line about you" hint="Optional. Sits under your name and on event cards.">

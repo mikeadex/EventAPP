@@ -1,69 +1,71 @@
+'use client';
+
 import Link from 'next/link';
-import type { Route } from 'next';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Avatar, EmptyState, ErrorCard, PageIntro, Skeleton } from '@/components/ui';
+import { Icon } from '@/components/icons';
+import { hostMemberships, ROLE_LABEL } from '@/lib/host';
+import { useMe } from '@/lib/use-api';
 
-interface Me {
-  id: string;
-  email: string;
-  memberships: { organizationId: string; slug: string; name: string; role: string }[];
-}
+/** Hosts with one organisation go straight to it; others pick. */
+export default function OrganizerHomePage() {
+  const me = useMe();
+  const router = useRouter();
+  const orgs = me.data ? hostMemberships(me.data) : [];
+  const only = orgs.length === 1 ? orgs[0] : undefined;
 
-async function fetchMe(): Promise<Me | null> {
-  const cookieHeader = (await headers()).get('cookie') ?? '';
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/v1/me`, {
-    headers: { cookie: cookieHeader },
-    cache: 'no-store',
-  });
-  if (!res.ok) return null;
-  return (await res.json()) as Me;
-}
+  useEffect(() => {
+    if (only) router.replace(`/organizer/organizations/${only.organizationId}` as never);
+  }, [only, router]);
 
-export default async function OrganizerOverviewPage() {
-  const me = await fetchMe();
-  if (!me) redirect('/sign-in');
+  if (me.status === 'loading' || only) return <Skeleton className="h-64 rounded-card" />;
+  if (me.status === 'error') return <ErrorCard message={me.error} />;
 
-  const owning = me.memberships.filter((m) =>
-    ['OWNER', 'CHURCH_ADMIN', 'ORGANIZER'].includes(m.role),
-  );
+  if (orgs.length === 0) {
+    return (
+      <EmptyState
+        icon="building"
+        title="Host your first event"
+        body="Set up your church or ministry in a couple of minutes. Publishing is open straight away."
+        action={
+          <Link href="/organizer/organizations/new" className="btn btn-primary">
+            Become a host
+          </Link>
+        }
+      />
+    );
+  }
 
   return (
-    <div>
-      <h1 className="font-display text-3xl text-ink-900">Welcome back</h1>
-      <p className="mt-2 text-ink-500">Manage your church&apos;s events, attendees, and payouts.</p>
-
-      {owning.length === 0 ? (
-        <div className="mt-10 rounded-lg border border-brand-200 bg-brand-50 p-8">
-          <p className="font-display text-xl text-ink-900">No churches yet</p>
-          <p className="mt-1 text-ink-600">Register your church to start publishing events.</p>
+    <>
+      <PageIntro eyebrow="Host dashboard" title="Your organisations" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        {orgs.map((m) => (
           <Link
-            href={'/organizer/organizations/new' as Route}
-            className="mt-4 inline-block rounded-md bg-brand-600 px-5 py-2.5 font-medium text-white hover:bg-brand-700"
+            key={m.organizationId}
+            href={`/organizer/organizations/${m.organizationId}` as never}
+            className="card card-link flex items-center gap-4 p-5"
           >
-            Register a church
+            <Avatar name={m.name} size={48} />
+            <span className="flex min-w-0 flex-col gap-1">
+              <span className="truncate text-[18px] text-strong">{m.name}</span>
+              <span className="text-[13px] text-muted">
+                {ROLE_LABEL[m.role] ?? m.role} · /{m.slug}
+              </span>
+            </span>
           </Link>
-        </div>
-      ) : (
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {owning.map((m) => (
-            <Link
-              key={m.organizationId}
-              href={`/organizer/organizations/${m.organizationId}` as Route}
-              className="rounded-lg border border-ink-100 bg-white p-6 hover:border-brand-300"
-            >
-              <p className="text-xs uppercase tracking-wider text-ink-400">{m.role.toLowerCase()}</p>
-              <p className="mt-1 font-display text-xl text-ink-900">{m.name}</p>
-              <p className="mt-1 text-sm text-ink-500">/{m.slug}</p>
-            </Link>
-          ))}
-          <Link
-            href={'/organizer/organizations/new' as Route}
-            className="rounded-lg border border-dashed border-ink-200 p-6 text-ink-500 hover:border-brand-300 hover:text-ink-700"
-          >
-            + Register another church
-          </Link>
-        </div>
-      )}
-    </div>
+        ))}
+        <Link
+          href="/organizer/organizations/new"
+          className="card card-link flex items-center gap-4 border-dashed p-5 text-ink-2"
+        >
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-line-2 text-accent">
+            <Icon name="plus" />
+          </span>
+          Set up another organisation
+        </Link>
+      </div>
+    </>
   );
 }

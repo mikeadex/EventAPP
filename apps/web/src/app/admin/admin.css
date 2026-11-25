@@ -1,0 +1,578 @@
+/* =====================================================================
+   Ekklesia admin console — additions on top of the tokens in globals.css.
+   Port of the design handover's styles/admin.css. Colours are tokens only;
+   --ok / --warn are admin-only, so they are defined on the console root
+   (.adm) rather than on <html>.
+   ===================================================================== */
+
+/* Status colours (admin only) */
+.adm {
+  --ok: #86d4a9;
+  --warn: #f2c26b;
+}
+[data-theme='light'] .adm {
+  --ok: #1d7347;
+  --warn: #8a5300;
+}
+
+/* ---- Shell: sidebar + main column ---- */
+.adm {
+  display: flex;
+  align-items: stretch;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+.adm-side {
+  flex: none;
+  width: 264px;
+  border-right: 1px solid var(--line);
+  background: var(--raised);
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+.adm-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.adm-body {
+  width: 100%;
+  max-width: 1176px;
+  padding: 32px 40px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+@media (max-width: 900px) {
+  .adm {
+    flex-direction: column;
+  }
+  .adm-side {
+    width: auto;
+    height: auto;
+    position: static;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .adm-body {
+    padding: 24px 20px 64px;
+  }
+}
+
+/* ---- Sidebar (AdminNav) ---- */
+.anav {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 20px 16px 24px;
+}
+.an-brand {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 12px;
+  padding: 4px 8px 20px;
+}
+.an-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.an {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 15px;
+  color: var(--ink-2);
+  transition:
+    color 0.2s,
+    background-color 0.2s;
+}
+.an:hover {
+  color: var(--ink);
+  background: var(--softer);
+}
+.an.on {
+  background: var(--soft);
+  color: var(--accent);
+}
+/* Coral on the soft fill is just under AA on light; step down like .chip.on */
+[data-theme='light'] .an.on {
+  color: var(--accent-ink);
+}
+.an-count {
+  margin-left: auto;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: var(--badge);
+  color: var(--badge-ink);
+}
+.an-grp {
+  padding: 18px 12px 6px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.an-foot {
+  margin-top: auto;
+  padding-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .anav {
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    gap: 6px;
+    padding: 12px 16px;
+    min-height: 0;
+  }
+  .anav .an-grp,
+  .anav .an-foot {
+    display: none;
+  }
+  .anav .an-list {
+    flex-direction: row;
+    gap: 6px;
+  }
+  .anav .an {
+    flex: none;
+    white-space: nowrap;
+  }
+  .anav .an-brand {
+    margin: 0 12px 0 0;
+    padding: 0;
+    flex: none;
+  }
+}
+
+/* ---- Top bar (AdminTop) ---- */
+.atop {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid var(--line);
+  background: rgba(var(--scrim), 0.86);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.at-in {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 72px;
+  padding: 0 40px;
+  max-width: 1176px;
+}
+.at-env {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.at-env i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+/* The sidebar (and its sign-out) folds into a nav row at ≤900px, so the top
+   bar carries sign-out there. */
+.atop .at-signout {
+  display: none;
+}
+@media (max-width: 900px) {
+  .atop .at-signout {
+    display: inline-flex;
+  }
+}
+@media (max-width: 760px) {
+  .at-env {
+    display: none;
+  }
+  .at-in {
+    padding: 0 16px;
+    gap: 8px;
+    height: 64px;
+  }
+}
+/* 44px tap targets in the console */
+.adm .icon-btn {
+  width: 44px;
+  height: 44px;
+}
+
+/* ---- Status pill: <span class="st st-ok"><i></i>Verified</span> ---- */
+.st {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--line-2);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.st i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.st-ok {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+}
+.st-warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+}
+.st-bad {
+  background: var(--badge);
+  color: var(--badge-ink);
+  border-color: transparent;
+}
+
+/* ---- KPI grid ---- */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+/* ---- Data table (always inside an overflow-x:auto card) ---- */
+.tbl {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.tbl th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--faint);
+  border-bottom: 1px solid var(--line);
+}
+.tbl td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.tbl tr:last-child td {
+  border-bottom: 0;
+}
+.tbl tr.on td {
+  background: var(--soft);
+}
+/* --muted on the selected row's tint is under 4.5:1 in dark; step it up. */
+.tbl tr.on .text-muted,
+.tbl tr.on .text-faint {
+  color: var(--ink-2);
+}
+.tbl tr[data-clickable] {
+  cursor: pointer;
+}
+.tbl tr[data-clickable]:hover td {
+  background: var(--softer);
+}
+.tbl tr.on[data-clickable]:hover td {
+  background: var(--soft);
+}
+
+/* ---- Underline tabs ---- */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 16px;
+  font-size: 15px;
+  color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.tab:hover {
+  color: var(--ink);
+}
+.tab.on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tab .n {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---- Key/value rows in detail panels ---- */
+.kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.kv:last-child {
+  border-bottom: 0;
+}
+.kv > :first-child {
+  color: var(--muted);
+}
+.kv > :last-child {
+  color: var(--ink);
+  text-align: right;
+}
+
+/* ---- Toggle switch: <button role="switch" aria-checked="true" class="switch"><span></span></button> ---- */
+.switch {
+  position: relative;
+  width: 52px;
+  height: 30px;
+  flex: none;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--bg);
+}
+.switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition:
+    transform 0.2s,
+    background 0.2s;
+}
+.switch[aria-checked='true'] {
+  background: var(--soft);
+  border-color: var(--line-3);
+}
+.switch[aria-checked='true'] span {
+  transform: translateX(22px);
+  background: var(--accent);
+}
+
+/* ---- Warning banner ---- */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 1px solid var(--line-3);
+  background: var(--soft);
+}
+
+/* ---- Bulk-action bar ---- */
+.bulk {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px 12px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--line-3);
+  background: var(--soft);
+}
+
+/* ---- Textarea for staff notes ---- */
+textarea.note {
+  width: 100%;
+  min-height: 96px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  resize: vertical;
+}
+textarea.note:focus {
+  outline: none;
+  border-color: var(--line-3);
+}
+
+/* ---- Confirm dialog (native <dialog>) ---- */
+.adm-dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-width: none;
+  padding: 0;
+  margin: auto;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+.adm-dialog::backdrop {
+  background: rgba(var(--scrim), 0.72);
+}
+.btn-bad {
+  background: var(--badge);
+  color: var(--badge-ink);
+  border: 1px solid transparent;
+}
+.btn-bad:hover {
+  border-color: var(--accent);
+}
+
+/* ---- Phone (≤760px) ---- */
+@media (max-width: 760px) {
+  .adm-body .h1 {
+    font-size: 30px !important;
+  }
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .kpis .card {
+    padding: 16px;
+  }
+  .kpis .kpi-value {
+    font-size: 24px;
+  }
+  .bulk {
+    border-radius: 20px;
+  }
+}
+
+/* Card list shown instead of a wide table on phones (Hosts, Users, Events) */
+.mlist {
+  overflow: hidden;
+}
+.mlist li + li {
+  border-top: 1px solid var(--line);
+}
+.mrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+}
+/* .hide-sm hides at ≤760px, .only-sm shows only at ≤760px */
+@media (max-width: 760px) {
+  .hide-sm {
+    display: none !important;
+  }
+}
+@media (min-width: 761px) {
+  .only-sm {
+    display: none !important;
+  }
+}
+
+/* 44px tap targets in the console: the global small button and chip are 36px. */
+.adm .btn-sm,
+.adm .chip {
+  height: 44px;
+}
+/* The host step pills (components/host/steps.tsx) are 42px; lift them in the console. */
+.adm-steps button {
+  min-height: 44px;
+}
+
+/* ---- List + side panel (Hosts, Users). The panel stacks under the table below 1180px. ---- */
+.hsplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.hsplit.has {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+@media (max-width: 1180px) {
+  .hsplit.has {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* The name cell's button: avatar + name, picks the row. */
+.rowbtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  text-align: left;
+}
+.rowbtn:hover .nm {
+  color: var(--accent);
+}
+/* Pill select beside the filter chips */
+select.sel {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+}
+/* Skeleton rows while a table loads */
+.skel {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--softer);
+}
+
+/* ---- Profile pages: main column + details column; stacks below 1100px ---- */
+.two {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Tables on profile tabs use the roomier 20px cell padding from the design */
+.tbl-roomy {
+  min-width: 600px;
+}
+.tbl-roomy th,
+.tbl-roomy td {
+  padding-left: 20px;
+  padding-right: 20px;
+}

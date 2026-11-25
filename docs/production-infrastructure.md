@@ -181,6 +181,9 @@ database costs you the product.
 
 **Connection handling.** Keep using the **pooled** URL for the API and the
 **direct** URL for `prisma migrate deploy` — migrations fail through the pooler.
+Production API builds now run `prisma migrate deploy` themselves
+(`apps/api/scripts/vercel-migrate.sh`, derives the direct host by dropping
+`-pooler`); preview builds skip it because they share the production database.
 The stale-connection retry added in `d32fad0` (`apps/api/src/prisma/db-retry.ts`)
 covers Neon's auto-suspend closing sockets under a warm serverless instance; see
 the `serverless-db-resilience` note for how to reproduce that failure.

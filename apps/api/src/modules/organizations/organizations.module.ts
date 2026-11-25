@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { PUBLIC_HOST_WHERE } from '../../common/public-host.js';
 import { AuthGuard, AuthedRequest } from '../auth/auth.guard.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { OrgScope, RequirePermissions } from '../../common/decorators.js';
@@ -31,13 +32,14 @@ import {
 } from '@ekklesia/shared';
 
 @Controller('organizations')
-class OrganizationsController {
+export class OrganizationsController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get(':slug')
   async getBySlug(@Param('slug') slug: string) {
-    const org = await this.prisma.organization.findUnique({
-      where: { slug },
+    // A host taken down by its church, or removed by staff, has no page.
+    const org = await this.prisma.organization.findFirst({
+      where: { slug, ...PUBLIC_HOST_WHERE },
       select: {
         id: true,
         slug: true,
@@ -50,6 +52,7 @@ class OrganizationsController {
         coverImageUrl: true,
         country: true,
         verificationStatus: true,
+        claimStatus: true,
       },
     });
     if (!org) throw new NotFoundException(`Organization '${slug}' not found`);

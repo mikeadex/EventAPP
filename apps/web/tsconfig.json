@@ -8,6 +8,7 @@
     "jsx": "preserve",
     "allowJs": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "declaration": false,
     "declarationMap": false,
     "incremental": true,
