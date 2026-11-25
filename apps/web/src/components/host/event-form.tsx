@@ -28,7 +28,23 @@ export interface EventDraft {
   country: string;
   capacity: string;
   coverImageUrl: string | null;
+  /**
+   * 'once' is an ordinary event. Anything else creates a series, which is a
+   * different endpoint producing many events rather than one.
+   */
+  repeat: RepeatMode;
+  /** Blank means "as far as the horizon", which the API caps at six months. */
+  repeatCount: string;
 }
+
+export type RepeatMode = 'once' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY_BY_WEEKDAY';
+
+export const REPEAT_LABELS: Record<RepeatMode, string> = {
+  once: 'Just once',
+  WEEKLY: 'Weekly',
+  FORTNIGHTLY: 'Fortnightly',
+  MONTHLY_BY_WEEKDAY: 'Monthly',
+};
 
 export const emptyDraft = (country = 'GB'): EventDraft => ({
   title: '',
@@ -46,6 +62,8 @@ export const emptyDraft = (country = 'GB'): EventDraft => ({
   postalCode: '',
   country,
   capacity: '',
+  repeat: 'once' as RepeatMode,
+  repeatCount: '',
   coverImageUrl: null,
 });
 
@@ -64,11 +82,21 @@ export function draftFromEvent(e: {
   onlineUrl: string | null;
   capacity: number | null;
   coverImageUrl: string | null;
-  venue: { name: string; addressLine1: string; city: string; postalCode: string; country: string } | null;
+  venue: {
+    name: string;
+    addressLine1: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  } | null;
 }): EventDraft {
   const s = new Date(e.startsAt);
   const en = new Date(e.endsAt);
   return {
+    // Editing never changes whether an event repeats — the control is not
+    // rendered there — so these carry the "single event" shape.
+    repeat: 'once' as RepeatMode,
+    repeatCount: '',
     title: e.title,
     summary: e.summary ?? '',
     description: e.description ?? '',
@@ -126,7 +154,8 @@ export function validateDraft(d: EventDraft): Partial<Record<keyof EventDraft, s
     if (!d.venueName.trim()) errs.venueName = 'Add the venue’s name.';
     if (!d.city.trim()) errs.city = 'Add the town or city.';
   }
-  if (d.capacity && !(Number(d.capacity) >= 1)) errs.capacity = 'Use a number, or leave blank for no limit.';
+  if (d.capacity && !(Number(d.capacity) >= 1))
+    errs.capacity = 'Use a number, or leave blank for no limit.';
   return errs;
 }
 
@@ -135,6 +164,27 @@ export function validateDraft(d: EventDraft): Partial<Record<keyof EventDraft, s
  * reads the times in that zone and sends it as the event's timezone; without
  * it, the browser's.
  */
+/**
+ * The `recurrence` block for the series endpoint, or null for a one-off.
+ *
+ * Weekday and the monthly "which one" both come from the chosen date rather
+ * than being asked for again — picking Wednesday the 2nd and "monthly" means
+ * the first Wednesday, and asking twice invites disagreement.
+ */
+export function draftToRecurrence(d: EventDraft, timeZone?: string) {
+  if (d.repeat === 'once') return null;
+  const t = draftTimes(d, timeZone);
+  if (!t) return null;
+  const start = new Date(t.startsAt);
+  const weekday = start.getDay();
+  const count = d.repeatCount.trim() ? Number(d.repeatCount.trim()) : null;
+  if (d.repeat === 'MONTHLY_BY_WEEKDAY') {
+    const nth = Math.floor((start.getDate() - 1) / 7) + 1;
+    return { freq: 'MONTHLY_BY_WEEKDAY', byWeekday: [weekday], nthWeekday: nth, count };
+  }
+  return { freq: d.repeat, byWeekday: [weekday], count };
+}
+
 export function draftToPayload(d: EventDraft, forUpdate: boolean, timeZone?: string) {
   const t = draftTimes(d, timeZone)!;
   const blank = forUpdate ? null : undefined;
@@ -167,7 +217,15 @@ export function draftToPayload(d: EventDraft, forUpdate: boolean, timeZone?: str
 type Setter = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => void;
 type Errors = Partial<Record<keyof EventDraft, string>>;
 
-export function BasicsFields({ d, set, errors = {} }: { d: EventDraft; set: Setter; errors?: Errors }) {
+export function BasicsFields({
+  d,
+  set,
+  errors = {},
+}: {
+  d: EventDraft;
+  set: Setter;
+  errors?: Errors;
+}) {
   return (
     <div className="flex flex-col gap-6">
       <ImageUpload
@@ -204,7 +262,13 @@ export function BasicsFields({ d, set, errors = {} }: { d: EventDraft; set: Sett
         aside={<span className="text-[12px] text-faint">{d.summary.length}/280</span>}
       >
         {(p) => (
-          <input {...p} className="input" maxLength={280} value={d.summary} onChange={(e) => set('summary', e.target.value)} />
+          <input
+            {...p}
+            className="input"
+            maxLength={280}
+            value={d.summary}
+            onChange={(e) => set('summary', e.target.value)}
+          />
         )}
       </Field>
       <Field label="Description">
@@ -244,13 +308,43 @@ export function WhenWhereFields({
           no recurring events. */}
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
         <Field label="Date" error={errors.date}>
-          {(p) => <input {...p} type="date" required className="input" value={d.date} onChange={(e) => set('date', e.target.value)} />}
+          {(p) => (
+            <input
+              {...p}
+              type="date"
+              required
+              className="input"
+              value={d.date}
+              onChange={(e) => set('date', e.target.value)}
+            />
+          )}
         </Field>
         <Field label="Starts">
-          {(p) => <input {...p} type="time" required className="input" value={d.start} onChange={(e) => set('start', e.target.value)} />}
+          {(p) => (
+            <input
+              {...p}
+              type="time"
+              required
+              className="input"
+              value={d.start}
+              onChange={(e) => set('start', e.target.value)}
+            />
+          )}
         </Field>
-        <Field label="Ends" hint={d.end && d.start && d.end <= d.start ? 'Finishes the next day.' : undefined}>
-          {(p) => <input {...p} type="time" required className="input" value={d.end} onChange={(e) => set('end', e.target.value)} />}
+        <Field
+          label="Ends"
+          hint={d.end && d.start && d.end <= d.start ? 'Finishes the next day.' : undefined}
+        >
+          {(p) => (
+            <input
+              {...p}
+              type="time"
+              required
+              className="input"
+              value={d.end}
+              onChange={(e) => set('end', e.target.value)}
+            />
+          )}
         </Field>
       </div>
       {timeNote ? <p className="hint -mt-3">{timeNote}</p> : null}
@@ -258,7 +352,11 @@ export function WhenWhereFields({
       <LocationModePicker value={d.mode} onChange={(m) => set('mode', m)} disabled={disabled} />
 
       {d.mode !== 'in_person' && (
-        <Field label="Stream link" hint="Where people watch — YouTube, Zoom, whatever you use." error={errors.onlineUrl}>
+        <Field
+          label="Stream link"
+          hint="Where people watch — YouTube, Zoom, whatever you use."
+          error={errors.onlineUrl}
+        >
           {(p) => (
             <input
               {...p}
@@ -277,7 +375,13 @@ export function WhenWhereFields({
           <legend className="eyebrow px-2 text-[10px] text-faint">Venue</legend>
           <Field label="Venue name" error={errors.venueName}>
             {(p) => (
-              <input {...p} className="input" placeholder="St Mary’s Church Hall" value={d.venueName} onChange={(e) => set('venueName', e.target.value)} />
+              <input
+                {...p}
+                className="input"
+                placeholder="St Mary’s Church Hall"
+                value={d.venueName}
+                onChange={(e) => set('venueName', e.target.value)}
+              />
             )}
           </Field>
           <Field label="Address">
@@ -293,14 +397,33 @@ export function WhenWhereFields({
           </Field>
           <div className="grid gap-5 sm:grid-cols-[1.4fr_1fr_1fr]">
             <Field label="Town or city" error={errors.city}>
-              {(p) => <input {...p} className="input" value={d.city} onChange={(e) => set('city', e.target.value)} />}
+              {(p) => (
+                <input
+                  {...p}
+                  className="input"
+                  value={d.city}
+                  onChange={(e) => set('city', e.target.value)}
+                />
+              )}
             </Field>
             <Field label="Postcode">
-              {(p) => <input {...p} className="input" value={d.postalCode} onChange={(e) => set('postalCode', e.target.value)} />}
+              {(p) => (
+                <input
+                  {...p}
+                  className="input"
+                  value={d.postalCode}
+                  onChange={(e) => set('postalCode', e.target.value)}
+                />
+              )}
             </Field>
             <Field label="Country">
               {(p) => (
-                <select {...p} className="input" value={d.country} onChange={(e) => set('country', e.target.value)}>
+                <select
+                  {...p}
+                  className="input"
+                  value={d.country}
+                  onChange={(e) => set('country', e.target.value)}
+                >
                   <option value="GB">United Kingdom</option>
                   <option value="IE">Ireland</option>
                   <option value="US">United States</option>
@@ -314,9 +437,21 @@ export function WhenWhereFields({
   );
 }
 
-export function CapacityField({ d, set, errors = {} }: { d: EventDraft; set: Setter; errors?: Errors }) {
+export function CapacityField({
+  d,
+  set,
+  errors = {},
+}: {
+  d: EventDraft;
+  set: Setter;
+  errors?: Errors;
+}) {
   return (
-    <Field label="Places available" hint="Leave blank for no limit. Bookings close when it’s full." error={errors.capacity}>
+    <Field
+      label="Places available"
+      hint="Leave blank for no limit. Bookings close when it’s full."
+      error={errors.capacity}
+    >
       {(p) => (
         <input
           {...p}
@@ -333,8 +468,67 @@ export function CapacityField({ d, set, errors = {} }: { d: EventDraft; set: Set
   );
 }
 
+/**
+ * Offered on create only. Turning an existing event into a series, or back,
+ * would have to decide what happens to occurrences people already hold
+ * tickets for — a different operation from editing one.
+ */
+export function RepeatField({ d, set }: { d: EventDraft; set: Setter }) {
+  return (
+    <Field
+      label="Repeats"
+      hint={
+        d.repeat === 'once'
+          ? 'A single event on the date above.'
+          : 'Each date becomes its own event, with its own places and bookings.'
+      }
+    >
+      {() => (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(REPEAT_LABELS) as RepeatMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => set('repeat', mode)}
+                aria-pressed={d.repeat === mode}
+                className={
+                  d.repeat === mode
+                    ? 'tag !border-accent !text-accent'
+                    : 'tag !border-line !text-ink-2'
+                }
+              >
+                {REPEAT_LABELS[mode]}
+              </button>
+            ))}
+          </div>
+          {d.repeat !== 'once' ? (
+            <input
+              type="number"
+              min={2}
+              inputMode="numeric"
+              className="input max-w-[260px]"
+              placeholder="How many dates? (blank for 6 months)"
+              value={d.repeatCount}
+              onChange={(e) => set('repeatCount', e.target.value)}
+            />
+          ) : null}
+        </div>
+      )}
+    </Field>
+  );
+}
+
 /** Live preview: what the event card will look like on Discover. */
-export function EventPreview({ d, host, timeZone }: { d: EventDraft; host: string; timeZone?: string }) {
+export function EventPreview({
+  d,
+  host,
+  timeZone,
+}: {
+  d: EventDraft;
+  host: string;
+  timeZone?: string;
+}) {
   const t = draftTimes(d, timeZone);
   const cat = categoryOf(d.category);
   return (
@@ -351,7 +545,9 @@ export function EventPreview({ d, host, timeZone }: { d: EventDraft; host: strin
               ? `${fmtDay(t.startsAt.toISOString(), timeZone)} at ${fmtTime(t.startsAt.toISOString(), timeZone)}`
               : 'Date to be set'}
           </span>
-          <span className="text-[20px] leading-tight text-strong">{d.title || 'Your event title'}</span>
+          <span className="text-[20px] leading-tight text-strong">
+            {d.title || 'Your event title'}
+          </span>
           <span className="text-[14px] text-muted">{host}</span>
           <span className="pt-2 text-[14px] text-accent">Free</span>
         </div>
@@ -377,8 +573,8 @@ export function TicketKind({ freeOnly = false }: { freeOnly?: boolean } = {}) {
         <span className="label">Tickets</span>
         <p className="text-[15px] text-strong">Free</p>
         <p className="text-[14px] leading-relaxed text-muted">
-          Churches added by Ekklesia can only have free events until they claim their page. Attendees get a QR ticket
-          just the same.
+          Churches added by Ekklesia can only have free events until they claim their page.
+          Attendees get a QR ticket just the same.
         </p>
       </div>
     );
@@ -390,7 +586,11 @@ export function TicketKind({ freeOnly = false }: { freeOnly?: boolean } = {}) {
   ];
   return (
     <div className="flex flex-col gap-3">
-      <div role="group" aria-label="Ticket type" className="inline-flex gap-1 self-start rounded-full border border-line p-1">
+      <div
+        role="group"
+        aria-label="Ticket type"
+        className="inline-flex gap-1 self-start rounded-full border border-line p-1"
+      >
         {kinds.map((k) => (
           <button
             key={k.label}
@@ -408,8 +608,8 @@ export function TicketKind({ freeOnly = false }: { freeOnly?: boolean } = {}) {
       </div>
       {/* TODO(confirm): docs/04 #7 — that free events carry no fee. */}
       <p className="text-[14px] leading-relaxed text-muted">
-        Free events have no fees. Attendees get a QR ticket just the same. Paid and donation tickets aren&rsquo;t
-        available yet.
+        Free events have no fees. Attendees get a QR ticket just the same. Paid and donation tickets
+        aren&rsquo;t available yet.
       </p>
     </div>
   );
@@ -429,7 +629,9 @@ export function ReviewList({ d }: { d: EventDraft }) {
     ['Category', categoryOf(d.category).label],
     [
       'When',
-      t ? `${fmtDay(t.startsAt.toISOString())} · ${fmtTime(t.startsAt.toISOString())}–${fmtTime(t.endsAt.toISOString())}` : '—',
+      t
+        ? `${fmtDay(t.startsAt.toISOString())} · ${fmtTime(t.startsAt.toISOString())}–${fmtTime(t.endsAt.toISOString())}`
+        : '—',
     ],
     ['Where', draftWhere(d)],
     ['Tickets', d.capacity ? `Free · ${d.capacity} places` : 'Free · no limit'],
@@ -462,7 +664,11 @@ export function VisibilityChips({
         { value: 'public', label: 'Public' },
         { value: 'unlisted', label: 'Unlisted' },
       ]}
-      hint={value === 'public' ? 'Shown on Discover and your host page.' : 'Only people with the link can find it.'}
+      hint={
+        value === 'public'
+          ? 'Shown on Discover and your host page.'
+          : 'Only people with the link can find it.'
+      }
     />
   );
 }

@@ -6,6 +6,8 @@ import { useState, type FormEvent } from 'react';
 import {
   BasicsFields,
   CapacityField,
+  RepeatField,
+  draftToRecurrence,
   EventPreview,
   ReviewList,
   TicketKind,
@@ -24,7 +26,19 @@ const STEPS = ['The basics', 'Tickets', 'Review & publish'];
 
 /** Which fields each step owns, so errors send people back to the right one. */
 const STEP_FIELDS: (keyof EventDraft)[][] = [
-  ['title', 'category', 'summary', 'description', 'coverImageUrl', 'date', 'start', 'end', 'onlineUrl', 'venueName', 'city'],
+  [
+    'title',
+    'category',
+    'summary',
+    'description',
+    'coverImageUrl',
+    'date',
+    'start',
+    'end',
+    'onlineUrl',
+    'venueName',
+    'city',
+  ],
   ['capacity'],
   [],
 ];
@@ -33,7 +47,8 @@ export default function NewEventPage() {
   const router = useRouter();
   const { orgId } = useParams<{ orgId: string }>();
   const me = useMe();
-  const host = me.data?.memberships.find((m) => m.organizationId === orgId)?.name ?? 'Your organisation';
+  const host =
+    me.data?.memberships.find((m) => m.organizationId === orgId)?.name ?? 'Your organisation';
 
   const [step, setStep] = useState(0);
   const [d, setD] = useState<EventDraft>(() => emptyDraft());
@@ -42,7 +57,8 @@ export default function NewEventPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<'draft' | 'publish' | null>(null);
 
-  const set = <K extends keyof EventDraft>(k: K, v: EventDraft[K]) => setD((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof EventDraft>(k: K, v: EventDraft[K]) =>
+    setD((p) => ({ ...p, [k]: v }));
   const errors = validateDraft(d);
   const stepErrors = (i: number) => STEP_FIELDS[i]!.filter((f) => errors[f]);
   const visibleErrors = showErrors ? errors : {};
@@ -74,6 +90,22 @@ export default function NewEventPage() {
     try {
       // No ticket types: the API takes free RSVPs against a default place
       // type it creates on the first booking.
+      // A series is its own endpoint and its own outcome: many events rather
+      // than one, published together because publishing twelve occurrences
+      // one at a time is not a thing anyone should have to do.
+      const recurrence = draftToRecurrence(d);
+      if (recurrence) {
+        const made = await apiClient<{ series: { id: string } }>(
+          `/v1/organizations/${orgId}/event-series`,
+          { method: 'POST', body: { ...draftToPayload(d, false), visibility, recurrence } },
+        );
+        if (publish) {
+          await apiClient(`/v1/event-series/${made.series.id}/publish`, { method: 'POST' });
+        }
+        router.replace(`/organizer/organizations/${orgId}` as never);
+        return;
+      }
+
       const created = await apiClient<{ id: string }>(`/v1/organizations/${orgId}/events`, {
         method: 'POST',
         body: { ...draftToPayload(d, false), visibility },
@@ -83,7 +115,9 @@ export default function NewEventPage() {
           await apiClient(`/v1/events/${created.id}/publish`, { method: 'POST' });
         } catch (err) {
           // Saved but not live: take them to the editor to sort it out.
-          router.replace(`/organizer/organizations/${orgId}/events/${created.id}/edit?publishError=1` as never);
+          router.replace(
+            `/organizer/organizations/${orgId}/events/${created.id}/edit?publishError=1` as never,
+          );
           throw err;
         }
       }
@@ -105,7 +139,12 @@ export default function NewEventPage() {
             {d.title.trim() || 'Untitled event'}
           </h1>
         </div>
-        <button type="button" className="btn btn-outline" disabled={pending !== null} onClick={() => void save(false)}>
+        <button
+          type="button"
+          className="btn btn-outline"
+          disabled={pending !== null}
+          onClick={() => void save(false)}
+        >
           {pending === 'draft' ? 'Saving…' : 'Save draft'}
         </button>
       </div>
@@ -124,6 +163,7 @@ export default function NewEventPage() {
             <>
               <TicketKind />
               <CapacityField d={d} set={set} errors={visibleErrors} />
+              <RepeatField d={d} set={set} />
             </>
           )}
           {step === 2 && (
@@ -147,7 +187,10 @@ export default function NewEventPage() {
                 Back
               </button>
             ) : (
-              <Link href={`/organizer/organizations/${orgId}` as never} className="btn btn-lg text-ink-2 hover:text-ink">
+              <Link
+                href={`/organizer/organizations/${orgId}` as never}
+                className="btn btn-lg text-ink-2 hover:text-ink"
+              >
                 Cancel
               </Link>
             )}
@@ -156,7 +199,12 @@ export default function NewEventPage() {
                 {step === 0 ? 'Continue to tickets' : 'Review'}
               </button>
             ) : (
-              <button type="button" className="btn btn-primary btn-lg" disabled={pending !== null} onClick={() => void save(true)}>
+              <button
+                type="button"
+                className="btn btn-primary btn-lg"
+                disabled={pending !== null}
+                onClick={() => void save(true)}
+              >
                 {pending === 'publish' ? 'Publishing…' : 'Publish event'}
               </button>
             )}
