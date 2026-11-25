@@ -44,6 +44,7 @@
     "plugins": [
       "expo-router",
       "./plugins/withFmtConstevalFix",
+      "./plugins/withIosDeploymentFloor",
       [
         "expo-calendar",
         {
