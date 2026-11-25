@@ -19,6 +19,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { ClaimsModule } from '../claims/claims.module.js';
 import { EventsModule } from '../events/events.module.js';
 import { AdminEventsService } from './admin-events.service.js';
+import { AdminFlagsService } from './admin-flags.service.js';
 import { AdminHostsService } from './admin-hosts.service.js';
 import { AdminReportsService } from './admin-reports.service.js';
 
@@ -37,6 +38,7 @@ export class AdminController {
     private readonly reports: AdminReportsService,
     private readonly hosts: AdminHostsService,
     private readonly events: AdminEventsService,
+    private readonly flags: AdminFlagsService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -145,6 +147,32 @@ export class AdminController {
   unpublishEvent(@Req() req: PlatformRequest, @Param('id') id: string, @Body() body: unknown) {
     return this.events.unpublish(id, req.user.id, body, req);
   }
+
+  // ─── Feature flags ───────────────────────────────────────────────────────
+  // Switching a feature on is a platform decision, so writes need the top role.
+
+  @Get('feature-flags')
+  @RequirePlatformRole('PLATFORM_SUPPORT')
+  listFlags() {
+    return this.flags.list();
+  }
+
+  @Patch('feature-flags/:key')
+  @RequirePlatformRole('PLATFORM_ADMIN')
+  setFlag(@Req() req: PlatformRequest, @Param('key') key: string, @Body() body: unknown) {
+    return this.flags.setPlatform(key, req.user.id, body, req);
+  }
+
+  @Patch('feature-flags/:key/organizations/:org')
+  @RequirePlatformRole('PLATFORM_ADMIN')
+  setFlagOverride(
+    @Req() req: PlatformRequest,
+    @Param('key') key: string,
+    @Param('org') org: string,
+    @Body() body: unknown,
+  ) {
+    return this.flags.setOverride(key, org, req.user.id, body, req);
+  }
 }
 
 @Module({
@@ -156,6 +184,7 @@ export class AdminController {
     AdminReportsService,
     AdminHostsService,
     AdminEventsService,
+    AdminFlagsService,
     PlatformRoleGuard,
   ],
 })

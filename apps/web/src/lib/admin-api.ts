@@ -36,6 +36,21 @@ export function errorCode(e: unknown): string | undefined {
   return undefined;
 }
 
+/** GET /v1/admin/feature-flags */
+export interface AdminFlag {
+  key: string;
+  description: string | null;
+  default: boolean;
+  enabled: boolean;
+  updatedAt: string | null;
+  overrides: { organizationId: string; name: string; slug: string; enabled: boolean; updatedAt: string }[];
+}
+
+/** Only super admins switch features on and off. */
+export function canAdminister(role: PlatformRole) {
+  return role === 'PLATFORM_ADMIN';
+}
+
 export const ROLE_LABELS: Record<PlatformRole, string> = {
   PLATFORM_ADMIN: 'Super admin',
   PLATFORM_MODERATOR: 'Moderator',

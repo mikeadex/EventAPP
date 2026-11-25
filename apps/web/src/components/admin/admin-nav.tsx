@@ -6,7 +6,7 @@ import { Mark } from '@/components/brand';
 import { Icon, type IconName } from '@/components/icons';
 import { ROLE_LABELS, type AdminMe } from '@/lib/admin-api';
 
-export type AdminSection = 'overview' | 'hosts' | 'events' | 'reports';
+export type AdminSection = 'overview' | 'hosts' | 'events' | 'reports' | 'flags';
 
 type NavEntry =
   | { group: string }
@@ -21,6 +21,8 @@ const ITEMS: NavEntry[] = [
   { group: 'Directory' },
   { key: 'hosts', label: 'Hosts', href: '/admin/hosts', icon: 'house' },
   { key: 'events', label: 'Events', href: '/admin/events', icon: 'calendar' },
+  { group: 'Platform' },
+  { key: 'flags', label: 'Feature flags', href: '/admin/flags', icon: 'bolt' },
 ];
 
 function initials(me: AdminMe) {
