@@ -241,7 +241,10 @@ export class EventsService {
       where: {
         slug: eventSlug,
         deletedAt: null,
-        organization: { slug: orgSlug },
+        // A taken-down (DISPUTED) or removed host's events stay closed: a
+        // take-down cancels them, and the cancelled-page rule below must not
+        // bring them back with the church's name on.
+        organization: { slug: orgSlug, ...PUBLIC_HOST_WHERE },
         // A cancelled event keeps its page (with a "cancelled" note instead of
         // the booking panel) so ticket holders' links and shares still land
         // somewhere that explains. Booking is refused separately by status.
