@@ -41,6 +41,12 @@ const goneCode = (err: unknown) => {
 const tooMany = (err: unknown) => err instanceof ApiError && err.status === 429;
 
 const TOO_MANY = 'Too many tries from this connection. Wait a minute, then try again.';
+/**
+ * For a button whose label carries the invited address: let it wrap, and the
+ * address break anywhere, so a long one cannot push the button past a 375px
+ * screen. Height grows from the 56px of btn-lg instead of clipping.
+ */
+const WRAPS = 'h-auto min-h-[56px] flex-wrap gap-y-0 whitespace-normal py-3 text-center';
 const dashboard = (org: Claimed) => `/organizer/organizations/${org.id}`;
 
 /**
@@ -190,8 +196,8 @@ export function ClaimFlow({ token }: { token: string }) {
     );
   } else if (sameAccount) {
     action = (
-      <button type="button" onClick={() => void attach()} className="btn btn-primary btn-lg">
-        Claim as {invited}
+      <button type="button" onClick={() => void attach()} className={`btn btn-primary btn-lg ${WRAPS}`}>
+        Claim as <span className="break-all">{invited}</span>
       </button>
     );
   } else if (info.hasAccount) {
@@ -393,8 +399,8 @@ function RefusalNotice({
           : `You’re signed in${signedInAs ? ` as ${signedInAs}` : ''}. `}
         This page can only be claimed by <span className="text-ink">{invited}</span>.
       </p>
-      <button type="button" onClick={onSwitch} className="btn btn-primary btn-lg">
-        Sign in with {invited}
+      <button type="button" onClick={onSwitch} className={`btn btn-primary btn-lg ${WRAPS}`}>
+        Sign in with <span className="break-all">{invited}</span>
       </button>
     </div>
   );

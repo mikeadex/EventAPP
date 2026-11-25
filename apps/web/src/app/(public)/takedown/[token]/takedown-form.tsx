@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode, type Ref } from 'react';
 import { ApiError, apiClient } from '@/lib/api-client';
 import { SUPPORT_EMAIL } from '@/lib/contact';
 import type { TakedownInfo } from '@/lib/types';
@@ -35,6 +35,15 @@ export function TakedownForm({ token }: { token: string }) {
   const [reason, setReason] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const doneHeading = useRef<HTMLHeadingElement>(null);
+
+  // The form the button was in is gone; move focus (and the view) to the
+  // result, so keyboard and screen-reader users land on what happened.
+  useEffect(() => {
+    if (state.s !== 'done') return;
+    doneHeading.current?.focus();
+    doneHeading.current?.scrollIntoView({ block: 'center' });
+  }, [state.s]);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,6 +102,7 @@ export function TakedownForm({ token }: { token: string }) {
       <Notice
         icon="check"
         title="Taken down"
+        headingRef={doneHeading}
         body={
           <>
             We&rsquo;ve taken it down and let our team know. {state.name} no longer appears on
@@ -173,17 +183,26 @@ function Notice({
   icon,
   title,
   body,
+  headingRef,
 }: {
   icon: IconName;
   title: string;
   body: ReactNode;
+  /** Given when focus moves to the heading; makes it focusable from script. */
+  headingRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
     <div className="flex flex-col items-center gap-4 text-center" role="status">
       <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-line-3 bg-soft text-accent">
         <Icon name={icon} size={24} />
       </span>
-      <h1 className="text-[26px] text-strong">{title}</h1>
+      <h1
+        ref={headingRef}
+        tabIndex={headingRef ? -1 : undefined}
+        className="text-[26px] text-strong focus:outline-none"
+      >
+        {title}
+      </h1>
       <p className="text-[15px] leading-relaxed text-body">{body}</p>
     </div>
   );
