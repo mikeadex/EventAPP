@@ -61,3 +61,9 @@ packages/*/src/**/*.js
 packages/*/src/**/*.js.map
 packages/*/src/**/*.d.ts
 packages/*/src/**/*.d.ts.map
+
+# Build artifacts from `eas build --local` (and anything downloaded for manual upload).
+# The repo is public and these are ~70 MB each.
+*.aab
+*.apk
+*.ipa
