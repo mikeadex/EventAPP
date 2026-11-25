@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Account</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.box{border-radius:14px;border-color:var(--line-2);background:var(--raised);height:52px}
+.nav-i{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-radius:14px;font-size:15px;text-align:left;color:var(--ink-2)}
+.nav-i:hover{color:var(--ink)}
+.nav-i.on{background:var(--soft);color:var(--accent)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+.sw{position:relative;width:52px;height:30px;flex:none;border-radius:999px;border:1px solid var(--line-2)}
+.sw span{position:absolute;top:3px;width:22px;height:22px;border-radius:50%;transition:left .2s}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="account" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap" style="flex: 1; padding-top: 48px;">
+    <div class="stack-sm" style="display: flex; align-items: center; gap: 20px; margin-bottom: 40px;">
+      <span style="display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; flex: none; border-radius: 50%; border: 1px solid var(--line-3); background: var(--avatar); color: var(--accent); font-size: 30px;">M</span>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <h1 style="font-size: 36px; font-weight: 400; color: var(--strong);">Mike Adex</h1>
+        <p style="font-size: 15px; color: var(--muted);">joko.adeleye@outlook.com</p>
+      </div>
+    </div>
+
+    <div class="split-side">
+      <nav aria-label="Account sections" style="display: flex; flex-direction: column; gap: 4px;">
+        <sc-for list="{{ sections }}" as="n" hint-placeholder-count="5">
+          <button type="button" class="{{ n.cls }}" aria-current="{{ n.current }}" onClick="{{ n.pick }}">{{ n.label }}</button>
+        </sc-for>
+        <div class="rule-x" style="margin: 12px 0;"></div>
+        <a href="Tickets.dc.html" class="nav-i">Your tickets</a>
+        <a href="Saved.dc.html" class="nav-i">Saved events</a>
+        <a href="Main.dc.html" class="nav-i" style="color: var(--accent);">Sign out</a>
+      </nav>
+
+      <div style="min-width: 0;">
+        <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ true }}">
+          <section class="card" style="padding: 32px;" aria-labelledby="h-profile">
+            <h2 id="h-profile" style="font-size: 24px; font-weight: 400; color: var(--strong);">Profile</h2>
+            <p style="margin-top: 6px; font-size: 15px; color: var(--body);">Hosts see your name on their attendee list.</p>
+            <form style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 28px;">
+              <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">First name</span><span class="field box"><input value="Mike"></span></label>
+              <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">Last name</span><span class="field box"><input value="Adex"></span></label>
+              <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">Email address</span><span class="field box"><input type="email" value="joko.adeleye@outlook.com"></span></label>
+              <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">Mobile (optional)</span><span class="field box"><input type="tel" placeholder="07…"></span></label>
+              <label style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 14px;">Home city</span><span class="field box"><input value="London"></span></label>
+            </form>
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px;">
+              <button type="button" class="btn btn-outline">Cancel</button>
+              <button type="button" class="btn btn-primary">Save changes</button>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isNotify }}" hint-placeholder-val="{{ false }}">
+          <section class="card" style="padding: 32px;" aria-labelledby="h-notify">
+            <h2 id="h-notify" style="font-size: 24px; font-weight: 400; color: var(--strong);">Notifications</h2>
+            <div style="margin-top: 12px;">
+              <sc-for list="{{ toggles }}" as="t" hint-placeholder-count="4">
+                <div class="row">
+                  <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px;">{{ t.label }}</span><span style="font-size: 13px; color: var(--muted);">{{ t.hint }}</span></span>
+                  <button type="button" class="sw" role="switch" aria-checked="{{ t.on }}" aria-label="{{ t.label }}" onClick="{{ t.flip }}" style="background: {{ t.bg }};"><span style="left: {{ t.left }}; background: {{ t.knob }};"></span></button>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isHosting }}" hint-placeholder-val="{{ false }}">
+          <section class="card" style="padding: 32px;" aria-labelledby="h-host">
+            <h2 id="h-host" style="font-size: 24px; font-weight: 400; color: var(--strong);">Hosting</h2>
+            <p style="margin-top: 6px; font-size: 15px; color: var(--body);">You manage one host page.</p>
+            <a href="Dashboard.dc.html" class="card card-link" style="display: flex; align-items: center; gap: 16px; margin-top: 24px; padding: 20px; background: var(--raised);">
+              <span style="display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex: none; border-radius: 50%; border: 1px solid var(--line-3); background: var(--avatar); color: var(--accent);">GC</span>
+              <span style="display: flex; flex: 1; flex-direction: column; gap: 2px;"><span style="font-size: 17px; color: var(--strong);">Grace Community Church</span><span style="font-size: 13px; color: var(--muted);">Owner · 3 upcoming events</span></span>
+              <span style="font-size: 14px; color: var(--accent);">Open dashboard →</span>
+            </a>
+            <a href="BecomeHost.dc.html" class="btn btn-outline" style="margin-top: 16px;">Set up another host page</a>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isSecurity }}" hint-placeholder-val="{{ false }}">
+          <section class="card" style="padding: 32px;" aria-labelledby="h-sec">
+            <h2 id="h-sec" style="font-size: 24px; font-weight: 400; color: var(--strong);">Sign-in &amp; security</h2>
+            <div style="margin-top: 12px;">
+              <div class="row"><span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px;">Password</span><span style="font-size: 13px; color: var(--muted);">Last changed 3 months ago</span></span><a href="ResetPassword.dc.html" class="btn btn-outline btn-sm">Change</a></div>
+              <div class="row"><span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px;">Connected accounts</span><span style="font-size: 13px; color: var(--muted);">Apple</span></span><button type="button" class="btn btn-outline btn-sm">Manage</button></div>
+              <div class="row"><span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px;">Signed-in devices</span><span style="font-size: 13px; color: var(--muted);">iPhone · Chrome on Mac</span></span><button type="button" class="btn btn-outline btn-sm">Sign out others</button></div>
+              <div class="row" style="border-bottom: 0;"><span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px;">Delete account</span><span style="font-size: 13px; color: var(--muted);">Removes your tickets and saved events</span></span><button type="button" class="btn btn-sm" style="border: 1px solid var(--line-3); color: var(--accent);">Delete</button></div>
+            </div>
+          </section>
+        </sc-if>
+      </div>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"section":{"editor":"enum","options":["profile","notify","hosting","security"],"default":"profile"},"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var sec = s.sec || this.props.section || 'profile';
+    var prefs = s.prefs || { remind: true, follow: true, changes: true, roundup: false };
+    var labels = [['profile', 'Profile'], ['notify', 'Notifications'], ['hosting', 'Hosting'], ['security', 'Sign-in & security']];
+    var tog = [
+      ['remind', 'Event reminders', '24 hours before doors open'],
+      ['follow', 'New events from hosts I follow', 'Email and push'],
+      ['changes', 'Changes to my events', 'Time, venue or cancellation — always recommended'],
+      ['roundup', 'Monthly Ekklesia roundup', 'What’s on near you']
+    ];
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      sections: labels.map((l) => ({ label: l[1], current: sec === l[0] ? 'page' : undefined, cls: sec === l[0] ? 'nav-i on' : 'nav-i', pick: () => this.setState({ sec: l[0] }) })),
+      isProfile: sec === 'profile', isNotify: sec === 'notify', isHosting: sec === 'hosting', isSecurity: sec === 'security',
+      toggles: tog.map((t) => {
+        var on = !!prefs[t[0]];
+        return {
+          label: t[1], hint: t[2], on: on,
+          bg: on ? 'var(--accent)' : 'var(--surface-2)', left: on ? '25px' : '3px', knob: on ? '#ffffff' : 'var(--muted)',
+          flip: () => { var p = Object.assign({}, prefs); p[t[0]] = !on; this.setState({ prefs: p }); }
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

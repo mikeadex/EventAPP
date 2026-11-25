@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — For churches</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="churches" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main style="flex: 1;">
+    <section style="position: relative; overflow: hidden;">
+      <div aria-hidden="true" style="position: absolute; left: -160px; top: 0; width: 640px; height: 640px; border-radius: 50%; background: radial-gradient(circle, rgba(var(--accent-rgb), 0.16), transparent 65%); filter: blur(40px);"></div>
+      <div class="wrap" style="position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 28px; padding-top: 80px; padding-bottom: 80px;">
+        <span class="eyebrow" style="color: var(--accent);">For churches, ministries &amp; communities</span>
+        <h1 class="display" style="max-width: 900px; text-wrap: balance;">Run every gathering from <span style="color: var(--accent);">one place</span>.</h1>
+        <p class="lead" style="max-width: 680px;">Publish events, sell tickets, take donations and check people in at the door — with a host page your congregation can follow.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+          <a href="SignIn.dc.html" class="btn btn-primary btn-lg">Become a host
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+          </a>
+          <a href="#features" class="btn btn-outline btn-lg">Explore features</a>
+        </div>
+        <ul style="display: grid; width: 100%; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 24px;">
+          <li class="card" style="display: flex; align-items: center; gap: 16px; padding: 20px;">
+            <span style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; flex: none; border-radius: 16px; background: var(--soft); color: var(--accent);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4M10 4h4M6 22V11l6-5 6 5v11M2 22h20M10 22v-5h4v5"></path></svg></span>
+            <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 18px; color: var(--strong);">Church</span><span style="font-size: 14px; color: var(--muted);">A congregation that meets regularly</span></span>
+          </li>
+          <li class="card" style="display: flex; align-items: center; gap: 16px; padding: 20px;">
+            <span style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; flex: none; border-radius: 16px; background: var(--soft); color: var(--accent);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"></rect><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"></path></svg></span>
+            <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 18px; color: var(--strong);">Ministry</span><span style="font-size: 14px; color: var(--muted);">An organisation serving a wider mission</span></span>
+          </li>
+          <li class="card" style="display: flex; align-items: center; gap: 16px; padding: 20px;">
+            <span style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; flex: none; border-radius: 16px; background: var(--soft); color: var(--accent);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7" r="4"></circle><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85"></path></svg></span>
+            <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 18px; color: var(--strong);">Community</span><span style="font-size: 14px; color: var(--muted);">A faith-based group or network</span></span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="features" class="wrap" aria-label="Features">
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px;">
+        <span class="eyebrow" style="color: var(--accent);">Features</span>
+        <h2 class="h2" style="max-width: 760px;">Everything from a Sunday RSVP to a sold-out conference</h2>
+      </div>
+      <ul class="feat">
+        <li style="display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--surface);">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"></path></svg>
+          <span style="font-size: 18px; color: var(--strong);">Create an event in minutes</span>
+          <span style="font-size: 14px; line-height: 1.6; color: var(--body);">Add a cover photo, date, venue and description — your event page is ready to share.</span>
+        </li>
+        <li style="display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--surface);">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2M13 17v2M13 11v2"></path></svg>
+          <span style="font-size: 18px; color: var(--strong);">Free RSVPs or ticket tiers</span>
+          <span style="font-size: 14px; line-height: 1.6; color: var(--body);">Early bird, standard, group or concession tiers with their own limits.</span>
+        </li>
+        <li style="display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--surface);">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><path d="M7 18v3M17 18v3M5 11V6a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v5M3 11h18v4a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"></path></svg>
+          <span style="font-size: 18px; color: var(--strong);">Tables and seating</span>
+          <span style="font-size: 14px; line-height: 1.6; color: var(--body);">Let guests reserve a whole table for galas, dinners and conferences.</span>
+        </li>
+        <li style="display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--surface);">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+          <span style="font-size: 18px; color: var(--strong);">Donations at checkout</span>
+          <span style="font-size: 14px; line-height: 1.6; color: var(--body);">Invite an optional gift with every booking, or run a donation-only event.</span>
+        </li>
+        <li style="display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--surface);">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"></path></svg>
+          <span style="font-size: 18px; color: var(--strong);">QR check-in</span>
+          <span style="font-size: 14px; line-height: 1.6; color: var(--body);">Scan tickets at the door from any phone. One scan per ticket, no duplicates.</span>
+        </li>
+        <li style="display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--surface);">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><circle cx="9" cy="7" r="4"></circle><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85"></path></svg>
+          <span style="font-size: 18px; color: var(--strong);">Attendee lists</span>
+          <span style="font-size: 14px; line-height: 1.6; color: var(--body);">See who’s coming, search by name and export your list when you need it.</span>
+        </li>
+        <li style="display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--surface);">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><path d="M3 3v18h18M7 14l4-4 4 4 5-5"></path></svg>
+          <span style="font-size: 18px; color: var(--strong);">Live sales dashboard</span>
+          <span style="font-size: 14px; line-height: 1.6; color: var(--body);">Track bookings, revenue and check-ins as they happen.</span>
+        </li>
+        <li style="display: flex; flex-direction: column; gap: 16px; padding: 28px; background: var(--surface);">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--accent);"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"></path></svg>
+          <span style="font-size: 18px; color: var(--strong);">Payouts to your account</span>
+          <span style="font-size: 14px; line-height: 1.6; color: var(--body);">Ticket income goes to your church’s bank account, with clear payout summaries.</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="wrap split-faq" style="margin-top: 112px;" aria-label="Getting started">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <span class="eyebrow" style="color: var(--accent);">Getting started</span>
+        <h2 class="h2">Live in three steps</h2>
+        <p style="font-size: 16px; line-height: 1.6; color: var(--body);">Set up takes a few minutes. You can save and come back at any point.</p>
+      </div>
+      <ol style="display: flex; flex-direction: column;">
+        <li style="display: flex; gap: 24px; padding: 0 0 28px; border-bottom: 1px solid var(--line);">
+          <span class="mono" style="font-size: 14px; color: var(--accent);">01</span>
+          <span style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 22px; color: var(--strong);">Tell us who you are</span><span style="font-size: 15px; line-height: 1.6; color: var(--body);">Church, ministry or community — choose a type, your host name and page address.</span></span>
+        </li>
+        <li style="display: flex; gap: 24px; padding: 28px 0; border-bottom: 1px solid var(--line);">
+          <span class="mono" style="font-size: 14px; color: var(--accent);">02</span>
+          <span style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 22px; color: var(--strong);">Add your details</span><span style="font-size: 15px; line-height: 1.6; color: var(--body);">Logo, location and a short description, so people know they’ve found the right place.</span></span>
+        </li>
+        <li style="display: flex; gap: 24px; padding: 28px 0; border-bottom: 1px solid var(--line);">
+          <span class="mono" style="font-size: 14px; color: var(--accent);">03</span>
+          <span style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 22px; color: var(--strong);">Publish your first event</span><span style="font-size: 15px; line-height: 1.6; color: var(--body);">Set up tickets or RSVPs and share your link. You’re live.</span></span>
+        </li>
+      </ol>
+    </section>
+
+    <section class="wrap split-faq" style="margin-top: 112px;" aria-label="Host FAQ">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <span class="eyebrow" style="color: var(--accent);">Host FAQ</span>
+        <h2 class="h2">Good questions</h2>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <sc-for list="{{ faqs }}" as="f" hint-placeholder-count="4">
+          <div style="border-bottom: 1px solid var(--line);">
+            <button type="button" onClick="{{ f.toggle }}" aria-expanded="{{ f.open }}" style="display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 0; text-align: left; font-size: 18px; color: var(--strong);">
+              {{ f.q }}
+              <span style="color: var(--accent); font-size: 22px; line-height: 1;">{{ f.sign }}</span>
+            </button>
+            <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+              <p style="max-width: 640px; padding-bottom: 20px; font-size: 15px; line-height: 1.65; color: var(--body);">{{ f.a }}</p>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section class="wrap" style="margin-top: 112px;">
+      <div class="row-between" style="align-items: center; gap: 24px; padding: 48px; border-radius: 28px; border: 1px solid var(--line-2); background: var(--raised);">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <h2 style="font-size: 38px; line-height: 1.15; font-weight: 400; color: var(--strong);">Ready to fill the room?</h2>
+          <p style="font-size: 16px; color: var(--body);">Create your host page today — it’s free to publish free events.</p>
+        </div>
+        <a href="SignIn.dc.html" class="btn btn-primary btn-lg">Get started
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":3100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var open = s.open || {};
+    var src = [
+      ['Who can host on Ekklesia?', 'Churches, ministries and faith-based community groups. We check every host page before it goes live.'],
+      ['Does it cost anything to list free events?', 'No. Publishing free events and collecting RSVPs is free.'],
+      ['Can more than one person manage our events?', 'Yes — invite your team so they can create events, see attendees and scan tickets at the door.'],
+      ['Which countries are supported?', 'Hosts in the UK, Ireland and the US can sign up today. Your country sets your default currency.']
+    ];
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      faqs: src.map((f, i) => ({
+        q: f[0], a: f[1], open: !!open[i], sign: open[i] ? '−' : '+',
+        toggle: () => { var o = Object.assign({}, open); o[i] = !o[i]; this.setState({ open: o }); }
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1252 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-24T10:05:00Z"
+ },
+ "title": "Ekklesia Events Website",
+ "launch": {
+  "view": "canvas",
+  "page": "desktop"
+ },
+ "pages": [
+  {
+   "id": "desktop",
+   "name": "Browse"
+  },
+  {
+   "id": "account",
+   "name": "Account & tickets"
+  },
+  {
+   "id": "checkout",
+   "name": "Booking & checkout"
+  },
+  {
+   "id": "host",
+   "name": "Host dashboard"
+  },
+  {
+   "id": "mobile",
+   "name": "Mobile"
+  },
+  {
+   "id": "components",
+   "name": "Components"
+  }
+ ],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 5600,
+   "title": "Home",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Discover.dc.html": {
+   "x": 1520,
+   "y": 0,
+   "w": 1440,
+   "h": 1500,
+   "title": "Discover",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Event.dc.html": {
+   "x": 3040,
+   "y": 0,
+   "w": 1440,
+   "h": 2400,
+   "title": "Event details",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Hosts.dc.html": {
+   "x": 4560,
+   "y": 0,
+   "w": 1440,
+   "h": 1800,
+   "title": "Host directory",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Host.dc.html": {
+   "x": 6080,
+   "y": 0,
+   "w": 1440,
+   "h": 1700,
+   "title": "Host profile",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "ForChurches.dc.html": {
+   "x": 7600,
+   "y": 0,
+   "w": 1440,
+   "h": 3100,
+   "title": "For churches",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "SignIn.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 1000,
+   "title": "Sign in",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Home.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 390,
+   "h": 10600,
+   "title": "Home \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Discover.dc.html": {
+   "x": 470,
+   "y": 0,
+   "w": 390,
+   "h": 4200,
+   "title": "Discover \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Event.dc.html": {
+   "x": 940,
+   "y": 0,
+   "w": 390,
+   "h": 4400,
+   "title": "Event details \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Header.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 72,
+   "title": "Header",
+   "page": "components",
+   "is_interactive": true
+  },
+  "Footer.dc.html": {
+   "x": 0,
+   "y": 192,
+   "w": 1440,
+   "h": 420,
+   "title": "Footer",
+   "page": "components"
+  },
+  "EventCard.dc.html": {
+   "x": 0,
+   "y": 732,
+   "w": 380,
+   "h": 430,
+   "title": "Event card",
+   "page": "components",
+   "is_interactive": true
+  },
+  "CreateAccount.dc.html": {
+   "x": 1520,
+   "y": 0,
+   "w": 1440,
+   "h": 1100,
+   "title": "Create account",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "ResetPassword.dc.html": {
+   "x": 3040,
+   "y": 0,
+   "w": 1440,
+   "h": 1000,
+   "title": "Reset password",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Tickets.dc.html": {
+   "x": 4560,
+   "y": 0,
+   "w": 1440,
+   "h": 1300,
+   "title": "Your tickets",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Ticket.dc.html": {
+   "x": 6080,
+   "y": 0,
+   "w": 1440,
+   "h": 1300,
+   "title": "Ticket QR",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Saved.dc.html": {
+   "x": 7600,
+   "y": 0,
+   "w": 1440,
+   "h": 1200,
+   "title": "Saved events",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Account.dc.html": {
+   "x": 9120,
+   "y": 0,
+   "w": 1440,
+   "h": 1500,
+   "title": "Account & settings",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Rsvp.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 1100,
+   "title": "Free RSVP",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Tables.dc.html": {
+   "x": 1520,
+   "y": 0,
+   "w": 1440,
+   "h": 1250,
+   "title": "Table selection",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Donation.dc.html": {
+   "x": 3040,
+   "y": 0,
+   "w": 1440,
+   "h": 1100,
+   "title": "Donation",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Checkout.dc.html": {
+   "x": 4560,
+   "y": 0,
+   "w": 1440,
+   "h": 1300,
+   "title": "Checkout",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Confirmation.dc.html": {
+   "x": 6080,
+   "y": 0,
+   "w": 1440,
+   "h": 1200,
+   "title": "Confirmation",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "BecomeHost.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 1300,
+   "title": "Become a host",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Dashboard.dc.html": {
+   "x": 1520,
+   "y": 0,
+   "w": 1440,
+   "h": 1500,
+   "title": "Sales dashboard",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "CreateEvent.dc.html": {
+   "x": 3040,
+   "y": 0,
+   "w": 1440,
+   "h": 1800,
+   "title": "Create event",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Attendees.dc.html": {
+   "x": 4560,
+   "y": 0,
+   "w": 1440,
+   "h": 1300,
+   "title": "Attendees",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "CheckIn.dc.html": {
+   "x": 6080,
+   "y": 0,
+   "w": 1440,
+   "h": 1100,
+   "title": "Check-in",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Payouts.dc.html": {
+   "x": 7600,
+   "y": 0,
+   "w": 1440,
+   "h": 1300,
+   "title": "Payouts",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "HostNav.dc.html": {
+   "x": 460,
+   "y": 732,
+   "w": 260,
+   "h": 720,
+   "title": "Host sidebar",
+   "page": "components",
+   "is_interactive": true
+  },
+  "Mobile-Hosts.dc.html": {
+   "x": 1410,
+   "y": 0,
+   "w": 390,
+   "h": 3600,
+   "title": "Host directory \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Host.dc.html": {
+   "x": 1880,
+   "y": 0,
+   "w": 390,
+   "h": 3000,
+   "title": "Host profile \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-ForChurches.dc.html": {
+   "x": 2350,
+   "y": 0,
+   "w": 390,
+   "h": 6200,
+   "title": "For churches \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-SignIn.dc.html": {
+   "x": 2980,
+   "y": 0,
+   "w": 390,
+   "h": 1700,
+   "title": "Sign in \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-CreateAccount.dc.html": {
+   "x": 3450,
+   "y": 0,
+   "w": 390,
+   "h": 1900,
+   "title": "Create account \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-ResetPassword.dc.html": {
+   "x": 3920,
+   "y": 0,
+   "w": 390,
+   "h": 1500,
+   "title": "Reset password \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Tickets.dc.html": {
+   "x": 4390,
+   "y": 0,
+   "w": 390,
+   "h": 2600,
+   "title": "Your tickets \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Ticket.dc.html": {
+   "x": 4860,
+   "y": 0,
+   "w": 390,
+   "h": 2900,
+   "title": "Ticket QR \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Saved.dc.html": {
+   "x": 5330,
+   "y": 0,
+   "w": 390,
+   "h": 3000,
+   "title": "Saved events \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Account.dc.html": {
+   "x": 5800,
+   "y": 0,
+   "w": 390,
+   "h": 2600,
+   "title": "Account & settings \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Rsvp.dc.html": {
+   "x": 6430,
+   "y": 0,
+   "w": 390,
+   "h": 2300,
+   "title": "Free RSVP \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Tables.dc.html": {
+   "x": 6900,
+   "y": 0,
+   "w": 390,
+   "h": 2300,
+   "title": "Table selection \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Donation.dc.html": {
+   "x": 7370,
+   "y": 0,
+   "w": 390,
+   "h": 2200,
+   "title": "Donation \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Checkout.dc.html": {
+   "x": 7840,
+   "y": 0,
+   "w": 390,
+   "h": 2700,
+   "title": "Checkout \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Confirmation.dc.html": {
+   "x": 8310,
+   "y": 0,
+   "w": 390,
+   "h": 1900,
+   "title": "Confirmation \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-BecomeHost.dc.html": {
+   "x": 8940,
+   "y": 0,
+   "w": 390,
+   "h": 2400,
+   "title": "Become a host \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Dashboard.dc.html": {
+   "x": 9410,
+   "y": 0,
+   "w": 390,
+   "h": 3600,
+   "title": "Sales dashboard \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-CreateEvent.dc.html": {
+   "x": 9880,
+   "y": 0,
+   "w": 390,
+   "h": 3600,
+   "title": "Create event \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Attendees.dc.html": {
+   "x": 10350,
+   "y": 0,
+   "w": 390,
+   "h": 2700,
+   "title": "Attendees \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-CheckIn.dc.html": {
+   "x": 10820,
+   "y": 0,
+   "w": 390,
+   "h": 2700,
+   "title": "Check-in \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Mobile-Payouts.dc.html": {
+   "x": 11290,
+   "y": 0,
+   "w": 390,
+   "h": 2600,
+   "title": "Payouts \u00b7 mobile",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Main.dc.html": {
+   "x": 0,
+   "y": 6120,
+   "w": 1440,
+   "h": 5600,
+   "title": "Home \u00b7 light",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Discover.dc.html": {
+   "x": 1520,
+   "y": 6120,
+   "w": 1440,
+   "h": 1500,
+   "title": "Discover \u00b7 light",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Event.dc.html": {
+   "x": 3040,
+   "y": 6120,
+   "w": 1440,
+   "h": 2400,
+   "title": "Event details \u00b7 light",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Hosts.dc.html": {
+   "x": 4560,
+   "y": 6120,
+   "w": 1440,
+   "h": 1800,
+   "title": "Host directory \u00b7 light",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Host.dc.html": {
+   "x": 6080,
+   "y": 6120,
+   "w": 1440,
+   "h": 1700,
+   "title": "Host profile \u00b7 light",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-ForChurches.dc.html": {
+   "x": 7600,
+   "y": 6120,
+   "w": 1440,
+   "h": 3100,
+   "title": "For churches \u00b7 light",
+   "page": "desktop",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-SignIn.dc.html": {
+   "x": 0,
+   "y": 2020,
+   "w": 1440,
+   "h": 1000,
+   "title": "Sign in \u00b7 light",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-CreateAccount.dc.html": {
+   "x": 1520,
+   "y": 2020,
+   "w": 1440,
+   "h": 1100,
+   "title": "Create account \u00b7 light",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-ResetPassword.dc.html": {
+   "x": 3040,
+   "y": 2020,
+   "w": 1440,
+   "h": 1000,
+   "title": "Reset password \u00b7 light",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Tickets.dc.html": {
+   "x": 4560,
+   "y": 2020,
+   "w": 1440,
+   "h": 1300,
+   "title": "Your tickets \u00b7 light",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Ticket.dc.html": {
+   "x": 6080,
+   "y": 2020,
+   "w": 1440,
+   "h": 1300,
+   "title": "Ticket QR \u00b7 light",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Saved.dc.html": {
+   "x": 7600,
+   "y": 2020,
+   "w": 1440,
+   "h": 1200,
+   "title": "Saved events \u00b7 light",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Account.dc.html": {
+   "x": 9120,
+   "y": 2020,
+   "w": 1440,
+   "h": 1500,
+   "title": "Account & settings \u00b7 light",
+   "page": "account",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Home.dc.html": {
+   "x": 0,
+   "y": 11120,
+   "w": 390,
+   "h": 10600,
+   "title": "Home \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Discover.dc.html": {
+   "x": 470,
+   "y": 11120,
+   "w": 390,
+   "h": 4200,
+   "title": "Discover \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Event.dc.html": {
+   "x": 940,
+   "y": 11120,
+   "w": 390,
+   "h": 4400,
+   "title": "Event details \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Hosts.dc.html": {
+   "x": 1410,
+   "y": 11120,
+   "w": 390,
+   "h": 3600,
+   "title": "Host directory \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Host.dc.html": {
+   "x": 1880,
+   "y": 11120,
+   "w": 390,
+   "h": 3000,
+   "title": "Host profile \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-ForChurches.dc.html": {
+   "x": 2350,
+   "y": 11120,
+   "w": 390,
+   "h": 6200,
+   "title": "For churches \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-SignIn.dc.html": {
+   "x": 2980,
+   "y": 11120,
+   "w": 390,
+   "h": 1700,
+   "title": "Sign in \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-CreateAccount.dc.html": {
+   "x": 3450,
+   "y": 11120,
+   "w": 390,
+   "h": 1900,
+   "title": "Create account \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-ResetPassword.dc.html": {
+   "x": 3920,
+   "y": 11120,
+   "w": 390,
+   "h": 1500,
+   "title": "Reset password \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Tickets.dc.html": {
+   "x": 4390,
+   "y": 11120,
+   "w": 390,
+   "h": 2600,
+   "title": "Your tickets \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Ticket.dc.html": {
+   "x": 4860,
+   "y": 11120,
+   "w": 390,
+   "h": 2900,
+   "title": "Ticket QR \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Saved.dc.html": {
+   "x": 5330,
+   "y": 11120,
+   "w": 390,
+   "h": 3000,
+   "title": "Saved events \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Account.dc.html": {
+   "x": 5800,
+   "y": 11120,
+   "w": 390,
+   "h": 2600,
+   "title": "Account & settings \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Rsvp.dc.html": {
+   "x": 6430,
+   "y": 11120,
+   "w": 390,
+   "h": 2300,
+   "title": "Free RSVP \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Tables.dc.html": {
+   "x": 6900,
+   "y": 11120,
+   "w": 390,
+   "h": 2300,
+   "title": "Table selection \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Donation.dc.html": {
+   "x": 7370,
+   "y": 11120,
+   "w": 390,
+   "h": 2200,
+   "title": "Donation \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Checkout.dc.html": {
+   "x": 7840,
+   "y": 11120,
+   "w": 390,
+   "h": 2700,
+   "title": "Checkout \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Confirmation.dc.html": {
+   "x": 8310,
+   "y": 11120,
+   "w": 390,
+   "h": 1900,
+   "title": "Confirmation \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-BecomeHost.dc.html": {
+   "x": 8940,
+   "y": 11120,
+   "w": 390,
+   "h": 2400,
+   "title": "Become a host \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Dashboard.dc.html": {
+   "x": 9410,
+   "y": 11120,
+   "w": 390,
+   "h": 3600,
+   "title": "Sales dashboard \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-CreateEvent.dc.html": {
+   "x": 9880,
+   "y": 11120,
+   "w": 390,
+   "h": 3600,
+   "title": "Create event \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Attendees.dc.html": {
+   "x": 10350,
+   "y": 11120,
+   "w": 390,
+   "h": 2700,
+   "title": "Attendees \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-CheckIn.dc.html": {
+   "x": 10820,
+   "y": 11120,
+   "w": 390,
+   "h": 2700,
+   "title": "Check-in \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Mobile-Payouts.dc.html": {
+   "x": 11290,
+   "y": 11120,
+   "w": 390,
+   "h": 2600,
+   "title": "Payouts \u00b7 mobile \u00b7 light",
+   "page": "mobile",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Rsvp.dc.html": {
+   "x": 0,
+   "y": 1820,
+   "w": 1440,
+   "h": 1100,
+   "title": "Free RSVP \u00b7 light",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Tables.dc.html": {
+   "x": 1520,
+   "y": 1820,
+   "w": 1440,
+   "h": 1250,
+   "title": "Table selection \u00b7 light",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Donation.dc.html": {
+   "x": 3040,
+   "y": 1820,
+   "w": 1440,
+   "h": 1100,
+   "title": "Donation \u00b7 light",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Checkout.dc.html": {
+   "x": 4560,
+   "y": 1820,
+   "w": 1440,
+   "h": 1300,
+   "title": "Checkout \u00b7 light",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Confirmation.dc.html": {
+   "x": 6080,
+   "y": 1820,
+   "w": 1440,
+   "h": 1200,
+   "title": "Confirmation \u00b7 light",
+   "page": "checkout",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-BecomeHost.dc.html": {
+   "x": 0,
+   "y": 2320,
+   "w": 1440,
+   "h": 1300,
+   "title": "Become a host \u00b7 light",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Dashboard.dc.html": {
+   "x": 1520,
+   "y": 2320,
+   "w": 1440,
+   "h": 1500,
+   "title": "Sales dashboard \u00b7 light",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-CreateEvent.dc.html": {
+   "x": 3040,
+   "y": 2320,
+   "w": 1440,
+   "h": 1800,
+   "title": "Create event \u00b7 light",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Attendees.dc.html": {
+   "x": 4560,
+   "y": 2320,
+   "w": 1440,
+   "h": 1300,
+   "title": "Attendees \u00b7 light",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-CheckIn.dc.html": {
+   "x": 6080,
+   "y": 2320,
+   "w": 1440,
+   "h": 1100,
+   "title": "Check-in \u00b7 light",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  },
+  "Light-Payouts.dc.html": {
+   "x": 7600,
+   "y": 2320,
+   "w": 1440,
+   "h": 1300,
+   "title": "Payouts \u00b7 light",
+   "page": "host",
+   "expand": "fill",
+   "is_interactive": true
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Discover.dc.html",
+  "Event.dc.html",
+  "Hosts.dc.html",
+  "Host.dc.html",
+  "ForChurches.dc.html",
+  "SignIn.dc.html",
+  "Mobile-Home.dc.html",
+  "Mobile-Discover.dc.html",
+  "Mobile-Event.dc.html",
+  "Header.dc.html",
+  "Footer.dc.html",
+  "EventCard.dc.html",
+  "CreateAccount.dc.html",
+  "ResetPassword.dc.html",
+  "Tickets.dc.html",
+  "Ticket.dc.html",
+  "Saved.dc.html",
+  "Account.dc.html",
+  "Rsvp.dc.html",
+  "Tables.dc.html",
+  "Donation.dc.html",
+  "Checkout.dc.html",
+  "Confirmation.dc.html",
+  "BecomeHost.dc.html",
+  "Dashboard.dc.html",
+  "CreateEvent.dc.html",
+  "Attendees.dc.html",
+  "CheckIn.dc.html",
+  "Payouts.dc.html",
+  "HostNav.dc.html",
+  "Mobile-Hosts.dc.html",
+  "Mobile-Host.dc.html",
+  "Mobile-ForChurches.dc.html",
+  "Mobile-SignIn.dc.html",
+  "Mobile-CreateAccount.dc.html",
+  "Mobile-ResetPassword.dc.html",
+  "Mobile-Tickets.dc.html",
+  "Mobile-Ticket.dc.html",
+  "Mobile-Saved.dc.html",
+  "Mobile-Account.dc.html",
+  "Mobile-Rsvp.dc.html",
+  "Mobile-Tables.dc.html",
+  "Mobile-Donation.dc.html",
+  "Mobile-Checkout.dc.html",
+  "Mobile-Confirmation.dc.html",
+  "Mobile-BecomeHost.dc.html",
+  "Mobile-Dashboard.dc.html",
+  "Mobile-CreateEvent.dc.html",
+  "Mobile-Attendees.dc.html",
+  "Mobile-CheckIn.dc.html",
+  "Mobile-Payouts.dc.html",
+  "Light-Main.dc.html",
+  "Light-Discover.dc.html",
+  "Light-Event.dc.html",
+  "Light-Hosts.dc.html",
+  "Light-Host.dc.html",
+  "Light-ForChurches.dc.html",
+  "Light-SignIn.dc.html",
+  "Light-CreateAccount.dc.html",
+  "Light-ResetPassword.dc.html",
+  "Light-Tickets.dc.html",
+  "Light-Ticket.dc.html",
+  "Light-Saved.dc.html",
+  "Light-Account.dc.html",
+  "Light-Mobile-Home.dc.html",
+  "Light-Mobile-Discover.dc.html",
+  "Light-Mobile-Event.dc.html",
+  "Light-Mobile-Hosts.dc.html",
+  "Light-Mobile-Host.dc.html",
+  "Light-Mobile-ForChurches.dc.html",
+  "Light-Mobile-SignIn.dc.html",
+  "Light-Mobile-CreateAccount.dc.html",
+  "Light-Mobile-ResetPassword.dc.html",
+  "Light-Mobile-Tickets.dc.html",
+  "Light-Mobile-Ticket.dc.html",
+  "Light-Mobile-Saved.dc.html",
+  "Light-Mobile-Account.dc.html",
+  "Light-Mobile-Rsvp.dc.html",
+  "Light-Mobile-Tables.dc.html",
+  "Light-Mobile-Donation.dc.html",
+  "Light-Mobile-Checkout.dc.html",
+  "Light-Mobile-Confirmation.dc.html",
+  "Light-Mobile-BecomeHost.dc.html",
+  "Light-Mobile-Dashboard.dc.html",
+  "Light-Mobile-CreateEvent.dc.html",
+  "Light-Mobile-Attendees.dc.html",
+  "Light-Mobile-CheckIn.dc.html",
+  "Light-Mobile-Payouts.dc.html",
+  "Light-Rsvp.dc.html",
+  "Light-Tables.dc.html",
+  "Light-Donation.dc.html",
+  "Light-Checkout.dc.html",
+  "Light-Confirmation.dc.html",
+  "Light-BecomeHost.dc.html",
+  "Light-Dashboard.dc.html",
+  "Light-CreateEvent.dc.html",
+  "Light-Attendees.dc.html",
+  "Light-CheckIn.dc.html",
+  "Light-Payouts.dc.html"
+ ],
+ "notes": {
+  "titleDesktop": {
+   "x": 0,
+   "y": -300,
+   "text": "Ekklesia Events \u2014 browse",
+   "kind": "title1",
+   "maxW": 9040,
+   "page": "desktop"
+  },
+  "titleMobile": {
+   "x": 0,
+   "y": -300,
+   "text": "Mobile \u00b7 browse",
+   "kind": "title1",
+   "maxW": 2740,
+   "page": "mobile"
+  },
+  "titleComponents": {
+   "x": 0,
+   "y": -300,
+   "text": "Shared components",
+   "kind": "title1",
+   "maxW": 1440,
+   "page": "components"
+  },
+  "titleAccount": {
+   "x": 0,
+   "y": -300,
+   "text": "Account, sign-in & tickets",
+   "kind": "title1",
+   "maxW": 10560,
+   "page": "account"
+  },
+  "titleCheckout": {
+   "x": 0,
+   "y": -300,
+   "text": "Booking & checkout",
+   "kind": "title1",
+   "maxW": 7520,
+   "page": "checkout"
+  },
+  "titleHost": {
+   "x": 0,
+   "y": -300,
+   "text": "Host dashboard",
+   "kind": "title1",
+   "maxW": 9040,
+   "page": "host"
+  },
+  "mAccount": {
+   "x": 2980,
+   "y": -300,
+   "text": "Mobile \u00b7 account & tickets",
+   "kind": "title1",
+   "maxW": 3210,
+   "page": "mobile"
+  },
+  "mCheckout": {
+   "x": 6430,
+   "y": -300,
+   "text": "Mobile \u00b7 booking & checkout",
+   "kind": "title1",
+   "maxW": 2270,
+   "page": "mobile"
+  },
+  "mHost": {
+   "x": 8940,
+   "y": -300,
+   "text": "Mobile \u00b7 host dashboard",
+   "kind": "title1",
+   "maxW": 2740,
+   "page": "mobile"
+  },
+  "light-desktop": {
+   "x": 0,
+   "y": 5820,
+   "text": "Light theme",
+   "kind": "title1",
+   "maxW": 9040,
+   "page": "desktop"
+  },
+  "light-account": {
+   "x": 0,
+   "y": 1720,
+   "text": "Light theme",
+   "kind": "title1",
+   "maxW": 10560,
+   "page": "account"
+  },
+  "light-mobile": {
+   "x": 0,
+   "y": 10820,
+   "text": "Light theme",
+   "kind": "title1",
+   "maxW": 11680,
+   "page": "mobile"
+  },
+  "light-checkout": {
+   "x": 0,
+   "y": 1520,
+   "text": "Light theme",
+   "kind": "title1",
+   "maxW": 7520,
+   "page": "checkout"
+  },
+  "light-host": {
+   "x": 0,
+   "y": 2020,
+   "text": "Light theme",
+   "kind": "title1",
+   "maxW": 9040,
+   "page": "host"
+  }
+ },
+ "designSystems": []
+}

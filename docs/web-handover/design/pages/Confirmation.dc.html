@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Booking confirmation</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ln{display:flex;justify-content:space-between;gap:16px;font-size:15px}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="none" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main style="flex: 1; position: relative; overflow: hidden; padding: 64px 20px 64px;">
+    <div aria-hidden="true" style="position: absolute; left: 50%; top: -160px; width: 820px; height: 820px; margin-left: -410px; border-radius: 50%; background: radial-gradient(circle, rgba(var(--accent-rgb), 0.16), transparent 65%); filter: blur(30px);"></div>
+    <div style="position: relative; max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center;">
+
+      <sc-if value="{{ ok }}" hint-placeholder-val="{{ true }}">
+        <span style="display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; border-radius: 50%; border: 1px solid var(--line-3); background: var(--soft); color: var(--accent);">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+        </span>
+        <h1 class="display" style="font-size: 56px;">You’re going</h1>
+        <p class="lead">{{ okLine }}</p>
+      </sc-if>
+      <sc-if value="{{ failed }}" hint-placeholder-val="{{ false }}">
+        <span style="display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; border-radius: 50%; border: 1px solid var(--line-3); background: var(--soft); color: var(--accent);">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </span>
+        <span class="eyebrow" style="color: var(--accent);">Payment</span>
+        <h1 class="display" style="font-size: 48px;">Your card was declined</h1>
+        <p class="lead">Your bank turned down the payment. Nothing has been charged and your tickets are still held.</p>
+        <p style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--accent);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent);"></span>Tickets held for 7:12</p>
+      </sc-if>
+
+      <!-- Ticket summary -->
+      <div style="width: 100%; margin-top: 16px; padding: 24px; border-radius: 24px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: var(--shadow); text-align: left;">
+        <div style="display: flex; gap: 20px; align-items: center;">
+          <span style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 72px; height: 72px; flex: none; border-radius: 16px; border: 1px solid var(--line-2); background: var(--raised);">
+            <span class="eyebrow" style="font-size: 10px; color: var(--accent);">{{ month }}</span>
+            <span style="font-size: 26px; line-height: 1; color: var(--strong);">{{ day }}</span>
+          </span>
+          <span style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 20px; color: var(--strong);">{{ title }}</span>
+            <span style="font-size: 14px; color: var(--muted);">{{ meta }}</span>
+          </span>
+        </div>
+        <div class="rule-x" style="margin: 20px 0;"></div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="ln"><span style="color: var(--ink-2);">Tickets</span><span>{{ tickets }}</span></div>
+          <div class="ln"><span style="color: var(--ink-2);">{{ paidLabel }}</span><span>{{ paid }}</span></div>
+          <sc-if value="{{ ok }}" hint-placeholder-val="{{ true }}"><div class="ln"><span style="color: var(--ink-2);">Reference</span><span class="mono">{{ ref }}</span></div></sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ ok }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 8px;">
+          <a href="Ticket.dc.html" class="btn btn-primary btn-lg">View tickets</a>
+          <a href="#" class="btn btn-outline btn-lg">Add to calendar</a>
+          <a href="#" class="btn btn-outline btn-lg">Share with a friend</a>
+        </div>
+        <a href="Discover.dc.html" style="margin-top: 8px; font-size: 14px; color: var(--ink-2);">Back to Discover</a>
+      </sc-if>
+      <sc-if value="{{ failed }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 8px;">
+          <a href="Checkout.dc.html" class="btn btn-primary btn-lg">Try another method</a>
+          <a href="Checkout.dc.html" class="btn btn-outline btn-lg">Use a different card</a>
+        </div>
+        <p style="margin-top: 8px; font-size: 14px; color: var(--ink-2);">Still stuck? <a href="Host.dc.html" style="color: var(--accent);">Contact the host</a></p>
+      </sc-if>
+    </div>
+  </main>
+
+  <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"outcome":{"editor":"enum","options":["paid","rsvp","declined"],"default":"paid"},"$preview":{"width":1440,"height":1200}}'>
+var STATES = {
+  paid: { title: 'Charity Gala Dinner', month: 'DEC', day: '5', meta: 'Sat 5 Dec · 19:00 · The Bromley Court Hotel', tickets: '2 × Single seat', paidLabel: 'Paid', paid: '£143.90', ref: 'EK-GALA7XQ2M', okLine: 'Two seats at Charity Gala Dinner. We’ve emailed your receipt and tickets.' },
+  rsvp: { title: 'City Outreach Day', month: 'DEC', day: '12', meta: 'Sat 12 Dec · 09:00 · Grace Hall, London', tickets: '2 × Volunteer', paidLabel: 'Price', paid: 'Free', ref: 'EK-CEMUDPNWLFM', okLine: 'Two places at City Outreach Day. Your QR tickets are in your inbox.' },
+  declined: { title: 'Charity Gala Dinner', month: 'DEC', day: '5', meta: 'Sat 5 Dec · 19:00 · The Bromley Court Hotel', tickets: '2 × Single seat', paidLabel: 'To pay', paid: '£143.90', ref: '', okLine: '' }
+};
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var outcome = this.props.outcome || 'paid';
+    var d = STATES[outcome] || STATES.paid;
+    return Object.assign({}, d, {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      ok: outcome !== 'declined', failed: outcome === 'declined'
+    });
+  }
+}
+</script>
+</body>
+</html>

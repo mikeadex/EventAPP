@@ -68,6 +68,8 @@ const PATHS = {
   dashboard: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
   flag: 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7',
   house: 'M3 21h18M5 21V10l7-6 7 6v11M10 21v-5h4v5',
+  lock: 'M5 11h14v11H5zM8 11V7a4 4 0 0 1 8 0v4',
+  bank: 'M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3',
 } as const;
 
 export type IconName = keyof typeof PATHS;

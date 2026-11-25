@@ -9,6 +9,7 @@ import {
   Module,
   Param,
   Post,
+  Query,
   RawBodyRequest,
   Req,
   UseGuards,
@@ -86,6 +87,21 @@ class ConnectController {
     return this.connect.status(orgId);
   }
 
+  /** Balance and past payouts, straight from the connected Stripe account. */
+  @Get('payouts')
+  @RequirePermissions(Permission.PAYOUT_VIEW)
+  payouts(@Param('orgId') orgId: string) {
+    return this.connect.payouts(orgId);
+  }
+
+  /** Ticket sales over the last 30, 90 or 365 days (`?days=`). */
+  @Get('summary')
+  @RequirePermissions(Permission.PAYOUT_VIEW)
+  summary(@Param('orgId') orgId: string, @Query('days') days?: string) {
+    const n = Number(days);
+    return this.connect.salesSummary(orgId, [30, 90, 365].includes(n) ? n : 30);
+  }
+
   @Post('onboard')
   @RequirePermissions(Permission.PAYOUT_MANAGE)
   onboard(@Param('orgId') orgId: string, @Req() req: AuthedRequest) {
@@ -94,7 +110,7 @@ class ConnectController {
     // So onboarding returns to the web app, which is also the right place for
     // a host who started on a desktop browser.
     const web = process.env.WEB_URL ?? 'http://localhost:3000';
-    const returnTo = `${web}/organizer/${orgId}/payouts`;
+    const returnTo = `${web}/organizer/organizations/${orgId}/payouts`;
     return this.connect.startOnboarding(orgId, req.user.id, returnTo);
   }
 }

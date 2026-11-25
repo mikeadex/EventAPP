@@ -45,6 +45,11 @@ export function money(minor: number, currency: string | null = 'GBP') {
   }).format(major);
 }
 
+/** A sum of money as charged: always two decimals, never "Free" ("£0.00", "£92.70"). */
+export function amount(minor: number, currency: string | null = 'GBP') {
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency ?? 'GBP' }).format(minor / 100);
+}
+
 /** Card price label from the search API's flattened price fields. */
 export function cardPrice(e: { isFree: boolean; minPriceMinor: number; currency: string | null }) {
   if (e.isFree) return 'Free';

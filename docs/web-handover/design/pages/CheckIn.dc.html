@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Ekklesia Events — Check-in</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="../ekklesia.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Alata&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.shell{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.hostside{flex:1 1 240px;max-width:260px}
+@media (max-width:760px){.hostside{flex-basis:100%;max-width:none}.shell{gap:24px}}
+.ci{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:1180px){.ci{grid-template-columns:minmax(0,1fr)}}
+.corner{position:absolute;width:44px;height:44px;border-color:#f98e80;border-style:solid}
+@keyframes scan{0%{top:18%}50%{top:78%}100%{top:18%}}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="display: flex; flex-direction: column;">
+  <dc-import name="Header" theme="{{ theme }}" active="dashboard" signed-in="{{ true }}" on-toggle="{{ toggleTheme }}" hint-size="100%,72px"></dc-import>
+
+  <main class="wrap shell" style="flex: 1; padding-top: 40px;">
+    <div class="hostside">
+      <dc-import name="HostNav" active="checkin" theme="{{ theme }}" hint-size="100%,560px"></dc-import>
+    </div>
+
+    <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+      <div class="row-between">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <span class="eyebrow" style="color: var(--accent);">Check-in</span>
+          <h1 class="h1" style="font-size: 40px;">City Outreach Day</h1>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; min-width: 220px;">
+          <span style="display: flex; justify-content: space-between; font-size: 14px;"><span style="color: var(--ink-2);">Checked in</span><span style="color: var(--strong);">{{ inCount }} / 124</span></span>
+          <span style="height: 6px; border-radius: 6px; background: var(--line-2);"><span style="display: block; width: {{ inPct }}; height: 100%; border-radius: 6px; background: var(--accent);"></span></span>
+        </div>
+      </div>
+
+      <div class="ci">
+        <!-- Camera -->
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div aria-label="Camera viewfinder" style="position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 24px; border: 1px solid var(--line-2); background: radial-gradient(80% 80% at 50% 40%, #2a1f21 0%, #0d0a0b 100%);">
+            <span class="corner" style="left: 22%; top: 14%; border-width: 3px 0 0 3px; border-radius: 14px 0 0 0;"></span>
+            <span class="corner" style="right: 22%; top: 14%; border-width: 3px 3px 0 0; border-radius: 0 14px 0 0;"></span>
+            <span class="corner" style="left: 22%; bottom: 14%; border-width: 0 0 3px 3px; border-radius: 0 0 0 14px;"></span>
+            <span class="corner" style="right: 22%; bottom: 14%; border-width: 0 3px 3px 0; border-radius: 0 0 14px 0;"></span>
+            <span aria-hidden="true" style="position: absolute; left: 24%; right: 24%; height: 2px; background: linear-gradient(90deg, transparent, #f98e80, transparent); box-shadow: 0 0 18px #f98e80; animation: scan 2.6s ease-in-out infinite;"></span>
+            <span style="position: absolute; left: 0; right: 0; bottom: 16px; text-align: center; font-size: 14px; color: #c3b8ba;">Point the camera at a ticket QR code</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button type="button" class="btn btn-outline btn-sm" onClick="{{ simValid }}">Simulate valid scan</button>
+            <button type="button" class="btn btn-outline btn-sm" onClick="{{ simUsed }}">Simulate used ticket</button>
+            <button type="button" class="btn btn-outline btn-sm" onClick="{{ simBad }}">Simulate wrong event</button>
+          </div>
+        </div>
+
+        <!-- Result + manual -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div aria-live="assertive" style="display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 24px; border: 1px solid {{ r.border }}; background: {{ r.bg }};">
+            <span style="display: flex; align-items: center; gap: 12px;">
+              <span style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; border-radius: 50%; background: {{ r.iconBg }}; color: {{ r.iconColor }}; font-size: 20px;">{{ r.icon }}</span>
+              <span class="eyebrow" style="color: {{ r.labelColor }};">{{ r.label }}</span>
+            </span>
+            <span style="font-size: 26px; color: var(--strong);">{{ r.name }}</span>
+            <span style="font-size: 15px; color: var(--ink-2);">{{ r.detail }}</span>
+            <span class="mono" style="font-size: 13px; color: var(--muted);">{{ r.code }}</span>
+          </div>
+
+          <form onSubmit="{{ manual }}" class="card" style="display: flex; flex-direction: column; gap: 12px; padding: 20px;">
+            <label style="display: flex; flex-direction: column; gap: 8px;">
+              <span style="font-size: 14px;">Enter code</span>
+              <span class="field" style="height: 48px; border-radius: 14px; border-color: var(--line-2); background: var(--raised);"><input class="mono" placeholder="EK-XXXXXXX" style="letter-spacing: 0.1em;"></span>
+            </label>
+            <button type="submit" class="btn btn-primary">Check in</button>
+          </form>
+
+          <section class="card" style="padding: 20px;" aria-labelledby="h-recent">
+            <div class="row-between" style="align-items: center;">
+              <h2 id="h-recent" style="font-size: 17px; font-weight: 400; color: var(--strong);">Recent scans</h2>
+              <a href="Attendees.dc.html" style="font-size: 14px; color: var(--accent);">Full list</a>
+            </div>
+            <ul style="display: flex; flex-direction: column; margin-top: 8px;">
+              <sc-for list="{{ recent }}" as="x" hint-placeholder-count="4">
+                <li style="display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14px;">
+                  <span>{{ x.name }} <span style="color: var(--muted);">{{ x.qty }}</span></span>
+                  <span style="color: {{ x.color }};">{{ x.status }}</span>
+                </li>
+              </sc-for>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div style="margin-top: 96px;">
+    <dc-import name="Footer" theme="{{ theme }}" hint-size="100%,420px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1100}}'>
+var RESULTS = {
+  valid: { label: 'Checked in', icon: '✓', name: 'Sarah Okonkwo', detail: '×1 Volunteer · checked in 09:41', code: 'EK-9KLP2ZQ', ok: true },
+  used: { label: 'Already used', icon: '!', name: 'David Adeyemi', detail: 'This ticket was scanned at 08:52 by Door 1', code: 'EK-6BB5LAG', ok: false },
+  bad: { label: 'Not for this event', icon: '×', name: 'Alpha Course ticket', detail: 'Ask them to show their ticket for City Outreach Day', code: 'EK-6BB5LAGSL3G', ok: false }
+};
+class Component extends DCLogic {
+  renderVals() {
+    var s = this.state || {};
+    var theme = s.theme || this.props.theme || 'dark';
+    var kind = s.kind || 'valid';
+    var count = s.count || 86;
+    var d = RESULTS[kind];
+    var recent = (s.recent || [
+      { name: 'Sarah Okonkwo', qty: '×1', status: 'In · 09:41', color: 'var(--accent)' },
+      { name: 'Daniel Owusu', qty: '×1', status: 'In · 09:10', color: 'var(--accent)' },
+      { name: 'David Adeyemi', qty: '×2', status: 'Already used', color: 'var(--muted)' },
+      { name: 'Grace Mensah', qty: '×2', status: 'In · 09:03', color: 'var(--accent)' }
+    ]);
+    var scan = (k) => () => {
+      var r = RESULTS[k];
+      this.setState({
+        kind: k, count: k === 'valid' ? count + 1 : count,
+        recent: [{ name: r.name, qty: k === 'bad' ? '' : '×1', status: k === 'valid' ? 'In · now' : r.label, color: k === 'valid' ? 'var(--accent)' : 'var(--muted)' }].concat(recent).slice(0, 5)
+      });
+    };
+    return {
+      theme: theme,
+      rootClass: 'ek t-' + theme,
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'light' : 'dark' }),
+      inCount: count, inPct: Math.round(count / 124 * 100) + '%',
+      r: Object.assign({}, d, {
+        border: d.ok ? 'var(--line-3)' : 'var(--line-2)',
+        bg: d.ok ? 'var(--softer)' : 'var(--surface)',
+        iconBg: d.ok ? 'var(--accent)' : 'var(--surface-2)',
+        iconColor: d.ok ? 'var(--bg)' : 'var(--accent)',
+        labelColor: d.ok ? 'var(--accent)' : 'var(--ink-2)'
+      }),
+      simValid: scan('valid'), simUsed: scan('used'), simBad: scan('bad'),
+      manual: (ev) => { ev.preventDefault(); scan('valid')(); },
+      recent: recent
+    };
+  }
+}
+</script>
+</body>
+</html>
