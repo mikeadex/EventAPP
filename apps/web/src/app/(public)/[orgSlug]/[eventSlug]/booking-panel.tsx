@@ -1,19 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useSession } from '@/lib/auth-client';
+import { ApiError } from '@/lib/api-client';
 import { Stepper } from '@/components/controls';
-import { money } from '@/lib/format';
+import { amount, money } from '@/lib/format';
+import { availableOf, createOrder, PLATFORM_FEE_BPS, previewFee } from '@/lib/payments';
 import type { TicketTypeData } from '@/lib/types';
+import { signInHref } from '@/lib/url';
 
 const MAX_PER_BOOKING = 10;
 
 /**
- * The booking panel. Free events book through RSVP; paid tiers are shown with
- * their prices but can't be bought on the web yet — the API only issues free
- * RSVPs (paid checkout returns 400), so offering a "Continue · £X" button
- * would lead straight to an error.
+ * The booking panel. Free events book through RSVP. Paid tiers get a stepper
+ * each and "Continue" opens an order (`POST /v1/orders`, which holds the
+ * tickets and quotes the real total) and goes to checkout. The fee shown
+ * before that is a preview of the same 3% the server adds.
  */
 export function BookingPanel({
   event,
@@ -30,9 +34,49 @@ export function BookingPanel({
   const paid = event.tiers.some((t) => t.priceMinor > 0);
   const cap = Math.min(MAX_PER_BOOKING, event.remaining ?? MAX_PER_BOOKING);
   const [qty, setQty] = useState(cap > 0 ? 1 : 0);
-  const { data: session } = useSession();
+  const [picked, setPicked] = useState<Record<string, number>>({});
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { data: session, isPending: sessionPending } = useSession();
+  const router = useRouter();
+  // The session is only known in the browser; the first client render must
+  // match the server's (signed-out) markup or React discards the panel.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const signedIn = mounted && Boolean(session?.user);
   const soldOut = event.remaining === 0;
   const closed = event.status === 'CANCELLED' || event.ended;
+
+  // A paid event sells only its priced types: the orders API refuses a free
+  // one in a paid order, and RSVP refuses the event altogether.
+  const paidTiers = event.tiers.filter((t) => t.priceMinor > 0);
+  const tierCap = (t: TicketTypeData) => Math.min(availableOf(t), MAX_PER_BOOKING, event.remaining ?? MAX_PER_BOOKING);
+  const items = paidTiers.map((t) => ({ t, qty: picked[t.id] ?? 0 })).filter((x) => x.qty > 0);
+  const count = items.reduce((n, x) => n + x.qty, 0);
+  const subtotal = items.reduce((n, x) => n + x.qty * x.t.priceMinor, 0);
+  const fee = previewFee(subtotal);
+  const currency = paidTiers[0]?.currency ?? 'GBP';
+  const anyLeft = paidTiers.some((t) => tierCap(t) > 0);
+
+  async function checkout() {
+    if (count === 0 || pending) return;
+    if (!session?.user) {
+      router.push(signInHref(`${event.href}#book`) as never);
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const quote = await createOrder(
+        event.id,
+        items.map((x) => ({ ticketTypeId: x.t.id, quantity: x.qty })),
+      );
+      router.push(`/checkout/${quote.orderId}` as never);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'We couldn’t start your order. Please try again.');
+      setPending(false);
+    }
+  }
 
   if (closed) {
     return (
@@ -64,16 +108,34 @@ export function BookingPanel({
 
       <ul className="mt-5 flex flex-col gap-3">
         {paid ? (
-          event.tiers.map((t) => {
+          paidTiers.map((t) => {
             const left = t.quantity - t.sold;
+            const max = tierCap(t);
+            const n = picked[t.id] ?? 0;
             return (
-              <li key={t.id} className="flex items-center gap-4 rounded-2xl border border-line p-4">
+              <li
+                key={t.id}
+                className={`flex items-center gap-4 rounded-2xl border p-4 ${n > 0 ? 'border-line-3 bg-softer' : 'border-line'}`}
+              >
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="text-[16px]">{t.name}</span>
                   {t.description && <span className="text-[13px] text-muted">{t.description}</span>}
                   <span className="text-[15px] text-accent">{money(t.priceMinor, t.currency)}</span>
+                  {max <= 0 ? (
+                    <span className="text-[12px] text-faint">Sold out</span>
+                  ) : left <= 10 ? (
+                    <span className="text-[12px] text-faint">Only {left} left</span>
+                  ) : null}
                 </div>
-                <span className="text-[13px] text-faint">{left <= 0 ? 'Sold out' : left <= 10 ? `Only ${left} left` : ''}</span>
+                <Stepper
+                  value={n}
+                  min={0}
+                  max={max}
+                  onChange={(v) => setPicked((p) => ({ ...p, [t.id]: v }))}
+                  label={`${t.name} quantity`}
+                  decLabel={`Remove one ${t.name}`}
+                  incLabel={`Add one ${t.name}`}
+                />
               </li>
             );
           })
@@ -108,11 +170,41 @@ export function BookingPanel({
 
       {paid ? (
         <>
-          {/* TODO(confirm): online payments (docs/04 #3). The API has no
-              checkout yet, so paid events can't be booked on the web. */}
-          <span className="btn btn-lg btn-muted w-full">Tickets on sale soon</span>
+          <dl className="flex flex-col gap-2 text-[15px]" aria-live="polite">
+            <div className="flex items-center justify-between">
+              <dt className="text-ink-2">{count === 1 ? '1 ticket' : `${count} tickets`}</dt>
+              <dd>{amount(subtotal, currency)}</dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-ink-2">Booking fee ({PLATFORM_FEE_BPS / 100}%)</dt>
+              <dd>{amount(fee, currency)}</dd>
+            </div>
+            <div className="flex items-baseline justify-between pt-1">
+              <dt className="text-ink-2">Total</dt>
+              <dd className="text-[22px] text-strong">{amount(subtotal + fee, currency)}</dd>
+            </div>
+          </dl>
+          {!anyLeft ? (
+            <span className="btn btn-lg btn-muted mt-5 w-full">Sold out</span>
+          ) : count === 0 ? (
+            <span className="btn btn-lg btn-muted mt-5 w-full">Choose a ticket</span>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary btn-lg mt-5 w-full"
+              disabled={pending || sessionPending}
+              onClick={() => void checkout()}
+            >
+              {pending ? 'Holding your tickets…' : `Continue · ${amount(subtotal + fee, currency)}`}
+            </button>
+          )}
+          {error && (
+            <p role="alert" className="error-text mt-3 text-center">
+              {error}
+            </p>
+          )}
           <p className="mt-4 text-center text-[12px] text-faint">
-            Online payment isn’t available yet. Contact the host to book.
+            {signedIn ? 'Secure checkout with Stripe · one booking fee, no surprises' : 'Sign in to buy — it takes seconds.'}
           </p>
         </>
       ) : (
@@ -131,7 +223,7 @@ export function BookingPanel({
             </Link>
           )}
           <p className="mt-4 text-center text-[12px] text-faint">
-            {session?.user ? 'Free to book · cancel any time from Your tickets' : 'Sign in to confirm — it takes seconds.'}
+            {signedIn ? 'Free to book · cancel any time from Your tickets' : 'Sign in to confirm — it takes seconds.'}
           </p>
         </>
       )}

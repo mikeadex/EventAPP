@@ -114,6 +114,20 @@ export interface Me {
   profile: { displayName: string; city: string | null; avatarUrl: string | null } | null;
   memberships: Membership[];
   permissionsByOrg: Record<string, string[]>;
+  /** Feature flags resolved for this user (`paid_tickets`, …). Older API builds leave it out. */
+  capabilities?: Record<string, boolean>;
+}
+
+/** `Organization.payoutStatus`: where a host is with Stripe Connect. */
+export type PayoutStatus = 'NOT_STARTED' | 'ONBOARDING' | 'RESTRICTED' | 'ENABLED' | 'DISABLED';
+
+/** GET /v1/organizations/:orgId/connect/status */
+export interface ConnectStatus {
+  status: PayoutStatus;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  requirementsDue: string[];
+  country: string;
 }
 
 export interface Ticket {

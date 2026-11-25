@@ -94,7 +94,7 @@ class ConnectController {
     // So onboarding returns to the web app, which is also the right place for
     // a host who started on a desktop browser.
     const web = process.env.WEB_URL ?? 'http://localhost:3000';
-    const returnTo = `${web}/organizer/${orgId}/payouts`;
+    const returnTo = `${web}/organizer/organizations/${orgId}/payouts`;
     return this.connect.startOnboarding(orgId, req.user.id, returnTo);
   }
 }

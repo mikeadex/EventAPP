@@ -9,16 +9,24 @@ import {
   EventPreview,
   ReviewList,
   TicketKind,
+  TierRows,
   VisibilityChips,
   WhenWhereFields,
   draftToPayload,
   emptyDraft,
+  newTier,
+  tierToPayload,
+  tiersLabel,
   validateDraft,
+  validateTiers,
   type EventDraft,
+  type TicketKindValue,
+  type TierDraft,
 } from '@/components/host/event-form';
 import { StepTabs } from '@/components/host/steps';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useMe } from '@/lib/use-api';
+import { usePaidTicketsGate } from '@/lib/use-payouts';
 
 const STEPS = ['The basics', 'Tickets', 'Review & publish'];
 
@@ -35,8 +43,12 @@ export default function NewEventPage() {
   const me = useMe();
   const host = me.data?.memberships.find((m) => m.organizationId === orgId)?.name ?? 'Your organisation';
 
+  const gate = usePaidTicketsGate(orgId);
+
   const [step, setStep] = useState(0);
   const [d, setD] = useState<EventDraft>(() => emptyDraft());
+  const [kind, setKind] = useState<TicketKindValue>('free');
+  const [tiers, setTiers] = useState<TierDraft[]>(() => [newTier()]);
   const [visibility, setVisibility] = useState<'public' | 'unlisted'>('public');
   const [showErrors, setShowErrors] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +56,13 @@ export default function NewEventPage() {
 
   const set = <K extends keyof EventDraft>(k: K, v: EventDraft[K]) => setD((p) => ({ ...p, [k]: v }));
   const errors = validateDraft(d);
-  const stepErrors = (i: number) => STEP_FIELDS[i]!.filter((f) => errors[f]);
+  const tierErrors = kind === 'paid' ? validateTiers(tiers) : {};
+  const stepErrors = (i: number) => [
+    ...STEP_FIELDS[i]!.filter((f) => errors[f]),
+    ...(i === 1 ? Object.keys(tierErrors) : []),
+  ];
   const visibleErrors = showErrors ? errors : {};
+  const paidTiers = kind === 'paid' ? tiers : [];
 
   function go(i: number) {
     setStep(i);
@@ -72,12 +89,22 @@ export default function NewEventPage() {
     setPending(publish ? 'publish' : 'draft');
     setError(null);
     try {
-      // No ticket types: the API takes free RSVPs against a default place
-      // type it creates on the first booking.
+      // A free event needs no ticket types: the API takes RSVPs against a
+      // default place type it creates on the first booking. A paid one gets
+      // its priced types before it's published, so it's never live with
+      // nothing to buy.
       const created = await apiClient<{ id: string }>(`/v1/organizations/${orgId}/events`, {
         method: 'POST',
         body: { ...draftToPayload(d, false), visibility },
       });
+      for (const t of paidTiers) {
+        try {
+          await apiClient(`/v1/events/${created.id}/ticket-types`, { method: 'POST', body: tierToPayload(t) });
+        } catch (err) {
+          router.replace(`/organizer/organizations/${orgId}/events/${created.id}/edit?publishError=1` as never);
+          throw err;
+        }
+      }
       if (publish) {
         try {
           await apiClient(`/v1/events/${created.id}/publish`, { method: 'POST' });
@@ -122,14 +149,20 @@ export default function NewEventPage() {
           )}
           {step === 1 && (
             <>
-              <TicketKind />
+              <TicketKind
+                value={kind}
+                onChange={setKind}
+                gate={gate}
+                payoutsHref={`/organizer/organizations/${orgId}/payouts`}
+              />
+              {kind === 'paid' && <TierRows tiers={tiers} onChange={setTiers} errors={showErrors ? tierErrors : {}} />}
               <CapacityField d={d} set={set} errors={visibleErrors} />
             </>
           )}
           {step === 2 && (
             <>
               <h2 className="text-[22px] text-strong">Ready to publish?</h2>
-              <ReviewList d={d} />
+              <ReviewList d={d} tiers={paidTiers} />
               <VisibilityChips value={visibility} onChange={setVisibility} />
             </>
           )}
@@ -163,7 +196,7 @@ export default function NewEventPage() {
           </div>
         </form>
         <aside className="xl:sticky xl:top-24">
-          <EventPreview d={d} host={host} />
+          <EventPreview d={d} host={host} price={tiersLabel(paidTiers)} />
         </aside>
       </div>
     </div>
