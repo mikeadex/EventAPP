@@ -64,7 +64,7 @@ function fakeDb(
   initial: Row | null,
   opts: { staleReads?: boolean; sessions?: SessionRow[] } = {},
 ) {
-  let row = initial ? { ...initial } : null;
+  const row = initial ? { ...initial } : null;
   let sessions = [...(opts.sessions ?? [])];
   const snapshot = initial ? { ...initial } : null;
   const matches = (w: Where) => {
