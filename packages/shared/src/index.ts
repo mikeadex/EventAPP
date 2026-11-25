@@ -6,3 +6,4 @@ export * from './slug.js';
 export * from './types.js';
 export * from './video-embed.js';
 export * from './content-filter.js';
+export * from './recurrence.js';

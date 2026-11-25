@@ -17,6 +17,7 @@ import { showToast } from '@/components/toast';
 import {
   EventForm,
   emptyEventForm,
+  formRepeat,
   toEventBody,
   validateEventForm,
   type EventFormValues,
@@ -40,10 +41,20 @@ export default function NewEventScreen() {
         method: 'POST',
         body: toEventBody(form, 'create'),
       });
+      const repeat = formRepeat(form);
       if (publish) {
-        await api(`/v1/events/${created.id}/publish`, { method: 'POST', body: {} });
+        // A repeating event was saved as one draft per date; publish them all.
+        await api(`/v1/events/${created.id}/publish`, {
+          method: 'POST',
+          body: { applyToSeries: repeat !== undefined },
+        });
       }
-      showToast(publish ? 'Event published' : 'Draft saved', 'checkmark-circle');
+      showToast(
+        publish
+          ? repeat ? `${repeat.count} dates published` : 'Event published'
+          : repeat ? `${repeat.count} drafts saved` : 'Draft saved',
+        'checkmark-circle',
+      );
       // Replace so the back button returns to the dashboard rather than a
       // half-filled form for an event that now exists.
       router.replace(`/organizer/event/${created.id}?orgId=${orgId}`);
@@ -75,7 +86,7 @@ export default function NewEventScreen() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        <EventForm value={form} onChange={setForm} disabled={pending} />
+        <EventForm value={form} onChange={setForm} disabled={pending} mode="create" />
 
         <Pressable
           style={[styles.primaryBtn, pending && { opacity: 0.6 }]}

@@ -204,6 +204,7 @@ model Organization {
 
   memberships    OrganizationMembership[]
   events         Event[]
+  eventSeries    EventSeries[]
   donations      Donation[]
   payouts        Payout[]
   featureFlags   OrganizationFeatureFlag[]
@@ -339,6 +340,12 @@ model Event {
   endsAt     DateTime
   timezone   String
 
+  // Set when the event is one date of a repeating series. Each occurrence is
+  // an ordinary event — this only ties the dates together for "other dates"
+  // links and for cancelling the rest of a run at once.
+  seriesId String?
+  series   EventSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+
   isOnline      Boolean @default(false)
   onlineUrl     String?
   venueId       String?
@@ -366,6 +373,38 @@ model Event {
   @@index([category, startsAt])
   @@index([organizationId])
   @@index([deletedAt])
+  @@index([seriesId])
+}
+
+// A repeating run of events: a Sunday service, a monthly prayer night.
+//
+// The occurrences are materialised up front as plain Event rows (one per
+// date), so nothing downstream — search, tickets, check-in — needs to know
+// about recurrence. The series records how the dates were generated and keeps
+// them findable from one another. Monthly means the same day of the month,
+// clamped to the last day of shorter months.
+model EventSeries {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  rule     SeriesRule
+  interval Int        @default(1)
+  // How many occurrences were generated, when the run was by count.
+  count    Int?
+  // The last date the run covers, when it was by end date.
+  until    DateTime?
+
+  createdAt DateTime @default(now())
+
+  events Event[]
+
+  @@index([organizationId])
+}
+
+enum SeriesRule {
+  WEEKLY
+  MONTHLY
 }
 
 enum EventStatus {

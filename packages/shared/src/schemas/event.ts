@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { SUPPORTED_CURRENCIES } from '../types.js';
 import { httpUrl } from './url.js';
+import { REPEAT_MAX_COUNT, REPEAT_MIN_COUNT } from '../recurrence.js';
 
 export const EventStatus = z.enum([
   'draft',
@@ -53,6 +54,17 @@ export const VenueInput = z.object({
   longitude: z.number().min(-180).max(180).optional(),
 });
 
+/**
+ * Make the event repeat: `count` dates in all, one every week or month from
+ * the first. Each becomes its own event, so the cap keeps a slip of the finger
+ * from creating a year of Tuesdays twice over.
+ */
+export const RepeatInput = z.object({
+  every: z.enum(['week', 'month']),
+  count: z.number().int().min(REPEAT_MIN_COUNT).max(REPEAT_MAX_COUNT),
+});
+export type RepeatInputType = z.infer<typeof RepeatInput>;
+
 export const CreateEventSchema = z
   .object({
     title: z.string().min(3).max(140),
@@ -69,6 +81,7 @@ export const CreateEventSchema = z
     capacity: z.number().int().min(1).max(1_000_000).optional(),
     coverImageUrl: z.string().url().optional(),
     ticketTypes: z.array(TicketTypeInput).max(20).default([]),
+    repeat: RepeatInput.optional(),
   })
   .refine((v) => new Date(v.endsAt) > new Date(v.startsAt), {
     message: 'endsAt must be after startsAt',

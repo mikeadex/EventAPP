@@ -52,6 +52,12 @@ class EventsController {
     return this.events.listPublicAttendees(eventId);
   }
 
+  /** The next dates of the series this event belongs to. Public: it sits on the event page. */
+  @Get('events/:eventId/series')
+  series(@Param('eventId') eventId: string) {
+    return this.events.listSeriesPublic(eventId);
+  }
+
   @Get('organizations/:orgSlug/events/:eventSlug')
   getPublic(
     @Param('orgSlug') orgSlug: string,
@@ -160,12 +166,37 @@ class EventsController {
     return this.media.remove(eventId, mediaId, req.user.id);
   }
 
+  @Get('events/:eventId/series/dates')
+  @UseGuards(OrgMembershipGuard)
+  @OrgScope('eventParam:eventId')
+  @RequirePermissions(Permission.EVENT_READ)
+  seriesDates(@Param('eventId') eventId: string) {
+    return this.events.listSeriesForOrganizer(eventId);
+  }
+
   @Post('events/:eventId/publish')
   @UseGuards(OrgMembershipGuard)
   @OrgScope('eventParam:eventId')
   @RequirePermissions(Permission.EVENT_PUBLISH)
-  publish(@Param('eventId') eventId: string, @Req() req: AuthedOrgRequest) {
-    return this.events.publish(eventId, req.user.id);
+  publish(
+    @Param('eventId') eventId: string,
+    @Req() req: AuthedOrgRequest,
+    @Body() body: { applyToSeries?: boolean } | undefined,
+  ) {
+    return this.events.publish(eventId, req.user.id, body?.applyToSeries === true);
+  }
+
+  /** Cancel this date and every later date of its series. */
+  @Post('events/:eventId/series/cancel')
+  @UseGuards(OrgMembershipGuard)
+  @OrgScope('eventParam:eventId')
+  @RequirePermissions(Permission.EVENT_CANCEL)
+  cancelSeries(
+    @Param('eventId') eventId: string,
+    @Req() req: AuthedOrgRequest,
+    @Body() body: { reason?: string } | undefined,
+  ) {
+    return this.events.cancelSeries(eventId, req.user.id, body?.reason);
   }
 
   @Post('events/:eventId/cancel')

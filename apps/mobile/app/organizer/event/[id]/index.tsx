@@ -53,6 +53,7 @@ interface EventDetail {
   attendeeCount: number;
   venue: { name: string; addressLine1: string; city: string; postalCode: string } | null;
   ticketTypes: TicketType[];
+  seriesId?: string | null;
 }
 
 function money(minor: number, currency: string) {
@@ -101,6 +102,9 @@ export default function OrganizerEventScreen() {
       // save, so an empty value here would clear a cover the organiser set
       // from the gallery screen simply by opening the editor and saving.
       coverImageUrl: e.coverImageUrl ?? null,
+      // Editing one date edits only that one; the series was set at creation.
+      repeat: 'none',
+      repeatCount: '6',
     });
   }, []);
 
@@ -271,6 +275,9 @@ export default function OrganizerEventScreen() {
 
         {cancelled ? (
           <Text style={styles.notice}>This event is cancelled and can no longer be edited.</Text>
+        ) : null}
+        {event.seriesId ? (
+          <Text style={styles.notice}>Part of a series. Changes here apply to this date only.</Text>
         ) : null}
 
         <EventForm value={form} onChange={setForm} disabled={cancelled || pending} />

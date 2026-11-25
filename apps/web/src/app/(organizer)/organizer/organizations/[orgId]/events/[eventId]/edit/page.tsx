@@ -22,7 +22,8 @@ import { Icon } from '@/components/icons';
 import { TicketTypesEditor } from '@/components/ticket-types-editor';
 import { ErrorCard, Skeleton } from '@/components/ui';
 import { apiClient, ApiError } from '@/lib/api-client';
-import type { Venue } from '@/lib/types';
+import { fmtDay, fmtTime } from '@/lib/format';
+import type { OrganizerSeriesDate, SeriesDates, Venue } from '@/lib/types';
 import { useMe } from '@/lib/use-api';
 
 interface OrganizerEvent {
@@ -42,6 +43,7 @@ interface OrganizerEvent {
   attendeeCount: number;
   coverImageUrl: string | null;
   venue: Venue | null;
+  seriesId: string | null;
 }
 
 const STEPS = ['The basics', 'Tickets', 'Review & publish'];
@@ -77,8 +79,9 @@ export default function EditEventPage() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(
     publishError ? { ok: false, text: 'Your event was saved as a draft but couldn’t be published. Check the details and try again.' } : null,
   );
-  const [pending, setPending] = useState<null | 'save' | 'publish' | 'cancel'>(null);
-  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [pending, setPending] = useState<null | 'save' | 'publish' | 'publishSeries' | 'cancel' | 'cancelSeries'>(null);
+  const [confirmCancel, setConfirmCancel] = useState<false | 'one' | 'series'>(false);
+  const [series, setSeries] = useState<SeriesDates<OrganizerSeriesDate> | null>(null);
 
   const hydrate = useCallback((e: OrganizerEvent) => {
     setEvent(e);
@@ -91,6 +94,16 @@ export default function EditEventPage() {
       .then(hydrate)
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'We couldn’t load this event.'));
   }, [eventId, hydrate]);
+
+  const seriesId = event?.seriesId ?? null;
+  useEffect(() => {
+    if (!seriesId) return;
+    // The other dates are a side panel; failing to load them is not a reason
+    // to block editing this one.
+    apiClient<SeriesDates<OrganizerSeriesDate>>(`/v1/events/${eventId}/series/dates`)
+      .then(setSeries)
+      .catch(() => setSeries(null));
+  }, [eventId, seriesId, pending]);
 
   if (loadError) return <ErrorCard message={loadError} />;
   if (!event || !d) {
@@ -136,14 +149,29 @@ export default function EditEventPage() {
     }
   }
 
-  async function transition(action: 'publish' | 'cancel') {
+  async function transition(action: 'publish' | 'publishSeries' | 'cancel' | 'cancelSeries') {
     setPending(action);
     setMsg(null);
     try {
-      await apiClient(`/v1/events/${eventId}/${action}`, { method: 'POST', body: {} });
+      const path =
+        action === 'cancelSeries' ? 'series/cancel' : action === 'publishSeries' ? 'publish' : action;
+      const result = await apiClient<{ publishedCount?: number; cancelled?: number }>(`/v1/events/${eventId}/${path}`, {
+        method: 'POST',
+        body: action === 'publishSeries' ? { applyToSeries: true } : {},
+      });
       hydrate(await apiClient<OrganizerEvent>(`/v1/events/${eventId}`));
       setConfirmCancel(false);
-      setMsg({ ok: true, text: action === 'publish' ? 'Your event is live.' : 'Event cancelled.' });
+      setMsg({
+        ok: true,
+        text:
+          action === 'publish'
+            ? 'Your event is live.'
+            : action === 'publishSeries'
+              ? `${result.publishedCount ?? ''} dates are live.`.trim()
+              : action === 'cancelSeries'
+                ? `${result.cancelled ?? ''} dates cancelled.`.trim()
+                : 'Event cancelled.',
+      });
     } catch (err) {
       setMsg({ ok: false, text: err instanceof ApiError ? err.message : 'Something went wrong.' });
     } finally {
@@ -152,6 +180,9 @@ export default function EditEventPage() {
   }
 
   const visibleErrors = showErrors ? errors : {};
+  const otherDates = series?.items.filter((o) => o.id !== eventId) ?? [];
+  const otherDrafts = otherDates.filter((o) => (o.status === 'DRAFT' || o.status === 'SCHEDULED') && new Date(o.endsAt).getTime() > Date.now()).length;
+  const laterLive = otherDates.filter((o) => o.status === 'PUBLISHED' && o.startsAt > event.startsAt).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -176,9 +207,21 @@ export default function EditEventPage() {
             Attendees
           </Link>
           {(event.status === 'DRAFT' || event.status === 'SCHEDULED') && !ended && (
-            <button type="button" className="btn btn-primary" disabled={pending !== null} onClick={() => void transition('publish')}>
-              {pending === 'publish' ? 'Publishing…' : 'Publish'}
-            </button>
+            <>
+              {otherDrafts > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={pending !== null}
+                  onClick={() => void transition('publishSeries')}
+                >
+                  {pending === 'publishSeries' ? 'Publishing…' : `Publish all ${otherDrafts + 1} dates`}
+                </button>
+              )}
+              <button type="button" className="btn btn-primary" disabled={pending !== null} onClick={() => void transition('publish')}>
+                {pending === 'publish' ? 'Publishing…' : otherDrafts > 0 ? 'Publish this date' : 'Publish'}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -192,6 +235,35 @@ export default function EditEventPage() {
       )}
       {cancelled && (
         <p className="panel p-4 text-[14px] text-body">This event is cancelled and can no longer be edited.</p>
+      )}
+      {event.seriesId && (
+        <section aria-labelledby="series-h" className="panel flex flex-col gap-3 p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="series-h" className="flex items-center gap-2 text-[16px] text-strong">
+              <Icon name="calendar" size={16} className="text-accent" /> Part of a series
+            </h2>
+            <span className="text-[13px] text-muted">
+              {series
+                ? `${series.rule === 'WEEKLY' ? 'Weekly' : 'Monthly'} · ${series.items.length} dates. Changes here apply to this date only.`
+                : 'Changes here apply to this date only.'}
+            </span>
+          </div>
+          {otherDates.length > 0 && (
+            <ol className="flex flex-wrap gap-2" aria-label="Other dates in this series">
+              {otherDates.map((o) => (
+                <li key={o.id}>
+                  <Link
+                    href={`/organizer/organizations/${orgId}/events/${o.id}/edit` as never}
+                    className={`chip ${o.status === 'CANCELLED' ? 'line-through' : ''}`}
+                    aria-label={`${fmtDay(o.startsAt, o.timezone)} at ${fmtTime(o.startsAt, o.timezone)}, ${STATUS_LABEL[o.status].toLowerCase()}`}
+                  >
+                    {fmtDay(o.startsAt, o.timezone)}
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
       )}
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -270,17 +342,33 @@ export default function EditEventPage() {
               </div>
               {confirmCancel ? (
                 <div className="flex flex-wrap gap-3">
-                  <button type="button" className="btn btn-primary" disabled={pending !== null} onClick={() => void transition('cancel')}>
-                    {pending === 'cancel' ? 'Cancelling…' : 'Yes, cancel the event'}
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={pending !== null}
+                    onClick={() => void transition(confirmCancel === 'series' ? 'cancelSeries' : 'cancel')}
+                  >
+                    {pending === 'cancel' || pending === 'cancelSeries'
+                      ? 'Cancelling…'
+                      : confirmCancel === 'series'
+                        ? `Yes, cancel ${laterLive + 1} dates`
+                        : 'Yes, cancel the event'}
                   </button>
                   <button type="button" className="btn btn-ghost" onClick={() => setConfirmCancel(false)}>
                     Keep it
                   </button>
                 </div>
               ) : (
-                <button type="button" className="btn btn-outline self-start" onClick={() => setConfirmCancel(true)}>
-                  Cancel event
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" className="btn btn-outline" onClick={() => setConfirmCancel('one')}>
+                    {event.seriesId ? 'Cancel this date' : 'Cancel event'}
+                  </button>
+                  {event.seriesId && laterLive > 0 && (
+                    <button type="button" className="btn btn-outline" onClick={() => setConfirmCancel('series')}>
+                      Cancel this and later dates
+                    </button>
+                  )}
+                </div>
               )}
             </section>
           )}
