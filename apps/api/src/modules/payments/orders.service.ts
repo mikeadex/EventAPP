@@ -346,6 +346,53 @@ export class OrdersService {
     return released;
   }
 
+  /**
+   * What the buyer actually paid, newest first.
+   *
+   * Only orders that reached money. PENDING and AWAITING_PAYMENT are carts
+   * mid-flight, EXPIRED is a reservation that lapsed, and CANCELLED never
+   * took anything — listing those under "purchases" would show people a
+   * history of things that did not happen, and an abandoned checkout would
+   * sit there looking like a debt.
+   *
+   * Refunds are joined rather than inferred from status: a partial refund
+   * leaves the order PAID, so status alone cannot tell you money came back.
+   */
+  async listForUser(userId: string, take = 50) {
+    const orders = await this.prisma.order.findMany({
+      where: { userId, status: { in: ['PAID', 'REFUNDED'] } },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(Math.max(take, 1), 100),
+      select: {
+        id: true,
+        status: true,
+        totalMinor: true,
+        platformFeeMinor: true,
+        currency: true,
+        createdAt: true,
+        event: { select: { id: true, slug: true, title: true, startsAt: true } },
+        items: { select: { quantity: true } },
+        refunds: {
+          where: { status: { not: 'failed' } },
+          select: { amountMinor: true },
+        },
+      },
+    });
+
+    return orders.map(({ items, refunds, ...order }) => {
+      const refundedMinor = refunds.reduce((sum, r) => sum + r.amountMinor, 0);
+      return {
+        ...order,
+        ticketCount: items.reduce((sum, i) => sum + i.quantity, 0),
+        refundedMinor,
+        // Spelled out rather than left to the client to work out from two
+        // numbers, so every surface says the same thing about the same order.
+        refundState:
+          refundedMinor === 0 ? 'none' : refundedMinor >= order.totalMinor ? 'full' : 'partial',
+      };
+    });
+  }
+
   async getForUser(userId: string, orderId: string) {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },

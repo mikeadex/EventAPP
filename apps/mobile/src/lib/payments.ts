@@ -99,6 +99,26 @@ export function syncOrder(orderId: string) {
   });
 }
 
+/** A row in the buyer's purchase history. */
+export interface OrderSummary {
+  id: string;
+  status: 'PAID' | 'REFUNDED';
+  totalMinor: number;
+  platformFeeMinor: number;
+  currency: string;
+  createdAt: string;
+  event: { id: string; slug: string; title: string; startsAt: string };
+  ticketCount: number;
+  refundedMinor: number;
+  /** The server decides this, so every surface says the same thing. */
+  refundState: 'none' | 'partial' | 'full';
+}
+
+/** Orders that reached money, newest first. Carts and lapsed holds are not here. */
+export function listOrders() {
+  return api<OrderSummary[]>('/v1/me/orders');
+}
+
 /**
  * Minor units to a human amount: 9270 GBP → "£92.70".
  *
@@ -107,8 +127,22 @@ export function syncOrder(orderId: string) {
  * and a silent hundred-fold error is not the way to find out.
  */
 const ZERO_DECIMAL = new Set([
-  'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA',
-  'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+  'BIF',
+  'CLP',
+  'DJF',
+  'GNF',
+  'JPY',
+  'KMF',
+  'KRW',
+  'MGA',
+  'PYG',
+  'RWF',
+  'UGX',
+  'VND',
+  'VUV',
+  'XAF',
+  'XOF',
+  'XPF',
 ]);
 
 export function formatMoney(minor: number, currency: string): string {

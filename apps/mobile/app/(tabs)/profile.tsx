@@ -131,6 +131,12 @@ export default function ProfileScreen() {
           />
           <Divider inset={0.08} opacity={0.18} style={styles.rule} />
           <ChevronRow
+            icon="receipt-outline"
+            label="Purchases"
+            onPress={() => router.push('/purchases')}
+          />
+          <Divider inset={0.08} opacity={0.18} style={styles.rule} />
+          <ChevronRow
             icon="business-outline"
             label="Browse hosts"
             onPress={() => router.push('/hosts')}

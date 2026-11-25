@@ -39,6 +39,18 @@ class OrdersController {
     return this.orders.create(req.user.id, body);
   }
 
+  /**
+   * The buyer's own purchase history.
+   *
+   * Under `me/` rather than `orders` because it is scoped to the caller and
+   * nothing else — the same reason saved events live at `me/saved-events`.
+   */
+  @Get('me/orders')
+  @UseGuards(AuthGuard)
+  list(@Req() req: AuthedRequest) {
+    return this.orders.listForUser(req.user.id);
+  }
+
   @Get('orders/:orderId')
   @UseGuards(AuthGuard)
   get(@Param('orderId') orderId: string, @Req() req: AuthedRequest) {
